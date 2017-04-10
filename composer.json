@@ -1,0 +1,21 @@
+{
+    "name": "davekok/sturdy-activity",
+    "license": "MIT",
+    "type": "project",
+    "description": "Sturdy Activity component",
+    "autoload": {
+        "psr-4": { "Sturdy\\Activity\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "Tests\\Sturdy\\Activity\\": "tests/" }
+    },
+    "require": {
+        "php": ">=7.1.0"
+    },
+    "config": {
+        "platform": {
+            "php": "7.1.0"
+        },
+        "sort-packages": true
+    }
+}
