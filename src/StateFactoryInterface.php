@@ -6,7 +6,7 @@ namespace Sturdy\Activity;
  * An interface that should be implemented to by an application
  * to provide a state factory to this component.
  */
-class StateFactoryInterface
+interface StateFactoryInterface
 {
 	/**
 	 * Create a instance of state for the specified unit.

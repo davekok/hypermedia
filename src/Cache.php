@@ -5,58 +5,97 @@ namespace Sturdy\Activity;
 use Throwable;
 use Exception;
 use ReflectionClass;
-use Sturdy\Service\ClassName;
-use Doctrine\Common\Annotations\Reader;
+use Generator;
 
-class Cache
+final class Cache
 {
-	use Utils;
+	use MkDir;
+	use ClassNameFromSource;
 
-	private $docReader;
+	private static $units = [];
+	private $annotationReader;
+	private $cacheDir;
 
-	public function __construct(Reader $docReader)
+	/**
+	 * Constructor
+	 *
+	 * @param $getMethodAnnotations  get method annotations
+	 */
+	public function __construct(\Doctrine\Common\Annotations\Reader $annotationReader, string $cacheDir)
 	{
-		$this->docReader = $docReader;
+		$this->annotationReader = $annotationReader;
+		$this->cacheDir = $cacheDir;
 	}
 
 	/**
-	 * Scan dirs for activities.
+	 * Get a unit by name.
 	 *
-	 * @param $unit  the unit to register
-	 * @param $dirs  the directories to scan
+	 * @param $unitName  the unit to register
 	 */
-	public function scan(string $unit, array $dirs): Unit
+	public function getUnit(string $unitName): Unit
 	{
-		$unit = new Unit($unit);
-		foreach ($dirs as $dir) {
-			foreach ($this->iterateDirectory($dir, [".php"]) as $file) {
-				try {
-					$source = file_get_contents($file);
-					if ($source === false) continue;
-					$className = ClassName::getClassNameFromSource($source);
+		if (isset(self::$units[$unitName])) {
+			return self::$units[$unitName];
+		}
+		$cacheFile = $this->cacheDir."/".$unitName.".object";
+		if (file_exists($cacheFile)) {
+			return unserialize(file_get_contents($cacheFile));
+		}
+	}
+
+	/**
+	 * Update a unit
+	 *
+	 * @param $unit  the unit to update
+	 * @param $dirs  the directories to scan for sources
+	 */
+	public function updateUnit(string $unitName, string $dirs): Unit
+	{
+		$unit = new Unit($unitName);
+		foreach ($this->iterateDirectory($dirs, "php") as $file) {
+			try {
+				$source = file_get_contents($file);
+				if ($source === false) continue;
+				$className = $this->getClassNameFromSource($source);
+				if (!class_exists($className)) {
+					require($file);
 					if (!class_exists($className)) {
-						require($file);
-						if (!class_exists($className)) {
-							continue;
-						}
+						continue;
 					}
-					$reflect = new ReflectionClass($className);
-					$annotations = $this->docReader->getClassAnnotations($reflect);
-					foreach ($annotations as $annotation) {
-						if ($annotation instanceof Annotation\State) {
-							$unit->setStateClass($className);
-						}
-					}
-					foreach ($reflect->getMethods() as $method) {
-						$annotations = $this->docReader->getMethodAnnotations($method);
-						foreach ($annotations as $annotation) {
-							if (!$annotation instanceof Annotation\Action) continue;
-							$unit->addAction($className, $method->getName(), $annotation->getNext(), $annotation->getDimensions());
-						}
-					}
-				} catch (Throwable $e) {
 				}
+				$reflect = new ReflectionClass($className);
+				foreach ($reflect->getMethods() as $method) {
+					$annotations = $this->annotationReader->getMethodAnnotations($method);
+					foreach ($annotations as $annotation) {
+						if (!$annotation instanceof Annotation\Action) continue;
+						$next = $annotation->getNext();
+						if (is_string($next)) {
+							if (strpos($next, "::") === false) {
+								$next = "$className::$next";
+							}
+						} elseif (is_array($next)) {
+							foreach ($next as $value => &$action) {
+								if (strpos($action, "::") === false) {
+									$action = "$className::$action";
+								}
+							}
+						}
+						$unit->addAction(
+							$className,
+							$method->getName(),
+							$annotation->getStart(),
+							$next,
+							$annotation->getDimensions());
+					}
+				}
+			} catch (Throwable $e) {
+				echo "\n",$e->getMessage()," (",$e->getFile(),":",$e->getLine(),")\n";
 			}
+		}
+		$cacheFile = $this->cacheDir."/$unitName.object";
+		file_put_contents($cacheFile, serialize($unit));
+		if (isset(self::$units[$unitName])) {
+			self::$units[$unitName] = $unit;
 		}
 		return $unit;
 	}
@@ -66,12 +105,13 @@ class Cache
 	 *
 	 * @param $unit  unit to write to cache directory
 	 */
-	public function cacheActivities(Unit $unit, string $cacheDir): void
+	public function cacheActivities(Unit $unit): void
 	{
-		$cacheDir = $cacheDir."/".$unit->getName();
+		$cacheDir = $this->cacheDir."/".$unit->getName();
 		$this->mkdir($cacheDir);
 		foreach ($unit->getActions() as $dimensions => $actions) {
-			$file = fopen($cacheDir."/activity $dimensions.php", "w");
+			$filename = trim("activity $dimensions");
+			$file = fopen($cacheDir."/$filename.php", "w");
 			fwrite($file, "<?php\nreturn [\n");
 			foreach ($actions as $action => $next) {
 				fwrite($file, "'$action' => ".var_export($next, true).",\n");
@@ -80,4 +120,40 @@ class Cache
 			fclose($file);
 		}
 	}
+
+	/**
+	 * Iterate a directory with its subdirectories and return all files with matching extensions.
+	 *
+	 * @param $dirs   the directories separated by a colon to scan for files
+	 * @param $exts   extensions separated by a colon
+	 * @yield string  a file that matched the requested extensions
+	 * @return Generator<string>
+	 */
+	public function iterateDirectory(string $dirs, string $exts): Generator
+	{
+		$exts = explode(":", $exts);
+		foreach (explode(":", $dirs) as $dir) {
+			$dr = opendir($dir);
+			if ($dr === false) return;
+			while (($entry = readdir($dr)) !== false) {
+				if ($entry[0] == ".") continue;
+				$file = realpath("$dir/$entry");
+				if ($file === false) continue;
+				if (!is_readable($file)) continue;
+				if (is_dir($file)) {
+					if (!is_executable($file)) continue;
+					yield from $this->iterateDirectory($file, $exts);
+				}
+				if (in_array(pathinfo($file, PATHINFO_EXTENSION), $exts)) {
+					yield $file;
+				}
+			}
+			closedir($dr);
+		}
+	}
+}
+
+// register annotation namespace
+if (class_exists('\Doctrine\Common\Annotations\AnnotationRegistry')) {
+	\Doctrine\Common\Annotations\AnnotationRegistry::registerFile(__DIR__.'/Annotation/Action.php');
 }

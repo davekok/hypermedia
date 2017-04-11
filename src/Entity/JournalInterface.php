@@ -4,7 +4,7 @@ namespace Sturdy\Activity\Entity;
 
 use DateTime;
 
-class JournalInterface
+interface JournalInterface
 {
 	/**
 	 * Get the activity for which this Journal has been created.

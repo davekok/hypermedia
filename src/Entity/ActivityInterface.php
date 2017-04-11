@@ -2,7 +2,7 @@
 
 namespace Sturdy\Activity\Entity;
 
-class ActivityInterface
+interface ActivityInterface
 {
 	/**
 	 * Get the id of the activity.

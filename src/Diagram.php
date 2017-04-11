@@ -5,9 +5,9 @@ namespace Sturdy\Activity;
 use Throwable;
 use Exception;
 
-class ActivityDiagram
+final class Diagram
 {
-	use Utils;
+	use MkDir;
 
 	private $unit;
 	private $colors;
@@ -22,19 +22,19 @@ class ActivityDiagram
 	 */
 	public function generateClassColors()
 	{
-		$this->colors = array_flip($unit->getClasses());
-		foreach ($colors as &$color) {
+		$this->colors = array_flip($this->unit->getClasses());
+		foreach ($this->colors as &$color) {
 			$i = 0;
 			do {
-				$r = dechex(random_int(0, 15)*16);
+				$r = dechex(random_int(7, 15)*16);
 				if (strlen($r) == 1) $r = "0$r";
-				$g = dechex(random_int(0, 15)*16);
+				$g = dechex(random_int(7, 15)*16);
 				if (strlen($g) == 1) $g = "0$g";
-				$b = dechex(random_int(0, 15)*16);
+				$b = dechex(random_int(7, 15)*16);
 				if (strlen($b) == 1) $b = "0$b";
 				$c = "#$r$g$b";
 				if ($i++ > 20) break; // don't get stuck here
-			} while (!in_array($c, $classes, true));
+			} while (!in_array($c, $this->colors, true));
 			$color = $c;
 		}
 	}
@@ -46,10 +46,10 @@ class ActivityDiagram
 	 */
 	public function write(string $docDir): void
 	{
-		$docDir = $docDir."/".$unit->getName();
+		$docDir = $docDir."/".$this->unit->getName();
 		$this->mkdir($docDir);
 		$this->generateClassColors();
-		foreach ($unit->getActions() as $dimensions => $actions) {
+		foreach ($this->unit->getActions() as $dimensions => $actions) {
 			$diagram = [];
 			$diagram[] = "start";
 			$action = "start";
@@ -71,11 +71,11 @@ class ActivityDiagram
 						break;
 					default:
 						break;
-					}
 				}
 			}
 
-			$file = fopen($docDir."/activity ".implode(" ",$dimensions).".uml", "w");
+			$filename = trim("activity ".implode(" ",$dimensions?:[]));
+			$file = fopen($docDir."/$filename.uml", "w");
 			fwrite($file, "@startuml\n");
 			$this->writeDiagram($file, $diagram);
 			fwrite($file, "@enduml\n");
@@ -89,13 +89,15 @@ class ActivityDiagram
 	 * @param $action  the action to format
 	 * @return the formatted action
 	 */
-	private function writeDiagram(resource $file, array $diagram, string $indent = ""): void
+	private function writeDiagram($file, array $diagram, string $indent = ""): void
 	{
 		foreach ($diagram as [$type, $value]) {
 			switch ($type) {
 			case "action":
-				$className = substr($action, 0, strpos($action, "::"));
-				fwrite($file, $indent.$this->colors[$className].":$action;\n");
+				$p = strpos($value, "::");
+				$className = substr($value, 0, $p);
+				$methodName = substr($value, $p+2);
+				fwrite($file, $indent.$this->colors[$className].":$methodName;\n");
 				break;
 			case "if":
 				$i = 0;

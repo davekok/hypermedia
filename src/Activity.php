@@ -7,40 +7,35 @@ use Exception;
 use DateTime;
 use Generator;
 
-class Activity
+final class Activity
 {
 	public const DEFAULT_UNIT     = "default";
 	public const DEFAULT_ACTIVITY = "default";
 
-	private const CONTINUE         =                   1;
-	private const WAIT             = self::CONTINUE  + 1;
+	private const NEXT             =                   1;
+	private const WAIT             = self::NEXT      + 1;
 	private const DETACH           = self::WAIT      + 1;
 	private const END              = self::DETACH    + 1;
-	private const EXEC             = self::END       + 1;
-	private const REPLACE          = self::EXEC      + 1;
-	private const EXCEPTION        = self::REPLACE   + 1; // used when an exception is caught be the activity
+	private const EXCEPTION        = self::END       + 1; // used when an exception is caught be the activity
 	private const ACTION_NOT_FOUND = self::EXCEPTION + 1; // used when a action is not found
 
 	public const STRINGS = [
-		self::CONTINUE         => "continue",
+		self::NEXT             => "next",
 		self::WAIT             => "wait",
 		self::DETACH           => "detach",
 		self::END              => "end",
-		self::EXEC             => "exec",
-		self::REPLACE          => "replace",
 		self::EXCEPTION        => "exception",
 		self::ACTION_NOT_FOUND => "action not found",
 	];
 
 	// resumable statuses, a Journal with one of these statuses can be resumed
 	private const RESUMABLE = [
-		self::CONTINUE,
+		self::NEXT,
 		self::WAIT,
 		self::DETACH,
-		self::EXEC,
 	];
 
-	private $container;
+	private $facade;
 	private $state; // shared state
 	private $activity;
 	private $journal;
@@ -54,34 +49,38 @@ class Activity
 	/**
 	 * Constructor
 	 */
-	public function __construct(Container $container)
+	public function __construct(Facade $facade)
 	{
-		$this->container = $container;
+		$this->facade = $facade;
 	}
 
 	/**
-	 * Continue the next function in the activity.
+	 * Continue with the next action in this activity based on $nextValue.
 	 *
-	 * Default action if nothing is returned. But it can be useful
-	 * to return this explicitly.
+	 * If an action does not return anything it is assumed to be next(null).
+	 *
+	 * @param $nextValue  either a bool, int or null indicating on which branch to continue the activity
 	 *
 	 * Usage:
-	 *   return $activity->continue();
+	 *   return $activity->next($nextValue);
 	 */
-	public function continue(): array
+	public function next($nextValue = null): array
 	{
-		return [self::CONTINUE];
+		return [self::NEXT, $nextValue];
 	}
 
 	/**
 	 * Pause the activity until it is resumed.
 	 *
-	 * @param $returnVal  a possible returnVal, this will be returned be the activity.
+	 * This is useful if the activity needs to wait for an event. Resuming the activity
+	 * needs to be handled elsewhere.
+	 *
+	 * @param $nextValue  either a bool, int or null indicating on which branch to continue the activity
 	 *
 	 * Usage:
 	 *   return $activity->wait();
 	 */
-	public function wait(): array
+	public function wait($nextValue = null): array
 	{
 		return [self::WAIT];
 	}
@@ -89,53 +88,28 @@ class Activity
 	/**
 	 * Detach the activity from the current worker to be continued in another worker.
 	 *
-	 * @param $returnVal  a possible returnVal, this will be returned by the activity.
+	 * @param $userData   extra data to send as part of the detach event
+	 * @param $nextValue  either a bool, int or null indicating on which branch to continue the activity
 	 *
 	 * Usage:
 	 *   return $activity->detach();
 	 */
-	public function detach($returnVal = null): array
+	public function detach($userData = null, $nextValue = null): array
 	{
-		return [self::DETACH, $returnVal];
+		return [self::DETACH, $userData, $nextValue];
 	}
 
 	/**
 	 * End the current activity.
 	 *
-	 * @param $returnVal  a possible returnVal, this will be returned by the activity and stored in the Journal
-
-	 * Usage:
-	 *   return $activity->end($returnVal);
-	 */
-	public function end($returnVal = null): array
-	{
-		return [self::END, $returnVal];
-	}
-
-	/**
-	 * Exec another activity and wait for it to finish.
+	 * @param $returnValue  a possible return value, this will be the journal's return value
 	 *
 	 * Usage:
-	 *   return $activity->exec($newactivity);
-	 *
-	 * @param $activity   The name of activity.
+	 *   return $activity->end($returnValue);
 	 */
-	public function exec(string $activity): array
+	public function end($returnValue = null): array
 	{
-		return [self::EXEC, $activity];
-	}
-
-	/**
-	 * Replace the current activity with another.
-	 *
-	 * Usage:
-	 *   return $activity->replace($otheractivity);
-	 *
-	 * @param $activity   The name of activity.
-	 */
-	public function replace(string $activity): array
-	{
-		return [self::REPLACE, $activity];
+		return [self::END, $returnValue];
 	}
 
 	/**
@@ -178,7 +152,7 @@ class Activity
 	public function createJournal(): self
 	{
 		$this->state = $this->container->getStateFactory()->createState($this->activityEntity->getUnitName());
-		$this->state->action = self::CONTINUE;
+		$this->state->action = self::NEXT;
 		$journalRepository = $this->container->getJournalRepository();
 		$this->journal = $journalRepository->createJournal($this->activityEntity, $this->state);
 		$journalRepository->saveJournal($this->journal);
@@ -279,7 +253,7 @@ class Activity
 						$ret = yield $ret;
 					}
 					if ($ret === null) {
-						$ret = [self::CONTINUE];
+						$ret = [self::NEXT];
 					} else if (is_array($ret) && is_int($ret[0])) {
 						// nothing to do
 					} else {
@@ -295,7 +269,7 @@ class Activity
 			// process status code
 			switch ($status = array_shift($ret)) {
 
-				case self::CONTINUE:
+				case self::NEXT:
 					$this->next();
 					$this->flush();
 					break;
@@ -317,33 +291,6 @@ class Activity
 					$this->flush();
 					$this->queue(); // push activity to queue
 					goto quit;
-
-				// kick of another activity, this activity waits until the other is done
-				case self::EXEC:
-					// kick off other activity
-					$this->next(self::EXEC);
-					if ($this->atAction !== null) {
-						$this->state->activityStack[] = [$this->activityEntity->getId(), $this->atComponent, $this->atAction];
-					}
-					[$activityName] = $ret;
-					$this->setActivityByName($this->activityEntity->getUnitName(), $activityName);
-					if ($this->reset()) {
-						$this->journal->setCurrentAction($this->atAction);
-					}
-					$this->flush();
-					break;
-
-				// replace current activity with another activity
-				// several activitys may start out as different activitys but become the same one after a while
-				// or a special activity to handle an exception to be executed
-				case self::REPLACE:
-					[$activityName] = $ret;
-					$this->setActivityByName($this->activityEntity->getUnitName(), $activityName);
-					if ($this->reset()) {
-						$this->journal->setCurrentAction($this->atAction);
-					}
-					$this->flush();
-					break;
 
 				// errors and such, end activity
 				case self::EXCEPTION:
@@ -378,7 +325,7 @@ class Activity
 	/**
 	 * Load next action
 	 */
-	private function next(int $status = self::CONTINUE): void
+	private function next(int $status = self::NEXT): void
 	{
 		$next = next($this->activity);
 		if ($next === false) {

@@ -2,13 +2,15 @@
 
 namespace Sturdy\Activity\Annotation;
 
+use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
+
 /**
  * @Annotation
  * @Target({"METHOD"})
  * @Attributes({
  *   @Attribute("start", type = "bool"),
  *   @Attribute("next" , type = "string"),
- *   @Attribute("dims" , type = "array<Dimension>"),
+ *   @Attribute("dims" , type = "array<string:string>"),
  * })
  */
 class Action
@@ -31,7 +33,7 @@ class Action
 	/**
 	 * Constructor
 	 */
-	public function __constructor(array $values)
+	public function __construct(array $values)
 	{
 		$this->start = $values['start']??false;
 		$this->setNext($values['next']??null);
@@ -56,11 +58,11 @@ class Action
 		if ($next === null) {
 			$this->next = null;
 		} else {
-			$func = "[A-Za-z_][A-Za-z0-9_]+";
-			$retval = "(?:null|true|false|0|[1-9][0-9]*)";
+			$retval = '(?:null|true|false|0|[1-9][0-9]*)';
+			$func = '(?:[A-Za-z\\\\_][A-Za-z0-9\\\\_]+::)?[A-Za-z_][A-Za-z0-9_]+';
 			if (preg_match("/^$func$/", $next)) {
-				$this->next = ['null'=>$next];
-			} elseif (preg_match("/^\s*{\s*$retval\s*:\s*$func\s*(?:,\s*$retval\s*:\s*$func\s*)*}\s*$/", $next)) {
+				$this->next = $next;
+			} elseif (preg_match("/^\s*\{\s*$retval\s*:\s*$func\s*(?:,\s*$retval\s*:\s*$func\s*)*\}\s*$/", $next)) {
 				$this->next = [];
 				foreach (explode(",", trim($next, "\t\r\n {}")) as $v) {
 					[$retval, $func] = explode(":", trim($v));
@@ -73,9 +75,9 @@ class Action
 	/**
 	 * Get which action comes next.
 	 *
-	 * @return a array of possible actions, the next action should be chosen based on the return value of the action.
+	 * @return either null, a string or an array of possible actions.
 	 */
-	public function getNext(): ?array
+	public function getNext()
 	{
 		return $this->next;
 	}
