@@ -4,12 +4,48 @@ namespace Sturdy\Activity\Entity;
 
 use DateTime;
 
-interface JournalInterface
+interface Journal
 {
 	/**
-	 * Get the activity for which this Journal has been created.
+	 * Get id
+	 *
+	 * @return int
 	 */
-	public function getActivity(): ActivityInterface;
+	public function getId(): int;
+
+	/**
+	 * Set unit
+	 *
+	 * @param Name $unit
+	 * @return self
+	 */
+	public function setUnit(Name $unit);
+
+	/**
+	 * Get unit
+	 *
+	 * @return Name
+	 */
+	public function getUnit(): Name;
+
+	/**
+	 * Set the dimensions for which this journal has been created.
+	 *
+	 * @param $dimensions  the dimensions
+	 */
+	public function setDimensions(array $dimensions): self;
+
+	/**
+	 * Get the Dimension for which this journal has been created.
+	 *
+	 * @return array<Dimension>
+	 */
+	public function getDimensions(): array;
+
+	/**
+	 * Set the current state of this activity.
+	 */
+	public function setState(State $state): self;
 
 	/**
 	 * Get the current state for this activity.

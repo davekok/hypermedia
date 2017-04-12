@@ -15,16 +15,24 @@ final class Cache
 	private static $units = [];
 	private $annotationReader;
 	private $cacheDir;
+	private $fileMask;
 
 	/**
 	 * Constructor
 	 *
-	 * @param $getMethodAnnotations  get method annotations
+	 * @param $annotationReader  annotation reader
+	 * @param $cacheDir          the cache dir
+	 * @param $fileMask          the file mask, for directory and file creation
 	 */
-	public function __construct(\Doctrine\Common\Annotations\Reader $annotationReader, string $cacheDir)
+	public function __construct(
+		\Doctrine\Common\Annotations\Reader $annotationReader,
+		string $cacheDir = null,
+		int $fileMask = 00002)
 	{
 		$this->annotationReader = $annotationReader;
-		$this->cacheDir = $cacheDir;
+		$this->cacheDir = $this->filterDir($cacheDir, 'cache');
+		$this->fileMask = $fileMask;
+		$this->mkdir($this->cacheDir, $this->fileMask);
 	}
 
 	/**
@@ -37,7 +45,7 @@ final class Cache
 		if (isset(self::$units[$unitName])) {
 			return self::$units[$unitName];
 		}
-		$cacheFile = $this->cacheDir."/".$unitName.".object";
+		$cacheFile = $this->cacheDir.DIRECTORY_SEPARATOR.$unitName.".object";
 		if (file_exists($cacheFile)) {
 			return unserialize(file_get_contents($cacheFile));
 		}
@@ -92,7 +100,7 @@ final class Cache
 				echo "\n",$e->getMessage()," (",$e->getFile(),":",$e->getLine(),")\n";
 			}
 		}
-		$cacheFile = $this->cacheDir."/$unitName.object";
+		$cacheFile = $this->cacheDir.DIRECTORY_SEPARATOR."$unitName.object";
 		file_put_contents($cacheFile, serialize($unit));
 		if (isset(self::$units[$unitName])) {
 			self::$units[$unitName] = $unit;
@@ -107,11 +115,12 @@ final class Cache
 	 */
 	public function cacheActivities(Unit $unit): void
 	{
-		$cacheDir = $this->cacheDir."/".$unit->getName();
-		$this->mkdir($cacheDir);
+		$cacheDir = $this->mkdir($this->cacheDir.DIRECTORY_SEPARATOR.$unit->getName(), $this->fileMask);
 		foreach ($unit->getActions() as $dimensions => $actions) {
 			$filename = trim("activity $dimensions");
-			$file = fopen($cacheDir."/$filename.php", "w");
+			$old = umask($this->fileMask);
+			$file = fopen($cacheDir.DIRECTORY_SEPARATOR.$filename.".php", "w");
+			umask($old);
 			fwrite($file, "<?php\nreturn [\n");
 			foreach ($actions as $action => $next) {
 				fwrite($file, "'$action' => ".var_export($next, true).",\n");
@@ -131,14 +140,13 @@ final class Cache
 	 */
 	public function iterateDirectory(string $dirs, string $exts): Generator
 	{
-		$exts = explode(":", $exts);
-		foreach (explode(":", $dirs) as $dir) {
+		$exts = explode(PATH_SEPARATOR, $exts);
+		foreach (explode(PATH_SEPARATOR, $dirs) as $dir) {
 			$dr = opendir($dir);
 			if ($dr === false) return;
 			while (($entry = readdir($dr)) !== false) {
 				if ($entry[0] == ".") continue;
-				$file = realpath("$dir/$entry");
-				if ($file === false) continue;
+				$file = $dir.DIRECTORY_SEPARATOR.$entry;
 				if (!is_readable($file)) continue;
 				if (is_dir($file)) {
 					if (!is_executable($file)) continue;
@@ -155,5 +163,5 @@ final class Cache
 
 // register annotation namespace
 if (class_exists('\Doctrine\Common\Annotations\AnnotationRegistry')) {
-	\Doctrine\Common\Annotations\AnnotationRegistry::registerFile(__DIR__.'/Annotation/Action.php');
+	\Doctrine\Common\Annotations\AnnotationRegistry::registerFile(__DIR__.DIRECTORY_SEPARATOR.'Annotation'.DIRECTORY_SEPARATOR.'Action.php');
 }

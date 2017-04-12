@@ -7,8 +7,10 @@ use Exception;
 use DateTime;
 use Generator;
 
-final class Activity
+final class Activity implements ActivityFactory
 {
+	use MkDir;
+
 	public const DEFAULT_UNIT     = "default";
 	public const DEFAULT_ACTIVITY = "default";
 
@@ -35,8 +37,15 @@ final class Activity
 		self::DETACH,
 	];
 
-	private $facade;
-	private $state; // shared state
+	private $nameRepository;
+	private $dimensionRepository;
+	private $journalRepository;
+	private $stateFactory;
+	private $instanceFactory;
+	private $cacheDir;
+
+	private $listeners;
+	private $state;
 	private $activity;
 	private $journal;
 	private $parent;
@@ -49,9 +58,193 @@ final class Activity
 	/**
 	 * Constructor
 	 */
-	public function __construct(Facade $facade)
+	public function __construct(
+		Repository\NameRepository $nameRepository,
+		Repository\DimensionRepository $dimensionRepository,
+		Repository\JournalRepository $journalRepository,
+		StateFactory $stateFactory,
+		InstanceFactory $instanceFactory,
+		?string $cacheDir)
 	{
-		$this->facade = $facade;
+		$this->nameRepository = $nameRepository;
+		$this->dimensionRepository = $dimensionRepository;
+		$this->journalRepository = $journalRepository;
+		$this->stateFactory = $stateFactory;
+		$this->instanceFactory = $instanceFactory;
+		$this->cacheDir = $this->filterDir($cacheDir, 'cache');
+	}
+
+	/**
+	 * Factory method to create a new activity.
+	 *
+	 * @param $unit        the unit name
+	 * @param $dimensions  the dimensions to use
+	 * @return new activity
+	 */
+	public function createActivity(string $unit, array $dimensions = []): self
+	{
+		$self = clone $this;
+		$self->listeners = [];
+
+		$self->unit = $self->nameRepository->findOrCreateOneName($unit);
+
+		$self->dimensions = [];
+		foreach ($dimensions??[] as $dimension => $value) {
+			$self->dimensions[] = $self->dimensionRepository->findOrCreateOneDimension($dimension, $value);
+		}
+
+		$self->load();
+
+		$self->state = $self->stateFactory->createState($self->unit->getName());
+		$self->journal = $self->journalRepository->createJournal($self->unit, $self->dimensions, $self->state, self::NEXT);
+
+		return $self;
+	}
+
+	/**
+	 * Factory method to create an activity from stored journal.
+	 *
+	 * @param $unit        the unit name
+	 * @param $dimensions  the dimensions to use
+	 * @return loaded activity
+	 */
+	public function loadActivity(int $journalId): self
+	{
+		$self = clone $this;
+		$self->listeners = [];
+
+		$journal = $self->journalRepository->findOneById($journalId);
+		if (empty($journal)) {
+			throw new Exception('Journal not found.');
+		}
+		$self->journal = $journal;
+		$self->state = $journal->getState();
+		assert($self->state !== null);
+		$self->unit = $journal->getUnit();
+		assert($self->unit !== null);
+		$self->dimensions = $journal->getDimensions();
+		$self->load();
+
+		return $self;
+	}
+
+	/**
+	 * Load the actions from cache.
+	 */
+	private function load(): void
+	{
+		$file = $this->cacheDir.DIRECTORY_SEPARATOR.$this->unit->getId();
+		foreach ($this->dimensions as $dimension) {
+			$file.= "-".$dimension->getId();
+		}
+		$file.= ".php";
+
+		if (!file_exists($file)) {
+			$msg = "Activity $unit";
+			if (count($this->dimensions)) {
+				$msg.= " {"
+				$i = 0;
+				foreach ($this->dimensions as $dimension) {
+					if ($i++) $msg.= ",";
+					$msg.= $dimension->getDimension()->getName().":".$dimension->getValue();
+				}
+				$msg.= "}";
+			}
+			$msg.= " not found.";
+			throw new Exception($msg);
+		}
+
+		$this->activity = include($file);
+	}
+
+	/**
+	 * Get unit
+	 *
+	 * @return string
+	 */
+	public function getUnit(): string
+	{
+		return $this->unit->getName();
+	}
+
+	/**
+	 * Get dimensions
+	 *
+	 * @return array
+	 */
+	public function getDimensions(): array
+	{
+		$dimensions = [];
+		foreach ($this->dimensions as $dimension) {
+			$dimensions[$dimension->getDimension()->getName()] = $dimension->getValue();
+		}
+		return $dimensions;
+	}
+
+	/**
+	 * Get journal
+	 */
+	public function getJournal(): Entity\Journal
+	{
+		return $this->journal;
+	}
+
+	/**
+	 * Save journal
+	 */
+	public function saveJournal(): void
+	{
+		$this->journal->setState($this->state);
+		$this->journalRepository->saveJournal($this->journal);
+	}
+
+	/**
+	 * Get return value
+	 */
+	public function getReturnValue()
+	{
+		return $this->journal->getReturnValue();
+	}
+
+	/**
+	 * Add an event listener to this activity.
+	 *
+	 * @param $eventName  the event name
+	 * @param $listener   a callable to call on event dispatch
+	 */
+	public function addEventListener(string $eventName, callable $listener): void
+	{
+		$this->listeners[$eventName][] = $listener;
+	}
+
+	/**
+	 * Dispatch an event to all listeners for that event.
+	 *
+	 * @param $eventName  the event name
+	 * @param $event      event object to dispatch
+	 */
+	private function dispatchEvent(string $eventName, $event): void
+	{
+		foreach ($this->listeners[$eventName] as $listener) {
+			$listener($event);
+		}
+	}
+
+	/**
+	 * Set state variable
+	 */
+	public function set(string $name, $value): self
+	{
+		$this->state->$name = $value;
+		return $this;
+	}
+
+	/**
+	 * Get state variable
+	 */
+	public function get(string $name)
+	{
+		return $this->state->$name;
 	}
 
 	/**
@@ -113,114 +306,24 @@ final class Activity
 	}
 
 	/**
-	 * Set activity
-	 */
-	public function setActivity(Entity\ActivityInterface $activityEntity): self
-	{
-		$unit = $activityEntity->getUnitName();
-		$name = $activityEntity->getName();
-		$file = $this->container->getCacheDir()."/{$unit}-{$name}.php";
-
-		if (!file_exists($file)) {
-			throw new Exception("Activity {$unit}:{$name} not found.");
-		}
-
-		$this->activity = include($file);
-		$this->activityEntity = $activityEntity;
-		return $this;
-	}
-
-	/**
-	 * Set activity by name
-	 */
-	public function setActivityByName(string $unit, string $name): self
-	{
-		return $this->setActivity($this->container->getActivityEntityRepository()->findOrCreateOneByUnitAndName($unit, $name));
-	}
-
-	/**
-	 * Set activity by id
-	 */
-	public function setActivityById(int $activityId): self
-	{
-		return $this->setActivity($this->container->getActivityEntityRepository()->findOneById($activityId));
-	}
-
-	/**
-	 * Create journal
-	 */
-	public function createJournal(): self
-	{
-		$this->state = $this->container->getStateFactory()->createState($this->activityEntity->getUnitName());
-		$this->state->action = self::NEXT;
-		$journalRepository = $this->container->getJournalRepository();
-		$this->journal = $journalRepository->createJournal($this->activityEntity, $this->state);
-		$journalRepository->saveJournal($this->journal);
-		return $this;
-	}
-
-	/**
-	 * Set journal
-	 */
-	public function setJournal(Entity\JournalInterface $journal): self
-	{
-		$this->journal = $journal;
-		$this->state = $journal->getState();
-		assert($this->state !== null);
-		$activity = $journal->getActivity();
-		assert($activity !== null);
-		$this->setActivity($activity);
-		return $this;
-	}
-
-	/**
-	 * Get journal
-	 */
-	public function getJournal(): Entity\JournalInterface
-	{
-		return $this->journal;
-	}
-
-	/**
-	 * Set state variable
-	 */
-	public function set(string $name, $value): self
-	{
-		$this->state->$name = $value;
-		return $this;
-	}
-
-	/**
-	 * Get state variable
-	 */
-	public function get(string $name)
-	{
-		return $this->state->$name;
-	}
-
-	/**
-	 * Get return value
-	 */
-	public function getReturnValue()
-	{
-		return $this->journal->getReturnValue();
-	}
-
-	/**
 	 * Coroutine to run the activity.
 	 *
 	 * Note that if actions in the activity are themselfs coroutines. Their generator will be yielded.
 	 */
 	public function run()
 	{
-		if (empty($this->journal) || !in_array($this->journal->getStatus(), self::RESUMABLE))
+		if ($this->journal === null) {
+			$this->createJournal();
+		}
+		if (!in_array($this->journal->getStatus(), self::RESUMABLE)) {
 			return null;
+		}
 
 		if ($this->reset()) {
 			$atAction = $this->journal->getCurrentAction(); // action activity is at, continue from there or if null start at the beginning
 			if ($atAction !== null) {
 				while ($atAction !== $this->atAction) { // find the action to continue from
-					[$this->atComponent, $this->atAction] = next($this->activity) ?: [null,null];
+					[$this->atClass, $this->atAction] = next($this->activity) ?: [null,null];
 					// if the end is reached without finding the action the activity is at, call houston, we've got a problem
 					if (empty($this->atAction)) {
 						$this->journal->setStatus(self::ACTION_NOT_FOUND);
@@ -234,16 +337,9 @@ final class Activity
 
 		while ($this->running) {
 
-			// check if an instance of the component is already loaded for this activity
-			if (!isset($instance) || !$instance instanceof $this->atComponent) {
-				if (isset($instance) && method_exists($instance, 'shutdown')) {
-					yield $instance->shutdown();
-				}
-				$class = $this->atComponent;
-				$instance = new $class($this->container, $this->state);
-				if (method_exists($instance, 'boot')) {
-					yield $instance->boot();
-				}
+			// check if an instance of the class is already loaded for this activity
+			if (!isset($instance) || !$instance instanceof $this->atClass) {
+				$instance = $this->instanceFactory->createInstance($this->activityEntity->getUnitName(), $this->atClass, $this->state);
 			}
 
 			if (method_exists($instance, $this->atAction)) {
@@ -263,7 +359,7 @@ final class Activity
 					$ret = [self::EXCEPTION, $e];
 				}
 			} else {
-				$ret = [self::ACTION_NOT_FOUND, new Exception("Job {$this->atComponent}::{$this->atAction} does not exist.")];
+				$ret = [self::ACTION_NOT_FOUND, new Exception("Job {$this->atClass}::{$this->atAction} does not exist.")];
 			}
 
 			// process status code
@@ -271,24 +367,24 @@ final class Activity
 
 				case self::NEXT:
 					$this->next();
-					$this->flush();
+					$this->saveJournal();
 					break;
 
 				case self::END:
 					[$returnVal] = $ret;
 					$this->_end($returnVal);
-					$this->flush();
+					$this->saveJournal();
 					goto quit;
 
 				case self::WAIT:
 					$this->next(self::WAIT);
-					$this->flush();
+					$this->saveJournal();
 					goto quit;
 
 				case self::DETACH:
 					[$returnVal] = $ret;
 					$this->next(self::DETACH);
-					$this->flush();
+					$this->saveJournal();
 					$this->queue(); // push activity to queue
 					goto quit;
 
@@ -298,14 +394,11 @@ final class Activity
 					[$returnVal] = $ret;
 					$this->journal->setErrorMessage($returnVal->getMessage());
 					$this->_end(null, $status);
-					$this->flush();
+					$this->saveJournal();
 					goto quit;
 			}
 		}
 	quit:
-		if (isset($instance) && method_exists($instance, 'shutdown')) {
-			yield $instance->shutdown();
-		}
 		if (isset($returnVal)) {
 			return $returnVal;
 		} else {
@@ -318,7 +411,7 @@ final class Activity
 	 */
 	private function reset(): bool
 	{
-		[$this->atComponent, $this->atAction] = reset($this->activity) ?: [null,null];
+		[$this->atClass, $this->atAction] = reset($this->activity) ?: [null,null];
 		return $this->running = $this->atAction !== null;
 	}
 
@@ -332,7 +425,7 @@ final class Activity
 			if (isset($this->state->activityStack)) {
 				$activityStack = $this->state->activityStack;
 				if (is_array($activityStack) && count($activityStack)) {
-					[$activityId, $this->atComponent, $this->atAction] = array_pop($activityStack);
+					[$activityId, $this->atClass, $this->atAction] = array_pop($activityStack);
 					$this->state->activityStack = $activityStack;
 					$this->setActivityById($activityId);
 					$this->journal->setCurrentAction($this->atAction);
@@ -341,7 +434,7 @@ final class Activity
 			}
 			$this->_end();
 		} else {
-			[$this->atComponent, $this->atAction] = $next;
+			[$this->atClass, $this->atAction] = $next;
 			$this->journal->setCurrentAction($this->atAction);
 			$this->journal->setStatus($status);
 			$this->journal->setState($this->state);
@@ -358,14 +451,5 @@ final class Activity
 		$this->journal->setFinishedAt(new DateTime("now"));
 		$this->journal->setReturnValue($returnValue);
 		$this->running = false;
-	}
-
-	/**
-	 * Save journal
-	 */
-	private function flush(): void
-	{
-		$this->journal->setState($this->state);
-		$this->container->getJournalRepository()->saveJournal($this->journal);
 	}
 }
