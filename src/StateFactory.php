@@ -11,7 +11,13 @@ interface StateFactory
 	/**
 	 * Create a instance of state for the specified unit.
 	 *
-	 * @param $unit  the unit to create state for
+	 * The state object should mimic a stdClass object. However
+	 * stdClass may be extended to provide custom properties,
+	 * lazy loaders and so on. Whatever your application needs.
+	 *
+	 * @param $unit        the unit to create state for
+	 * @param $dimensions  the dimensions in use
+	 * @return state object
 	 */
-	public function createState(string $unit): State;
+	public function createState(string $unit, array $dimensions): \stdClass;
 }

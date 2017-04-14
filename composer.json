@@ -10,10 +10,13 @@
         "psr-4": { "Tests\\Sturdy\\Activity\\": "tests/" }
     },
     "require": {
-        "php": ">=7.1.0"
+        "php": ">=7.1.0",
+        "psr/cache": "^1.0"
     },
     "require-dev": {
-        "doctrine/annotations": ">=1.4.0"
+        "cache/array-adapter": "^0.5.0",
+        "doctrine/annotations": ">=1.4.0",
+        "phpspec/prophecy": "~1.0"
     },
     "config": {
         "platform": {

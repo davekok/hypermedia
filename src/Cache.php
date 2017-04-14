@@ -6,162 +6,111 @@ use Throwable;
 use Exception;
 use ReflectionClass;
 use Generator;
+use Psr\Cache\CacheItemPoolInterface;
 
+/**
+ * Class dealing with caching.
+ */
 final class Cache
 {
-	use MkDir;
-	use ClassNameFromSource;
-
-	private static $units = [];
-	private $annotationReader;
-	private $cacheDir;
-	private $fileMask;
+	private $cachePool;
 
 	/**
 	 * Constructor
 	 *
-	 * @param $annotationReader  annotation reader
-	 * @param $cacheDir          the cache dir
-	 * @param $fileMask          the file mask, for directory and file creation
+	 * @param $cachePool  the cache pool
 	 */
-	public function __construct(
-		\Doctrine\Common\Annotations\Reader $annotationReader,
-		string $cacheDir = null,
-		int $fileMask = 00002)
+	public function __construct(CacheItemPoolInterface $cachePool)
 	{
-		$this->annotationReader = $annotationReader;
-		$this->cacheDir = $this->filterDir($cacheDir, 'cache');
-		$this->fileMask = $fileMask;
-		$this->mkdir($this->cacheDir, $this->fileMask);
+		$this->cachePool = $cachePool;
 	}
 
 	/**
-	 * Get a unit by name.
+	 * Update activities from a unit.
 	 *
-	 * @param $unitName  the unit to register
+	 * @param $unit  unit to extract activities from
 	 */
-	public function getUnit(string $unitName): Unit
+	public function updateActivities(Unit $unit): void
 	{
-		if (isset(self::$units[$unitName])) {
-			return self::$units[$unitName];
-		}
-		$cacheFile = $this->cacheDir.DIRECTORY_SEPARATOR.$unitName.".object";
-		if (file_exists($cacheFile)) {
-			return unserialize(file_get_contents($cacheFile));
-		}
-	}
+		$name = $unit->getName();
 
-	/**
-	 * Update a unit
-	 *
-	 * @param $unit  the unit to update
-	 * @param $dirs  the directories to scan for sources
-	 */
-	public function updateUnit(string $unitName, string $dirs): Unit
-	{
-		$unit = new Unit($unitName);
-		foreach ($this->iterateDirectory($dirs, "php") as $file) {
-			try {
-				$source = file_get_contents($file);
-				if ($source === false) continue;
-				$className = $this->getClassNameFromSource($source);
-				if (!class_exists($className)) {
-					require($file);
-					if (!class_exists($className)) {
-						continue;
-					}
-				}
-				$reflect = new ReflectionClass($className);
-				foreach ($reflect->getMethods() as $method) {
-					$annotations = $this->annotationReader->getMethodAnnotations($method);
-					foreach ($annotations as $annotation) {
-						if (!$annotation instanceof Annotation\Action) continue;
-						$next = $annotation->getNext();
-						if (is_string($next)) {
-							if (strpos($next, "::") === false) {
-								$next = "$className::$next";
-							}
-						} elseif (is_array($next)) {
-							foreach ($next as $value => &$action) {
-								if (strpos($action, "::") === false) {
-									$action = "$className::$action";
-								}
-							}
-						}
-						$unit->addAction(
-							$className,
-							$method->getName(),
-							$annotation->getStart(),
-							$next,
-							$annotation->getDimensions());
-					}
-				}
-			} catch (Throwable $e) {
-				echo "\n",$e->getMessage()," (",$e->getFile(),":",$e->getLine(),")\n";
-			}
-		}
-		$cacheFile = $this->cacheDir.DIRECTORY_SEPARATOR."$unitName.object";
-		file_put_contents($cacheFile, serialize($unit));
-		if (isset(self::$units[$unitName])) {
-			self::$units[$unitName] = $unit;
-		}
-		return $unit;
-	}
+		// save the order in which the dimensions are stored
+		$dimensions = $unit->getDimensions();
+		$item = $this->cachePool->getItem($this->dimensionsKey($name));
+		$item->set(json_encode($dimensions));
+		$this->cachePool->saveDeferred($item);
 
-	/**
-	 * Write activities to cache directory.
-	 *
-	 * @param $unit  unit to write to cache directory
-	 */
-	public function cacheActivities(Unit $unit): void
-	{
-		$cacheDir = $this->mkdir($this->cacheDir.DIRECTORY_SEPARATOR.$unit->getName(), $this->fileMask);
+		// save the activities for each dimension
 		foreach ($unit->getActions() as $dimensions => $actions) {
-			$filename = trim("activity $dimensions");
-			$old = umask($this->fileMask);
-			$file = fopen($cacheDir.DIRECTORY_SEPARATOR.$filename.".php", "w");
-			umask($old);
-			fwrite($file, "<?php\nreturn [\n");
+			$activity = [];
 			foreach ($actions as $action => $next) {
-				fwrite($file, "'$action' => ".var_export($next, true).",\n");
+				$activity[$action] = $next;
 			}
-			fwrite($file, "];\n");
-			fclose($file);
+			$item = $this->cachePool->getItem(strtr(__NAMESPACE__."\\$name\\$dimensions", "\\", "|"));
+			$item->set(json_encode($activity));
+			$this->cachePool->saveDeferred($item);
 		}
+
+		// commit cache
+		$this->cachePool->commit();
 	}
 
 	/**
-	 * Iterate a directory with its subdirectories and return all files with matching extensions.
+	 * Get actions for activity
 	 *
-	 * @param $dirs   the directories separated by a colon to scan for files
-	 * @param $exts   extensions separated by a colon
-	 * @yield string  a file that matched the requested extensions
-	 * @return Generator<string>
+	 * @param $activity  the activity to return the cached actions for
+	 * @return the actions
 	 */
-	public function iterateDirectory(string $dirs, string $exts): Generator
+	public function getActions(Activity $activity): array
 	{
-		$exts = explode(PATH_SEPARATOR, $exts);
-		foreach (explode(PATH_SEPARATOR, $dirs) as $dir) {
-			$dr = opendir($dir);
-			if ($dr === false) return;
-			while (($entry = readdir($dr)) !== false) {
-				if ($entry[0] == ".") continue;
-				$file = $dir.DIRECTORY_SEPARATOR.$entry;
-				if (!is_readable($file)) continue;
-				if (is_dir($file)) {
-					if (!is_executable($file)) continue;
-					yield from $this->iterateDirectory($file, $exts);
-				}
-				if (in_array(pathinfo($file, PATHINFO_EXTENSION), $exts)) {
-					yield $file;
-				}
-			}
-			closedir($dr);
-		}
-	}
-}
+		$unit = $activity->getUnit();
+		$dimensions = $activity->getDimensions();
 
-// register annotation namespace
-if (class_exists('\Doctrine\Common\Annotations\AnnotationRegistry')) {
-	\Doctrine\Common\Annotations\AnnotationRegistry::registerFile(__DIR__.DIRECTORY_SEPARATOR.'Annotation'.DIRECTORY_SEPARATOR.'Action.php');
+		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
+		if (!$item->isHit()) {
+			throw new Exception("Actions not found.");
+		}
+		$order = json_decode($item->get());
+
+		$item = $this->cachePool->getItem($this->actionsKey($unit, $dimensions, $order));
+		if (!$item->isHit()) {
+			throw new Exception("Actions not found.");
+		}
+		$actions = $item->get();
+
+		$actions = json_decode($actions, true);
+		if (!$actions) {
+			throw new Exception("Actions not found.");
+		}
+
+		return $actions;
+	}
+
+	/**
+	 * Construct dimensions key to use for caching.
+	 *
+	 * @param $unit  the unit name
+	 * @return the cache key
+	 */
+	public function dimensionsKey(string $unit): string
+	{
+		return strtr(__NAMESPACE__."\\$unit.dimensions", "\\", "|");
+	}
+
+	/**
+	 * Construct actions key to use for caching.
+	 *
+	 * @param $unit        the unit name
+	 * @param $dimensions  the dimensions
+	 * @param $order       the order of the dimensions
+	 * @return the cache key
+	 */
+	public function actionsKey(string $unit, array $dimensions, array $order): string
+	{
+		$dims = array_flip($order);
+		foreach ($dimensions as $key => $value) {
+			$dims[$key] = $value;
+		}
+		return strtr(__NAMESPACE__."\\$unit\\".implode(" ", $dims), "\\", "|");
+	}
 }

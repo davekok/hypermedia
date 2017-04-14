@@ -60,9 +60,9 @@ final class Unit
 	}
 
 	/**
-	 * Get classess
+	 * Get dimensions
 	 *
-	 * @return the classes
+	 * @return the dimensions
 	 */
 	public function getDimensions(): array
 	{
@@ -70,7 +70,19 @@ final class Unit
 	}
 
 	/**
+	 * Get all actions
+	 *
+	 * @return $actions
+	 */
+	public function getActions(): array
+	{
+		return $this->actions;
+	}
+
+	/**
 	 * Add an action to this unit.
+	 *
+	 * As actions are added also classes and dimensions are added.
 	 *
 	 * @param $className   the class name the action is implemented in
 	 * @param $methodName  the method name the action is implemented in
@@ -111,15 +123,5 @@ final class Unit
 		$this->actions[$dims]["$className::$methodName"] = $next;
 
 		return $this;
-	}
-
-	/**
-	 * Get all actions
-	 *
-	 * @return $actions
-	 */
-	public function getActions(): array
-	{
-		return $this->actions;
 	}
 }

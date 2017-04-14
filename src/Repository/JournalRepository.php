@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity\Repository;
 
+use Sturdy\Activity\{Entity,State};
+
 /**
  * A interface to be implemented by the application to
  * provide this component with a journal repository.
@@ -22,15 +24,14 @@ interface JournalRepository
 	 * @param $unit        the unit
 	 * @param $dimensions  the dimensions
 	 * @param $state       the state object to use
-	 * @param $status      the current status of the activity, private to the Activity
 	 * @return a freshly created journal
 	 */
-	public function createJournal(Name $unit, array $dimensions, State $state, int $status): Entity\Journal;
+	public function createJournal(string $unit, array $dimensions, \stdClass $state): Entity\Journal;
 
 	/**
 	 * Save the updated journal.
 	 *
 	 * @param $journal  the journal to save
 	 */
-	public function saveJournal(Journal $journal): void;
+	public function saveJournal(Entity\Journal $journal): void;
 }

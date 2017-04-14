@@ -11,7 +11,7 @@ interface ActivityFactory
 	 * @param $dimensions  the dimensions to use
 	 * @return new activity
 	 */
-	public function createActivity(string $unit, array $dimensions = []): self;
+	public function createActivity(string $unit, array $dimensions = []): Activity;
 
 	/**
 	 * Factory method to create an activity from stored journal.
@@ -20,5 +20,5 @@ interface ActivityFactory
 	 * @param $dimensions  the dimensions to use
 	 * @return loaded activity
 	 */
-	public function loadActivity(int $journalId): self;
+	public function loadActivity(int $journalId): Activity;
 }

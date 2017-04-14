@@ -6,72 +6,40 @@ use Throwable;
 use Exception;
 use DateTime;
 use Generator;
+use Psr\Cache\CacheItemPoolInterface;
 
+/**
+ * The main class of the component.
+ *
+ * Create or load an activity and run, enjoy.
+ */
 final class Activity implements ActivityFactory
 {
-	use MkDir;
-
-	public const DEFAULT_UNIT     = "default";
-	public const DEFAULT_ACTIVITY = "default";
-
-	private const NEXT             =                   1;
-	private const WAIT             = self::NEXT      + 1;
-	private const DETACH           = self::WAIT      + 1;
-	private const END              = self::DETACH    + 1;
-	private const EXCEPTION        = self::END       + 1; // used when an exception is caught be the activity
-	private const ACTION_NOT_FOUND = self::EXCEPTION + 1; // used when a action is not found
-
-	public const STRINGS = [
-		self::NEXT             => "next",
-		self::WAIT             => "wait",
-		self::DETACH           => "detach",
-		self::END              => "end",
-		self::EXCEPTION        => "exception",
-		self::ACTION_NOT_FOUND => "action not found",
-	];
-
-	// resumable statuses, a Journal with one of these statuses can be resumed
-	private const RESUMABLE = [
-		self::NEXT,
-		self::WAIT,
-		self::DETACH,
-	];
-
-	private $nameRepository;
-	private $dimensionRepository;
+	// dependencies
+	private $cache;
 	private $journalRepository;
 	private $stateFactory;
 	private $instanceFactory;
-	private $cacheDir;
 
+	// state
 	private $listeners;
 	private $state;
-	private $activity;
 	private $journal;
-	private $parent;
-	private $activityEntity;
-	private $atComponent;
-	private $atAction;
-	private $last;
-	private $running;
+	private $actions;
 
 	/**
 	 * Constructor
 	 */
 	public function __construct(
-		Repository\NameRepository $nameRepository,
-		Repository\DimensionRepository $dimensionRepository,
+		Cache $cache,
 		Repository\JournalRepository $journalRepository,
 		StateFactory $stateFactory,
-		InstanceFactory $instanceFactory,
-		?string $cacheDir)
+		InstanceFactory $instanceFactory)
 	{
-		$this->nameRepository = $nameRepository;
-		$this->dimensionRepository = $dimensionRepository;
+		$this->cache = $cache;
 		$this->journalRepository = $journalRepository;
 		$this->stateFactory = $stateFactory;
 		$this->instanceFactory = $instanceFactory;
-		$this->cacheDir = $this->filterDir($cacheDir, 'cache');
 	}
 
 	/**
@@ -81,23 +49,13 @@ final class Activity implements ActivityFactory
 	 * @param $dimensions  the dimensions to use
 	 * @return new activity
 	 */
-	public function createActivity(string $unit, array $dimensions = []): self
+	public function createActivity(string $unit, array $dimensions = []): Activity
 	{
 		$self = clone $this;
 		$self->listeners = [];
-
-		$self->unit = $self->nameRepository->findOrCreateOneName($unit);
-
-		$self->dimensions = [];
-		foreach ($dimensions??[] as $dimension => $value) {
-			$self->dimensions[] = $self->dimensionRepository->findOrCreateOneDimension($dimension, $value);
-		}
-
-		$self->load();
-
-		$self->state = $self->stateFactory->createState($self->unit->getName());
-		$self->journal = $self->journalRepository->createJournal($self->unit, $self->dimensions, $self->state, self::NEXT);
-
+		$self->state = $self->stateFactory->createState($unit, $dimensions);
+		$self->journal = $self->journalRepository->createJournal($unit, $dimensions, $self->state);
+		$self->actions = $this->cache->getActions($self);
 		return $self;
 	}
 
@@ -108,53 +66,14 @@ final class Activity implements ActivityFactory
 	 * @param $dimensions  the dimensions to use
 	 * @return loaded activity
 	 */
-	public function loadActivity(int $journalId): self
+	public function loadActivity(int $journalId): Activity
 	{
 		$self = clone $this;
 		$self->listeners = [];
-
-		$journal = $self->journalRepository->findOneById($journalId);
-		if (empty($journal)) {
-			throw new Exception('Journal not found.');
-		}
-		$self->journal = $journal;
-		$self->state = $journal->getState();
-		assert($self->state !== null);
-		$self->unit = $journal->getUnit();
-		assert($self->unit !== null);
-		$self->dimensions = $journal->getDimensions();
-		$self->load();
-
+		$self->journal = $self->journalRepository->findOneJournalById($journalId);
+		$self->state = $self->journal->getState();
+		$self->actions = $this->cache->getActions($self);
 		return $self;
-	}
-
-	/**
-	 * Load the actions from cache.
-	 */
-	private function load(): void
-	{
-		$file = $this->cacheDir.DIRECTORY_SEPARATOR.$this->unit->getId();
-		foreach ($this->dimensions as $dimension) {
-			$file.= "-".$dimension->getId();
-		}
-		$file.= ".php";
-
-		if (!file_exists($file)) {
-			$msg = "Activity $unit";
-			if (count($this->dimensions)) {
-				$msg.= " {"
-				$i = 0;
-				foreach ($this->dimensions as $dimension) {
-					if ($i++) $msg.= ",";
-					$msg.= $dimension->getDimension()->getName().":".$dimension->getValue();
-				}
-				$msg.= "}";
-			}
-			$msg.= " not found.";
-			throw new Exception($msg);
-		}
-
-		$this->activity = include($file);
 	}
 
 	/**
@@ -164,7 +83,7 @@ final class Activity implements ActivityFactory
 	 */
 	public function getUnit(): string
 	{
-		return $this->unit->getName();
+		return $this->journal->getUnit();
 	}
 
 	/**
@@ -174,11 +93,7 @@ final class Activity implements ActivityFactory
 	 */
 	public function getDimensions(): array
 	{
-		$dimensions = [];
-		foreach ($this->dimensions as $dimension) {
-			$dimensions[$dimension->getDimension()->getName()] = $dimension->getValue();
-		}
-		return $dimensions;
+		return $this->journal->getDimensions();
 	}
 
 	/**
@@ -199,11 +114,21 @@ final class Activity implements ActivityFactory
 	}
 
 	/**
-	 * Get return value
+	 * Set return
 	 */
-	public function getReturnValue()
+	public function setReturn($return): self
 	{
-		return $this->journal->getReturnValue();
+		$this->journal->setReturn($return);
+
+		return $this;
+	}
+
+	/**
+	 * Get return
+	 */
+	public function getReturn()
+	{
+		return $this->journal->getReturn();
 	}
 
 	/**
@@ -248,208 +173,120 @@ final class Activity implements ActivityFactory
 	}
 
 	/**
-	 * Continue with the next action in this activity based on $nextValue.
+	 * Run the activity.
 	 *
-	 * If an action does not return anything it is assumed to be next(null).
-	 *
-	 * @param $nextValue  either a bool, int or null indicating on which branch to continue the activity
-	 *
-	 * Usage:
-	 *   return $activity->next($nextValue);
+	 * This will only work if your actions are simple functions not generators.
+	 * If they are not you will have to use a worker.
 	 */
-	public function next($nextValue = null): array
+	public function run()
 	{
-		return [self::NEXT, $nextValue];
-	}
-
-	/**
-	 * Pause the activity until it is resumed.
-	 *
-	 * This is useful if the activity needs to wait for an event. Resuming the activity
-	 * needs to be handled elsewhere.
-	 *
-	 * @param $nextValue  either a bool, int or null indicating on which branch to continue the activity
-	 *
-	 * Usage:
-	 *   return $activity->wait();
-	 */
-	public function wait($nextValue = null): array
-	{
-		return [self::WAIT];
-	}
-
-	/**
-	 * Detach the activity from the current worker to be continued in another worker.
-	 *
-	 * @param $userData   extra data to send as part of the detach event
-	 * @param $nextValue  either a bool, int or null indicating on which branch to continue the activity
-	 *
-	 * Usage:
-	 *   return $activity->detach();
-	 */
-	public function detach($userData = null, $nextValue = null): array
-	{
-		return [self::DETACH, $userData, $nextValue];
-	}
-
-	/**
-	 * End the current activity.
-	 *
-	 * @param $returnValue  a possible return value, this will be the journal's return value
-	 *
-	 * Usage:
-	 *   return $activity->end($returnValue);
-	 */
-	public function end($returnValue = null): array
-	{
-		return [self::END, $returnValue];
+		$coroutine = $this->coroutine();
+		$coroutine->rewind();
+		if ($coroutine->valid()) {
+			throw new Exception("Activity has actions that are generators.");
+		} else {
+			return $coroutine->getReturn();
+		}
 	}
 
 	/**
 	 * Coroutine to run the activity.
 	 *
-	 * Note that if actions in the activity are themselfs coroutines. Their generator will be yielded.
+	 * Note that if actions in the activity are themselfs coroutines they will be yielded
+	 * instead of executed. Use a worker to execute them and send the return of the
+	 * coroutine back to this one.
+	 *
+	 * Pseudo example to get you started:
+	 *     $coroutine = $activity->coroutine();
+	 *     $worker = new Worker();
+	 *     $worker->add($coroutine, function($yield)use($worker,$coroutine){ // $yield is the value yielded by $coroutine
+	 *         $worker->pause($coroutine);
+	 *         $worker->add($yield);
+	 *         $worker->whenFinished($yield, function($return)use($worker,$coroutine){
+	 *             $coroutine->send($return);
+	 *             $worker->resume($coroutine);
+	 *         });
+	 *     });
+	 *     $worker->run();
 	 */
-	public function run()
+	public function coroutine(): Generator
 	{
-		if ($this->journal === null) {
-			$this->createJournal();
-		}
-		if (!in_array($this->journal->getStatus(), self::RESUMABLE)) {
-			return null;
-		}
-
-		if ($this->reset()) {
-			$atAction = $this->journal->getCurrentAction(); // action activity is at, continue from there or if null start at the beginning
-			if ($atAction !== null) {
-				while ($atAction !== $this->atAction) { // find the action to continue from
-					[$this->atClass, $this->atAction] = next($this->activity) ?: [null,null];
-					// if the end is reached without finding the action the activity is at, call houston, we've got a problem
-					if (empty($this->atAction)) {
-						$this->journal->setStatus(self::ACTION_NOT_FOUND);
-						$this->journal->setErrorMessage("corrupted activity");
-						goto quit;
-					}
-				}
-			}
-			$this->journal->setCurrentAction($this->atAction);
-		}
-
-		while ($this->running) {
-
-			// check if an instance of the class is already loaded for this activity
-			if (!isset($instance) || !$instance instanceof $this->atClass) {
-				$instance = $this->instanceFactory->createInstance($this->activityEntity->getUnitName(), $this->atClass, $this->state);
-			}
-
-			if (method_exists($instance, $this->atAction)) {
-				try {
-					$ret = $instance->{$this->atAction}($this->activityEntity->getName());
-					if ($ret instanceof Generator) {
-						$ret = yield $ret;
-					}
-					if ($ret === null) {
-						$ret = [self::NEXT];
-					} else if (is_array($ret) && is_int($ret[0])) {
-						// nothing to do
-					} else {
-						$ret = [self::EXCEPTION, new Exception("Unexpected return value: ".print_r($ret,true))];
-					}
-				} catch (Throwable $e) {
-					$ret = [self::EXCEPTION, $e];
-				}
-			} else {
-				$ret = [self::ACTION_NOT_FOUND, new Exception("Job {$this->atClass}::{$this->atAction} does not exist.")];
-			}
-
-			// process status code
-			switch ($status = array_shift($ret)) {
-
-				case self::NEXT:
-					$this->next();
-					$this->saveJournal();
+		try {
+			$action = $this->journal->getCurrentAction();
+			switch ($action) {
+				case "start":
+					$action = $this->actions["start"];
+					$this->journal->setCurrentAction($action);
 					break;
-
-				case self::END:
-					[$returnVal] = $ret;
-					$this->_end($returnVal);
-					$this->saveJournal();
-					goto quit;
-
-				case self::WAIT:
-					$this->next(self::WAIT);
-					$this->saveJournal();
-					goto quit;
-
-				case self::DETACH:
-					[$returnVal] = $ret;
-					$this->next(self::DETACH);
-					$this->saveJournal();
-					$this->queue(); // push activity to queue
-					goto quit;
-
-				// errors and such, end activity
-				case self::EXCEPTION:
-				case self::ACTION_NOT_FOUND:
-					[$returnVal] = $ret;
-					$this->journal->setErrorMessage($returnVal->getMessage());
-					$this->_end(null, $status);
-					$this->saveJournal();
-					goto quit;
+				case "stop":
+				case "exception":
+					return;
 			}
-		}
-	quit:
-		if (isset($returnVal)) {
-			return $returnVal;
-		} else {
-			return;
-		}
-	}
 
-	/**
-	 * Reset
-	 */
-	private function reset(): bool
-	{
-		[$this->atClass, $this->atAction] = reset($this->activity) ?: [null,null];
-		return $this->running = $this->atAction !== null;
-	}
+			while (1) {
 
-	/**
-	 * Load next action
-	 */
-	private function next(int $status = self::NEXT): void
-	{
-		$next = next($this->activity);
-		if ($next === false) {
-			if (isset($this->state->activityStack)) {
-				$activityStack = $this->state->activityStack;
-				if (is_array($activityStack) && count($activityStack)) {
-					[$activityId, $this->atClass, $this->atAction] = array_pop($activityStack);
-					$this->state->activityStack = $activityStack;
-					$this->setActivityById($activityId);
-					$this->journal->setCurrentAction($this->atAction);
+				if (!array_key_exists($action, $this->actions)) {
+					throw new Exception("Action '$action' does not exist.");
+				}
+				$p = strpos($action, "::");
+				if ($p === false) {
+					throw new Exception("Action '$action' is not valid.");
+				}
+				$class = substr($action, 0, $p);
+				$method = substr($action, $p+2);
+				if (!isset($instance) || !$instance instanceof $class) {
+					$instance = $this->instanceFactory->createInstance($this->getUnit(), $class);
+				}
+				if (!method_exists($instance, $method)) {
+					throw new Exception("Method '$method' missing in class '".get_class($instance)."'");
+				}
+				$ret = $instance->$method($this);
+				if ($ret instanceof Generator) {
+					$ret = yield $ret;
+				}
+				if ($ret === null || is_bool($ret) || is_int($ret)) {
+					$nextValue = $ret;
+				} elseif (is_array($ret)) {
+					$nextValue = array_shift($ret);
+				} elseif (is_object($ret)) {
+					$nextValue = $ret->next??$ret->getNext();
+				} else {
+					$this->journal->setCurrentAction("exception");
+					$this->journal->setErrorMessage("Unexpected return value for $action: ".print_r($ret,1));
+				}
+
+				$next = $this->actions[$action];
+				if ($next === null) {
+					$this->journal->setCurrentAction("stop");
+					$this->saveJournal();
+					return;
+				} elseif (is_string($next)) {
+					if ($nextValue !== null) {
+						$this->journal->setCurrentAction("exception");
+						$this->journal->setErrorMessage("Only one next option");
+					}
+					$this->journal->setCurrentAction($action = $next);
+					$this->saveJournal();
+					continue;
+				} else if (is_array($next)) {
+					foreach ($next as $nv => $na) {
+						if ($nv == $ret) {
+							$this->journal->setCurrentAction($action = $na);
+							$this->saveJournal();
+							continue 2;
+						}
+					}
+					$this->journal->setCurrentAction("exception");
+					$this->journal->setErrorMessage("Unexpected next value $nv for $action, expected one of ".implode(", ",array_keys($next)));
+					$this->saveJournal();
 					return;
 				}
 			}
-			$this->_end();
-		} else {
-			[$this->atClass, $this->atAction] = $next;
-			$this->journal->setCurrentAction($this->atAction);
-			$this->journal->setStatus($status);
-			$this->journal->setState($this->state);
-			$this->running = true;
+		} catch (Throwable $e) {
+			$this->journal->setCurrentAction("exception");
+			$this->journal->setErrorMessage($e->getMessage());
+			$this->saveJournal();
+			throw $e;
 		}
-	}
-
-	/**
-	 * End the activity
-	 */
-	private function _end($returnValue = null, int $status = self::END): void
-	{
-		$this->journal->setStatus($status);
-		$this->journal->setFinishedAt(new DateTime("now"));
-		$this->journal->setReturnValue($returnValue);
-		$this->running = false;
 	}
 }

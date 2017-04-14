@@ -2,90 +2,65 @@
 
 namespace Sturdy\Activity\Entity;
 
-use DateTime;
-
+/**
+ * Interface to the journal to be implemented by the appliction.
+ */
 interface Journal
 {
 	/**
-	 * Get id
-	 *
-	 * @return int
-	 */
-	public function getId(): int;
-
-	/**
 	 * Set unit
 	 *
-	 * @param Name $unit
+	 * @param string $unit
 	 * @return self
 	 */
-	public function setUnit(Name $unit);
+	public function setUnit(string $unit): Journal;
 
 	/**
 	 * Get unit
 	 *
-	 * @return Name
+	 * @return string
 	 */
-	public function getUnit(): Name;
+	public function getUnit(): ?string;
 
 	/**
-	 * Set the dimensions for which this journal has been created.
+	 * Set dimensions
 	 *
-	 * @param $dimensions  the dimensions
+	 * @param array $dimensions
+	 * @return self
 	 */
-	public function setDimensions(array $dimensions): self;
+	public function setDimensions(array $dimensions): Journal;
 
 	/**
-	 * Get the Dimension for which this journal has been created.
+	 * Get dimensions
 	 *
-	 * @return array<Dimension>
+	 * @return array
 	 */
-	public function getDimensions(): array;
+	public function getDimensions(): ?array;
 
 	/**
 	 * Set the current state of this activity.
 	 */
-	public function setState(State $state): self;
+	public function setState(\stdClass $state): Journal;
 
 	/**
 	 * Get the current state for this activity.
 	 */
-	public function getState(): ?State;
+	public function getState(): ?\stdClass;
 
 	/**
-	 * Set the current status.
+	 * Set return
 	 */
-	public function setStatus(int $status): self;
+	public function setReturn($return): Journal;
 
 	/**
-	 * Get the current status.
+	 * Get return
 	 */
-	public function getStatus(): int;
-
-	/**
-	 * Set return value.
-	 */
-	public function setReturnValue($returnValue): self;
-
-	/**
-	 * Get return value.
-	 */
-	public function getReturnValue();
-
-	/**
-	 * Set finished at.
-	 */
-	public function setFinishedAt(?DateTime $dateTime): self;
-
-	/**
-	 * Get finished at.
-	 */
-	public function getFinishedAt(): ?DateTime;
+	public function getReturn();
 
 	/**
 	 * Set error message.
 	 */
-	public function setErrorMessage(?string $errorMessage): self;
+	public function setErrorMessage(?string $errorMessage): Journal;
 
 	/**
 	 * Get error message.
@@ -94,11 +69,17 @@ interface Journal
 
 	/**
 	 * Set current action.
+	 *
+	 * @param $action  the action to execute
 	 */
-	public function setCurrentAction(?string $action): self;
+	public function setCurrentAction(string $action): Journal;
 
 	/**
 	 * Get current action.
+	 *
+	 * Return 'start' as the default action.
+	 *
+	 * @return get current action
 	 */
-	public function getCurrentAction(): ?string;
+	public function getCurrentAction(): string;
 }

@@ -4,31 +4,66 @@ namespace Sturdy\Activity;
 
 use Throwable;
 use Exception;
+use Generator;
+use stdClass;
 
 final class Diagrams
 {
-	use MkDir;
-
-	private $docDir;
-	private $fileMask;
 	private $colors;
 
 	/**
-	 * Constructor
+	 * Set unit
+	 *
+	 * @param Unit $unit
+	 * @return self
 	 */
-	public function __construct(string $docDir = null, int $fileMask = 00002)
+	public function setUnit(Unit $unit): self
 	{
-		$this->docDir = $this->filterDir($docDir, 'doc');
-		$this->fileMask = $fileMask;
+		$this->unit = $unit;
+		return $this;
+	}
+
+	/**
+	 * Get unit
+	 *
+	 * @return Unit
+	 */
+	public function getUnit(): Unit
+	{
+		return $this->unit;
+	}
+
+	/**
+	 * Set class color
+	 *
+	 * @param string $class color
+	 * @return self
+	 */
+	public function setClassColor(string $class, string $color): self
+	{
+		$this->colors[$class] = $color;
+
+		return $this;
+	}
+
+	/**
+	 * Get class color
+	 *
+	 * @return string
+	 */
+	public function getClassColor(string $class): ?string
+	{
+		return $this->colors[$class]??null;
 	}
 
 	/**
 	 * Generate class colors for classes.
 	 */
-	public function generateClassColors()
+	public function generateClassColors(): void
 	{
-		$this->colors = array_flip($this->unit->getClasses());
+		$this->colors = array_merge(array_flip($this->unit->getClasses()), $this->colors??[]);
 		foreach ($this->colors as &$color) {
+			if (is_string($color)) continue;
 			$i = 0;
 			do {
 				$r = dechex(random_int(7, 15)*16);
@@ -45,33 +80,28 @@ final class Diagrams
 	}
 
 	/**
-	 * Write all activities of the unit to document directory.
-	 *
-	 * @param $unit  the unit to create diagrams for
+	 * Generate the UML for the activity diagrams.
 	 */
-	public function write(Unit $unit): void
+	public function generate(): Generator
 	{
-		$this->unit = $unit;
+		foreach ($this->unit->getActions() as $dims => $actions) {
+			$compiler = $this->compile($actions, "start");
+			foreach ($compiler as $action); // simply run the compiler
+			$branch = $compiler->getReturn();
 
-		$docDir = $this->mkdir($this->docDir.DIRECTORY_SEPARATOR.$this->unit->getName(), $this->fileMask);
-
-		$this->generateClassColors();
-
-		foreach ($this->unit->getActions() as $dimensions => $actions) {
-			$generator = $this->compile($actions, "start");
-			foreach ($generator as $v);
-			$diagram = $generator->getReturn();
-
-			$filename = trim("activity ".implode(" ",$dimensions?:[]));
-
-			$old = umask($this->fileMask);
-			$file = fopen($docDir.DIRECTORY_SEPARATOR.$filename.".uml", "w");
-			umask($old);
-
-			fwrite($file, "@startuml\n");
-			$this->writeDiagram($file, $diagram);
-			fwrite($file, "@enduml\n");
-			fclose($file);
+			$filename = trim("activity $dims");
+			yield "\0$filename.uml";
+			yield "@startuml\n";
+			$dimensions = $this->unit->getDimensions();
+			if (count($dimensions)) {
+				yield "floating note left\n";
+				foreach (array_combine($dimensions, explode(" ", $dims)) as $dimension => $value) {
+					yield "\t$dimension: $value\n";
+				}
+				yield "end note\n";
+			}
+			yield from $this->writeDiagram($branch);
+			yield "@enduml\n";
 		}
 	}
 
@@ -84,19 +114,22 @@ final class Diagrams
 	 */
 	private function compile(array $actions, string $action): Generator
 	{
-		$banch = [];
+		$branch = [];
 		$pastActions = [];
-		while (isset($actions[$action])) {
+		$lastAction = $action;
+		while (array_key_exists($action, $actions)) {
 			$next = $actions[$action];
 			if (empty($next)) {
-				$banch[] = $action;
-				end($banch); $pastActions[$action] = key($banch);
-				$banch[] = "stop";
-				yield "stop";
+				$branch[] = $action;
+				end($branch); $pastActions[$action] = key($branch);
+				$branch[] = "stop";
+				try {
+					yield "stop";
+				} catch (\Exception $e) {} // suppress exception
 				break;
 			} elseif (is_string($next)) {
-				$banch[] = $action;
-				end($banch); $pastActions[$action] = key($banch);
+				$branch[] = $action;
+				end($branch); $pastActions[$action] = key($branch);
 				$action = $next;
 			} elseif (is_array($next)) {
 				switch (count($next)) {
@@ -107,18 +140,20 @@ final class Diagrams
 								unset($next[$retval]);
 								$next = reset($next);
 								$line = new stdClass;
-								$tail = $this->compile($actions, $next);
-								array_unshift($tail, $repeat);
+								$compiler = $this->compile($actions, $next);
+								foreach ($compiler as $a);
+								$tail = $compiler->getReturn();
+								array_unshift($tail, $line);
 								$line->type = "repeat";
 								$line->isval = $retval;
 								$line->action = $action;
 								$line->branch = array_splice($branch, $pastActions[$altaction], count($branch), $tail);
-								return $banch;
+								return $branch;
 							}
 						}
 					default:
-						$banch[] = $action;
-						end($banch); $pastActions[$action] = key($banch);
+						$branch[] = $action;
+						end($branch); $pastActions[$action] = key($branch);
 						// create compilers
 						$compilers = [];
 						foreach ($next as $retval => $altaction) {
@@ -127,30 +162,39 @@ final class Diagrams
 						// run compilers in parallel until an action is found that is executed by all branches
 						$alts = [];
 						$branches = [];
-						$activecompilers = $compilers;
 						$method = 'rewind';
 						while (1) {
-							foreach ($activecompilers as $retval => &$compiler) {
+							foreach ($compilers as $retval => $compiler) {
+								if (!$compiler->valid()) continue;
 								$compiler->$method();
-								if (!$compiler->valid()) {
-									unset($activecompilers[$retval]);
+								if (!$compiler->valid()) { // compiler is done
+									$branches[$retval] = $compiler->getReturn();
+									continue;
 								}
 								$action = $compiler->current();
 								$alts[$action][$retval] = $retval;
 								if (count($alts[$action]) === count($next)) {
-									// end of altenatives found
-									foreach ($activecompilers as $compiler) {
-										$compiler->throw(new \Exception());
-									}
-									foreach ($compilers as $compiler) {
+									unset($alts);
+									// end of alternatives found
+									foreach ($compilers as $retval => $compiler) {
+										try {
+											$compiler->throw(new \Exception("interrupt"));
+										} catch (\Exception $e) {}
+										while ($compiler->valid()) $compiler->next();
 										$branches[$retval] = $compiler->getReturn();
+									}
+									foreach ($branches as $retval => $altbranch) {
+										$ix = array_search($action, $altbranch);
+										if ($ix !== false) {
+											$branches[$retval] = array_slice($altbranch, 0, $ix);
+										}
 									}
 									break 2;
 								}
 							}
 							$method = 'next';
 						}
-						$banch[] = $branches;
+						$branch[] = $branches;
 				}
 			} else {
 				throw new \Exception("Invalid diagram");
@@ -161,6 +205,10 @@ final class Diagrams
 			} catch (\Exception $e) {
 				break;
 			}
+			if ($lastAction === $action) {
+				throw new \Exception("next failed");
+			}
+			$lastAction = $action;
 		}
 		return $branch;
 	}
@@ -168,58 +216,65 @@ final class Diagrams
 	/**
 	 * Write branch
 	 *
-	 * @param $file    file resource to write to
 	 * @param $branch  branch to write
 	 * @param $indent  indent to prefix lines with
 	 * @return the formatted action
 	 */
-	private function writeDiagram($file, array $branch, string $indent = ""): void
+	private function writeDiagram(array $branch, string $indent = ""): Generator
 	{
-		foreach ($branch as [$type, $value]) {
+		foreach ($branch as $line) {
+			if (is_string($line)) {
+				$type = "action";
+			} elseif (is_array($line)) {
+				$type = "if";
+			} else {
+				$type = $line->type;
+			}
 			switch ($type) {
-			case "action":
-				$p = strpos($value, "::");
-				$className = substr($value, 0, $p);
-				$methodName = substr($value, $p+2);
-				fwrite($file, $indent.$this->colors[$className].":$methodName;\n");
-				break;
-			case "if":
-				$i = 0;
-				$l = count($value) - 1;
-				foreach ($value as $retval => $branch) {
-					switch ($i++) {
-						case 0:
-							fwrite($file, $indent."if () then ($retval)\n");
-							break;
-						case $l:
-							fwrite($file, $indent."else ($retval)\n");
-							break;
-						default:
-							fwrite($file, $indent."elseif () then ($retval)\n");
-							break;
+				case "action":
+					yield $indent.$this->formatAction($line);
+					break;
+				case "if":
+					$i = 0;
+					$l = count($line) - 1;
+					foreach ($line as $retval => $branch) {
+						if ($i === 0) {
+							yield $indent."if (r) then ($retval)\n";
+						} elseif ($i === $l) {
+							yield $indent."else ($retval)\n";
+						} else {
+							yield $indent."elseif (r) then ($retval)\n";
+						}
+						yield from $this->writeDiagram($branch, "$indent\t");
+						++$i;
 					}
-					$this->writeDiagram($file, $branch, "$indent\t");
-				}
-				fwrite($file, $indent."endif\n");
-				break;
-			case "repeat":
-				[$action, $branch] = $value;
-				fwrite($file, $indent."repeat\n");
-				$this->writeDiagram($file, $branch, "$indent\t");
-				fwrite($file, $indent."repeat while ($action)\n");
-				break;
+					yield $indent."endif\n";
+					break;
+				case "repeat":
+					yield $indent."repeat\n";
+					yield from $this->writeDiagram($line->branch, "$indent\t");
+					yield $indent."\t".$this->formatAction($line->action);
+					yield $indent."repeat while (r = {$line->isval})\n";
+					break;
 			}
 		}
 	}
 
 	/**
-	 * Format an action.
+	 * Format a action.
 	 *
 	 * @param $action  the action to format
-	 * @return the formatted action
+	 * @return the formatted line
 	 */
-	private function getColor(string $action): string
+	private function formatAction(string $action): string
 	{
-		return $this->colors[substr($action, 0, strpos($action, "::"))];
+		$p = strpos($action, "::");
+		if ($p !== false) {
+			$className = substr($action, 0, $p);
+			$methodName = substr($action, $p+2);
+			return $this->colors[$className].":$methodName|\n";
+		} else {
+			return ":$action;\n";
+		}
 	}
 }

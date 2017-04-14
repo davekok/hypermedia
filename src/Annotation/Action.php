@@ -14,7 +14,7 @@ use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attrib
  *   @Attribute("dims" , type = "array<string:string>"),
  * })
  */
-class Action
+final class Action
 {
 	/**
 	 * @var bool
