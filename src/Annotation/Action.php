@@ -9,7 +9,6 @@ use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attrib
  * @Target({"METHOD"})
  * @Attributes({
  *   @Attribute("start", type = "bool"),
- *   @Attribute("skip" , type = "bool"),
  *   @Attribute("next" , type = "string"),
  *   @Attribute("dims" , type = "array<string:string>"),
  * })
@@ -20,11 +19,6 @@ final class Action
 	 * @var bool
 	 */
 	private $start;
-
-	/**
-	 * @var bool
-	 */
-	private $skip;
 
 	/**
 	 * @var string
@@ -42,7 +36,6 @@ final class Action
 	public function __construct(array $values)
 	{
 		$this->start = $values['start']??false;
-		$this->skip = $values['skip']??false;
 		$this->setNext($values['next']??null);
 		$this->setDimensions($values['dims']??null);
 	}
@@ -58,17 +51,6 @@ final class Action
 	}
 
 	/**
-	 * If skip is set the action is skipped over immediately
-	 * continueing with next action.
-	 *
-	 * @return whether this action should be skipped.
-	 */
-	public function getSkip(): bool
-	{
-		return $this->skip;
-	}
-
-	/**
 	 * Set which action comes next.
 	 */
 	private function setNext(?string $next): void
@@ -81,7 +63,6 @@ final class Action
 			if (preg_match("/^$func$/", $next)) {
 				$this->next = $next;
 			} elseif (preg_match("/^\s*\{\s*$retval\s*:\s*$func\s*(?:,\s*$retval\s*:\s*$func\s*)+\}\s*$/", $next)) {
-				if ($this->skip) throw new \InvalidArgumentException("There are no return values if action is skipped.");
 				$this->next = [];
 				foreach (explode(",", trim($next, "\t\r\n {}")) as $v) {
 					[$retval, $func] = explode(":", trim($v));
