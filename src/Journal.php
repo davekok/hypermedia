@@ -8,11 +8,11 @@ namespace Sturdy\Activity;
 interface Journal
 {
 	/**
-	 * Get unit
+	 * Get unit name
 	 *
 	 * @return string
 	 */
-	public function getUnit(): ?string;
+	public function getUnitName(): ?string;
 
 	/**
 	 * Get dimensions
@@ -77,7 +77,7 @@ interface Journal
 	 * @param bool $running
 	 * @return self
 	 */
-	public function setRunning(bool $running): self;
+	public function setRunning(bool $running): Journal;
 
 	/**
 	 * Whether the activity is running (not paused).
