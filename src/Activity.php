@@ -31,7 +31,7 @@ final class Activity implements ActivityFactory
 	 */
 	public function __construct(
 		Cache $cache,
-		Repository\JournalRepository $journalRepository,
+		JournalRepository $journalRepository,
 		StateFactory $stateFactory,
 		InstanceFactory $instanceFactory)
 	{

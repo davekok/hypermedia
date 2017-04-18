@@ -1,8 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity\Repository;
-
-use Sturdy\Activity\{Entity,State};
+namespace Sturdy\Activity;
 
 /**
  * A interface to be implemented by the application to
@@ -16,7 +14,7 @@ interface JournalRepository
 	 * @param $id  the id of the journal
 	 * @return the journal
 	 */
-	public function findOneJournalById(int $id): Entity\Journal;
+	public function findOneJournalById(int $id): Journal;
 
 	/**
 	 * Create a new journal.
@@ -26,12 +24,12 @@ interface JournalRepository
 	 * @param $state       the state object to use
 	 * @return a freshly created journal
 	 */
-	public function createJournal(string $unit, array $dimensions, \stdClass $state): Entity\Journal;
+	public function createJournal(string $unit, array $dimensions, \stdClass $state): Journal;
 
 	/**
 	 * Save the updated journal.
 	 *
 	 * @param $journal  the journal to save
 	 */
-	public function saveJournal(Entity\Journal $journal): void;
+	public function saveJournal(Journal $journal): void;
 }

@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity\Entity;
+namespace Sturdy\Activity;
 
 /**
  * Interface to the journal to be implemented by the appliction.

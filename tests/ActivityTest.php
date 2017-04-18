@@ -6,10 +6,9 @@ use Sturdy\Activity\{
 	Activity,
 	Cache,
 	Diagrams,
-	Entity,
 	InstanceFactory,
-	Repository,
-	State,
+	Journal,
+	JournalRepository,
 	StateFactory,
 	UnitFactory
 };
@@ -115,7 +114,7 @@ UML
 		$prophet = new Prophet;
 
 		$journal = $prophet->prophesize();
-		$journal->willImplement(Entity\Journal::class);
+		$journal->willImplement(Journal::class);
 		$journal->getUnit()->willReturn(null);
 		$journal->getDimensions()->willReturn(null);
 		$journal->getState()->willReturn(null);
@@ -178,7 +177,7 @@ UML
 			});
 
 		$journalRepository = $prophet->prophesize();
-		$journalRepository->willImplement(Repository\JournalRepository::class);
+		$journalRepository->willImplement(JournalRepository::class);
 		$journalRepository->createJournal('TestUnit1', [], Argument::type(\stdClass::class))
 			->shouldBeCalledTimes(1)
 			->will(function($args)use($journal){
@@ -190,7 +189,7 @@ UML
 				$j->setRunning(true);
 				return $j;
 			});
-		$journalRepository->saveJournal(Argument::type(Entity\Journal::class))
+		$journalRepository->saveJournal(Argument::type(Journal::class))
 			->shouldBeCalled();
 
 		$stateFactory = $prophet->prophesize();
