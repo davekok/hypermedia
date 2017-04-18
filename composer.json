@@ -19,6 +19,7 @@
         "phpspec/prophecy": "~1.0"
     },
     "config": {
+        "vendor-dir": "lib",
         "platform": {
             "php": "7.1.0"
         },
