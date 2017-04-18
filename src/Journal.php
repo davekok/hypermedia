@@ -8,11 +8,11 @@ namespace Sturdy\Activity;
 interface Journal
 {
 	/**
-	 * Get unit name
+	 * Get unit
 	 *
 	 * @return string
 	 */
-	public function getUnitName(): ?string;
+	public function getUnit(): ?string;
 
 	/**
 	 * Get dimensions
