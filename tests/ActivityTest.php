@@ -117,19 +117,7 @@ UML
 		$journal = $prophet->prophesize();
 		$journal->willImplement(Entity\Journal::class);
 		$journal->getUnit()->willReturn(null);
-		$journal->setUnit('TestUnit1')
-			->shouldBeCalled()
-			->will(function($args, $self)use($journal) {
-				$journal->getUnit()->willReturn('TestUnit1');
-				return $self;
-			});
 		$journal->getDimensions()->willReturn(null);
-		$journal->setDimensions([])
-			->shouldBeCalled()
-			->will(function($args, $self)use($journal) {
-				$journal->getDimensions()->willReturn([]);
-				return $self;
-			});
 		$journal->getState()->willReturn(null);
 		$journal->setState(Argument::type(\stdClass::class))
 			->shouldBeCalled()
@@ -148,7 +136,8 @@ UML
 			"start",
 			TestUnit1\Activity1::class."::action1",
 			TestUnit1\Activity1::class."::action2",
-			TestUnit1\Activity1::class."::action3",
+			TestUnit1\Activity1::class."::action4",
+			TestUnit1\Activity1::class."::action5",
 			TestUnit1\Activity1::class."::action7",
 			TestUnit1\Activity1::class."::action8",
 			TestUnit1\Activity1::class."::action9",
@@ -181,17 +170,24 @@ UML
 				$journal->getErrorMessage()->willReturn($args[0]);
 				return $self;
 			});
+		$journal->getRunning()->willReturn(false);
+		$journal->setRunning(Argument::type('bool'))
+			->will(function($args, $self)use($journal) {
+				$journal->getRunning()->willReturn($args[0]);
+				return $self;
+			});
 
 		$journalRepository = $prophet->prophesize();
 		$journalRepository->willImplement(Repository\JournalRepository::class);
 		$journalRepository->createJournal('TestUnit1', [], Argument::type(\stdClass::class))
 			->shouldBeCalledTimes(1)
-			->will(function($args)use($journal) {
+			->will(function($args)use($journal){
+				$journal->getUnit()->willReturn($args[0]);
+				$journal->getDimensions()->willReturn($args[1]);
 				$j = $journal->reveal();
-				$j->setUnit($args[0]);
-				$j->setDimensions($args[1]);
 				$j->setState($args[2]);
 				$j->setCurrentAction("start");
+				$j->setRunning(true);
 				return $j;
 			});
 		$journalRepository->saveJournal(Argument::type(Entity\Journal::class))
@@ -214,11 +210,9 @@ UML
 				$instance = $prophet->prophesize();
 				$instance->willExtend($class);
 				$instance->action1(Argument::type(Activity::class))->willReturn(null);
-				$instance->action2(Argument::type(Activity::class))->willReturn(1);
-				$instance->action3(Argument::type(Activity::class))->willReturn(null);
+				$instance->action2(Argument::type(Activity::class))->willReturn(2);
 				$instance->action4(Argument::type(Activity::class))->willReturn(null);
 				$instance->action5(Argument::type(Activity::class))->willReturn(null);
-				$instance->action6(Argument::type(Activity::class))->willReturn(null);
 				$instance->action7(Argument::type(Activity::class))->willReturn(null);
 				$instance->action8(Argument::type(Activity::class))->willReturn(null);
 				$instance->action9(Argument::type(Activity::class))->willReturn(false);
@@ -238,7 +232,7 @@ UML
 		$this->assertEquals($activity->getUnit(), 'TestUnit1');
 		$this->assertEquals($activity->getDimensions(), []);
 		$this->assertNull($activity->getReturn());
-		$this->assertNull($activity->getJournal()->getErrorMessage());
-		$this->assertEquals($activity->getJournal()->getCurrentAction(), "stop");
+		$this->assertNull($activity->getErrorMessage());
+		$this->assertEquals($activity->getCurrentAction(), "stop");
 	}
 }

@@ -22,7 +22,6 @@ final class Activity implements ActivityFactory
 	private $instanceFactory;
 
 	// state
-	private $listeners;
 	private $state;
 	private $journal;
 	private $actions;
@@ -52,7 +51,6 @@ final class Activity implements ActivityFactory
 	public function createActivity(string $unit, array $dimensions = []): Activity
 	{
 		$self = clone $this;
-		$self->listeners = [];
 		$self->state = $self->stateFactory->createState($unit, $dimensions);
 		$self->journal = $self->journalRepository->createJournal($unit, $dimensions, $self->state);
 		$self->actions = $this->cache->getActions($self);
@@ -69,7 +67,6 @@ final class Activity implements ActivityFactory
 	public function loadActivity(int $journalId): Activity
 	{
 		$self = clone $this;
-		$self->listeners = [];
 		$self->journal = $self->journalRepository->findOneJournalById($journalId);
 		$self->state = $self->journal->getState();
 		$self->actions = $this->cache->getActions($self);
@@ -97,20 +94,21 @@ final class Activity implements ActivityFactory
 	}
 
 	/**
-	 * Get journal
+	 * Set state variable
 	 */
-	public function getJournal(): Entity\Journal
+	public function set(string $name, $value): self
 	{
-		return $this->journal;
+		$this->state->$name = $value;
+
+		return $this;
 	}
 
 	/**
-	 * Save journal
+	 * Get state variable
 	 */
-	public function saveJournal(): void
+	public function get(string $name)
 	{
-		$this->journal->setState($this->state);
-		$this->journalRepository->saveJournal($this->journal);
+		return $this->state->$name;
 	}
 
 	/**
@@ -132,44 +130,48 @@ final class Activity implements ActivityFactory
 	}
 
 	/**
-	 * Add an event listener to this activity.
-	 *
-	 * @param $eventName  the event name
-	 * @param $listener   a callable to call on event dispatch
+	 * Pauses the activity until it is resumed.
 	 */
-	public function addEventListener(string $eventName, callable $listener): void
+	public function pause(): self
 	{
-		$this->listeners[$eventName][] = $listener;
-	}
+		$this->journal->setRunning(false);
 
-	/**
-	 * Dispatch an event to all listeners for that event.
-	 *
-	 * @param $eventName  the event name
-	 * @param $event      event object to dispatch
-	 */
-	private function dispatchEvent(string $eventName, $event): void
-	{
-		foreach ($this->listeners[$eventName] as $listener) {
-			$listener($event);
-		}
-	}
-
-	/**
-	 * Set state variable
-	 */
-	public function set(string $name, $value): self
-	{
-		$this->state->$name = $value;
 		return $this;
 	}
 
 	/**
-	 * Get state variable
+	 * Resume the activity.
 	 */
-	public function get(string $name)
+	public function resume(): self
 	{
-		return $this->state->$name;
+		$this->journal->setRunning(true);
+
+		return $this;
+	}
+
+	/**
+	 * Get the error message
+	 */
+	public function getErrorMessage(): ?string
+	{
+		return $this->journal->getErrorMessage();
+	}
+
+	/**
+	 * Get current action
+	 */
+	public function getCurrentAction(): string
+	{
+		return $this->journal->getCurrentAction();
+	}
+
+	/**
+	 * Save journal
+	 */
+	public function saveJournal(): void
+	{
+		$this->journal->setState($this->state);
+		$this->journalRepository->saveJournal($this->journal);
 	}
 
 	/**
@@ -223,7 +225,7 @@ final class Activity implements ActivityFactory
 					return;
 			}
 
-			while (1) {
+			while ($this->journal->getRunning()) {
 
 				if (!array_key_exists($action, $this->actions)) {
 					throw new Exception("Action '$action' does not exist.");
@@ -240,14 +242,15 @@ final class Activity implements ActivityFactory
 				if (!method_exists($instance, $method)) {
 					throw new Exception("Method '$method' missing in class '".get_class($instance)."'");
 				}
+
 				$ret = $instance->$method($this);
 				if ($ret instanceof Generator) {
 					$ret = yield $ret;
 				}
+
+				$nextValue = null;
 				if ($ret === null || is_bool($ret) || is_int($ret)) {
 					$nextValue = $ret;
-				} elseif (is_array($ret)) {
-					$nextValue = array_shift($ret);
 				} elseif (is_object($ret)) {
 					$nextValue = $ret->next??$ret->getNext();
 				} else {
@@ -256,16 +259,18 @@ final class Activity implements ActivityFactory
 
 				$next = $this->actions[$action];
 				if ($next === null) {
+					if ($nextValue !== null) {
+						throw new Exception("Expected no next value.");
+					}
 					$this->journal->setCurrentAction("stop");
 					$this->saveJournal();
 					return;
 				} elseif (is_string($next)) {
 					if ($nextValue !== null) {
-						throw new Exception("Only one next option");
+						throw new Exception("Expected no next value.");
 					}
 					$this->journal->setCurrentAction($action = $next);
 					$this->saveJournal();
-					continue;
 				} else if (is_array($next)) {
 					foreach ($next as $nv => $na) {
 						if (($nv === "true" && $ret === true) || ($nv === "false" && $ret === false) || (((int)$nv) === $ret)) {
