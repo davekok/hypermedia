@@ -143,10 +143,36 @@ UML
 				$journal->getReturn()->willReturn($args[0]);
 				return $self;
 			});
-		$journal->getCurrentAction()->willReturn(null);
-		$journal->setCurrentAction(Argument::type('string'))
-			->will(function($args, $self)use($journal) {
-				$journal->getCurrentAction()->willReturn($args[0]);
+
+		$actions = [
+			"start",
+			TestUnit1\Activity1::class."::action1",
+			TestUnit1\Activity1::class."::action2",
+			TestUnit1\Activity1::class."::action3",
+			TestUnit1\Activity1::class."::action7",
+			TestUnit1\Activity1::class."::action8",
+			TestUnit1\Activity1::class."::action9",
+			TestUnit1\Activity1::class."::action10",
+			"stop",
+		];
+		$currentAction = null;
+		$journal->getCurrentAction()->willReturn($currentAction);
+		$journal->setCurrentAction(Argument::type("string"))
+			->will(function($args, $self)use($journal,$actions,&$currentAction) {
+				[$action] = $args;
+				if ($currentAction !== null) {
+					$ix = array_search($currentAction,$actions);
+					$nextAction = $actions[$ix+1];
+					if ($action != $nextAction) {
+						throw new \Exception("expected $nextAction got $action");
+					}
+				} else {
+					if ($action !== "start") {
+						throw new \Exception("expected start got $action");
+					}
+				}
+				$journal->getCurrentAction()->willReturn($action);
+				$currentAction = $action;
 				return $self;
 			});
 		$journal->getErrorMessage()->willReturn(null);
@@ -183,7 +209,22 @@ UML
 		$instanceFactory->willImplement(InstanceFactory::class);
 		$instanceFactory->createInstance('TestUnit1', TestUnit1\Activity1::class)
 			->shouldBeCalledTimes(1)
-			->willReturn(new TestUnit1\Activity1);
+			->will(function(array $args)use($prophet){
+				[$unit, $class] = $args;
+				$instance = $prophet->prophesize();
+				$instance->willExtend($class);
+				$instance->action1(Argument::type(Activity::class))->willReturn(null);
+				$instance->action2(Argument::type(Activity::class))->willReturn(1);
+				$instance->action3(Argument::type(Activity::class))->willReturn(null);
+				$instance->action4(Argument::type(Activity::class))->willReturn(null);
+				$instance->action5(Argument::type(Activity::class))->willReturn(null);
+				$instance->action6(Argument::type(Activity::class))->willReturn(null);
+				$instance->action7(Argument::type(Activity::class))->willReturn(null);
+				$instance->action8(Argument::type(Activity::class))->willReturn(null);
+				$instance->action9(Argument::type(Activity::class))->willReturn(false);
+				$instance->action10(Argument::type(Activity::class))->willReturn(null);
+				return $instance;
+			});
 
 		$activityFactory = new Activity(
 			new Cache(self::$cache),
@@ -197,7 +238,7 @@ UML
 		$this->assertEquals($activity->getUnit(), 'TestUnit1');
 		$this->assertEquals($activity->getDimensions(), []);
 		$this->assertNull($activity->getReturn());
-		echo "\n".$activity->getJournal()->getErrorMessage()."\n";
+		$this->assertNull($activity->getJournal()->getErrorMessage());
 		$this->assertEquals($activity->getJournal()->getCurrentAction(), "stop");
 	}
 }

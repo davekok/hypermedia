@@ -251,8 +251,7 @@ final class Activity implements ActivityFactory
 				} elseif (is_object($ret)) {
 					$nextValue = $ret->next??$ret->getNext();
 				} else {
-					$this->journal->setCurrentAction("exception");
-					$this->journal->setErrorMessage("Unexpected return value for $action: ".print_r($ret,1));
+					throw new Exception("Unexpected return value for $action: ".var_export($ret,true));
 				}
 
 				$next = $this->actions[$action];
@@ -262,29 +261,25 @@ final class Activity implements ActivityFactory
 					return;
 				} elseif (is_string($next)) {
 					if ($nextValue !== null) {
-						$this->journal->setCurrentAction("exception");
-						$this->journal->setErrorMessage("Only one next option");
+						throw new Exception("Only one next option");
 					}
 					$this->journal->setCurrentAction($action = $next);
 					$this->saveJournal();
 					continue;
 				} else if (is_array($next)) {
 					foreach ($next as $nv => $na) {
-						if ($nv == $ret) {
+						if (($nv === "true" && $ret === true) || ($nv === "false" && $ret === false) || (((int)$nv) === $ret)) {
 							$this->journal->setCurrentAction($action = $na);
 							$this->saveJournal();
 							continue 2;
 						}
 					}
-					$this->journal->setCurrentAction("exception");
-					$this->journal->setErrorMessage("Unexpected next value $nv for $action, expected one of ".implode(", ",array_keys($next)));
-					$this->saveJournal();
-					return;
+					throw new Exception("Unexpected next value ".var_export($ret,true)." for $action, expected one of ".implode(", ",array_keys($next)));
 				}
 			}
 		} catch (Throwable $e) {
-			$this->journal->setCurrentAction("exception");
 			$this->journal->setErrorMessage($e->getMessage());
+			$this->journal->setCurrentAction("exception");
 			$this->saveJournal();
 			throw $e;
 		}
