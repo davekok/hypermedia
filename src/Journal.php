@@ -57,7 +57,6 @@ interface Journal
 	 * Will be called with $action = "start" when the activity is starting.
 	 * Will be called with $action = "stop" when the activity is finished.
 	 * Will be called with $action = "exception" when an exception occurred.
-	 * Also setErrorMessage() will be called before setCurrentAction("exception") is called.
 	 *
 	 * @param $action  the action to execute
 	 */

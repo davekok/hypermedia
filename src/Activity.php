@@ -133,6 +133,14 @@ final class Activity implements ActivityFactory
 	}
 
 	/**
+	 * Is activity running?
+	 */
+	public function isRunning(): bool
+	{
+		return $this->journal->getRunning();
+	}
+
+	/**
 	 * Pauses the activity until it is resumed.
 	 */
 	public function pause(): self
@@ -222,9 +230,14 @@ final class Activity implements ActivityFactory
 				case "start":
 					$action = $this->actions["start"];
 					$this->journal->setCurrentAction($action);
+					$this->journal->setRunning(true);
 					break;
 				case "stop":
 				case "exception":
+					if ($this->journal->getRunning()) {
+						$this->journal->setRunning(false);
+						$this->saveJournal();
+					}
 					return;
 			}
 
@@ -266,6 +279,7 @@ final class Activity implements ActivityFactory
 						throw new Exception("Expected no next value.");
 					}
 					$this->journal->setCurrentAction("stop");
+					$this->journal->setRunning(false);
 					$this->saveJournal();
 					return;
 				} elseif (is_string($next)) {
@@ -286,8 +300,9 @@ final class Activity implements ActivityFactory
 				}
 			}
 		} catch (Throwable $e) {
-			$this->journal->setErrorMessage($e->getMessage());
 			$this->journal->setCurrentAction("exception");
+			$this->journal->setErrorMessage($e->getMessage());
+			$this->journal->setRunning(false);
 			$this->saveJournal();
 			throw $e;
 		}

@@ -26,28 +26,35 @@ final class Cache
 	}
 
 	/**
-	 * Update activities from a unit.
+	 * Whether a unit is already cached.
 	 *
-	 * @param $unit  unit to extract activities from
+	 * @param $unit  the unit name
+	 * @return true if cached, false otherwise
 	 */
-	public function updateActivities(Unit $unit): void
+	public function haveUnit(string $unit): bool
+	{
+		return $this->cachePool->getItem($this->dimensionsKey($unit))->isHit();
+	}
+
+	/**
+	 * Update unit in cache.
+	 *
+	 * @param $unit  the unit to cache
+	 */
+	public function updateUnit(Unit $unit): void
 	{
 		$name = $unit->getName();
 
 		// save the order in which the dimensions are stored
-		$dimensions = $unit->getDimensions();
+		$order = $unit->getDimensions();
 		$item = $this->cachePool->getItem($this->dimensionsKey($name));
-		$item->set(json_encode($dimensions));
+		$item->set(json_encode($order));
 		$this->cachePool->saveDeferred($item);
 
 		// save the activities for each dimension
 		foreach ($unit->getActions() as $dimensions => $actions) {
-			$activity = [];
-			foreach ($actions as $action => $next) {
-				$activity[$action] = $next;
-			}
-			$item = $this->cachePool->getItem(strtr(__NAMESPACE__."\\$name\\$dimensions", "\\", "|"));
-			$item->set(json_encode($activity));
+			$item = $this->cachePool->getItem($this->actionsKey($name, explode(" ",$dimensions), $order));
+			$item->set(json_encode($actions));
 			$this->cachePool->saveDeferred($item);
 		}
 
@@ -94,7 +101,7 @@ final class Cache
 	 */
 	public function dimensionsKey(string $unit): string
 	{
-		return strtr(__NAMESPACE__."\\$unit.dimensions", "\\", "|");
+		return $this->unitKey($unit).".dimensions";
 	}
 
 	/**
@@ -111,6 +118,17 @@ final class Cache
 		foreach ($dimensions as $key => $value) {
 			$dims[$key] = $value;
 		}
-		return strtr(__NAMESPACE__."\\$unit\\".implode(" ", $dims), "\\", "|");
+		return $this->unitKey($unit)."|".implode(" ", $dims);
+	}
+
+	/**
+	 * Construct a unit key to use for caching.
+	 *
+	 * @param $unit        the unit name
+	 * @return the cache key
+	 */
+	public function unitKey(string $unit): string
+	{
+		return "sturdy-activity|".$unit;
 	}
 }

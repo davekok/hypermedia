@@ -62,13 +62,13 @@ class ActivityTest extends TestCase
 
 
 		$cache = new Cache(self::$cache);
-		$cache->updateActivities($unit);
+		$cache->updateUnit($unit);
 
-		$order = self::$cache->getItem("Sturdy|Activity|TestUnit1.dimensions");
+		$order = self::$cache->getItem("sturdy-activity|TestUnit1.dimensions");
 		$this->assertTrue($order->isHit(), "dimensions order is not stored");
 		$this->assertEquals($order->get(), "[]");
 
-		$actions = self::$cache->getItem("Sturdy|Activity|TestUnit1|");
+		$actions = self::$cache->getItem("sturdy-activity|TestUnit1|");
 		$this->assertTrue($actions->isHit(), "actions are not stored");
 		$this->assertEquals(json_decode($actions->get(), true), $expectedActions);
 
@@ -178,16 +178,12 @@ UML
 
 		$journalRepository = $prophet->prophesize();
 		$journalRepository->willImplement(JournalRepository::class);
-		$journalRepository->createJournal('TestUnit1', [], Argument::type(\stdClass::class))
+		$journalRepository->createJournal('TestUnit1', [])
 			->shouldBeCalledTimes(1)
 			->will(function($args)use($journal){
 				$journal->getUnit()->willReturn($args[0]);
 				$journal->getDimensions()->willReturn($args[1]);
-				$j = $journal->reveal();
-				$j->setState($args[2]);
-				$j->setCurrentAction("start");
-				$j->setRunning(true);
-				return $j;
+				return $journal->reveal();
 			});
 		$journalRepository->saveJournal(Argument::type(Journal::class))
 			->shouldBeCalled();
@@ -230,6 +226,7 @@ UML
 		$prophet->checkPredictions();
 		$this->assertEquals($activity->getUnit(), 'TestUnit1');
 		$this->assertEquals($activity->getDimensions(), []);
+		$this->assertFalse($activity->isRunning());
 		$this->assertNull($activity->getReturn());
 		$this->assertNull($activity->getErrorMessage());
 		$this->assertEquals($activity->getCurrentAction(), "stop");
