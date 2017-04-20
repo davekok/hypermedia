@@ -21,10 +21,9 @@ interface JournalRepository
 	 *
 	 * @param $unit        the unit
 	 * @param $dimensions  the dimensions
-	 * @param $state       the state object to use
 	 * @return a freshly created journal
 	 */
-	public function createJournal(string $unit, array $dimensions, \stdClass $state): Journal;
+	public function createJournal(string $unit, array $dimensions): Journal;
 
 	/**
 	 * Save the updated journal.

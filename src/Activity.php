@@ -52,7 +52,10 @@ final class Activity implements ActivityFactory
 	{
 		$self = clone $this;
 		$self->state = $self->stateFactory->createState($unit, $dimensions);
-		$self->journal = $self->journalRepository->createJournal($unit, $dimensions, $self->state);
+		$self->journal = $self->journalRepository->createJournal($unit, $dimensions);
+		$self->journal->setCurrentAction("start");
+		$self->journal->setRunning(false);
+		$self->journal->setState($self->state);
 		$self->actions = $this->cache->getActions($self);
 		return $self;
 	}
