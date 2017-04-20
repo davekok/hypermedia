@@ -34,7 +34,7 @@ final class UnitFactory
 	public function createUnitFromSource(string $unitName, string $dirs): Unit
 	{
 		$unit = new Unit($unitName);
-		foreach ($this->iterateDirectory($dirs, "php") as $file) {
+		foreach ($this->iterateDirectory($dirs, ["php"]) as $file) {
 			try {
 				$source = file_get_contents($file);
 				if ($source === false) continue;
@@ -81,13 +81,12 @@ final class UnitFactory
 	 * Iterate a directory with its subdirectories and return all files with matching extensions.
 	 *
 	 * @param $dirs   the directories separated by a colon to scan for files
-	 * @param $exts   extensions separated by a colon
+	 * @param $exts   extensions to filter on
 	 * @yield string  a file that matched the requested extensions
 	 * @return Generator<string>
 	 */
-	public function iterateDirectory(string $dirs, string $exts): Generator
+	public function iterateDirectory(string $dirs, array $exts): Generator
 	{
-		$exts = explode(PATH_SEPARATOR, $exts);
 		foreach (explode(PATH_SEPARATOR, $dirs) as $dir) {
 			$dr = opendir($dir);
 			if ($dr === false) return;
@@ -99,7 +98,7 @@ final class UnitFactory
 					if (!is_executable($file)) continue;
 					yield from $this->iterateDirectory($file, $exts);
 				}
-				if (in_array(pathinfo($file, PATHINFO_EXTENSION), $exts)) {
+				if ($exts && in_array(pathinfo($file, PATHINFO_EXTENSION), $exts)) {
 					yield $file;
 				}
 			}
