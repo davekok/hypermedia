@@ -228,6 +228,9 @@ final class Activity implements ActivityFactory
 			$action = $this->journal->getCurrentAction();
 			switch ($action) {
 				case "start":
+					if (!array_key_exists($action, $this->actions)) {
+						throw new Exception("Start action does not exist.");
+					}
 					$action = $this->actions["start"];
 					$this->journal->setCurrentAction($action);
 					$this->journal->setRunning(true);
