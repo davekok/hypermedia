@@ -46,15 +46,15 @@ final class Cache
 		$name = $unit->getName();
 
 		// save the order in which the dimensions are stored
-		$order = $unit->getDimensions();
+		$dimensions = $unit->getDimensions();
 		$item = $this->cachePool->getItem($this->dimensionsKey($name));
-		$item->set(json_encode($order));
+		$item->set(json_encode($dimensions));
 		$this->cachePool->saveDeferred($item);
 
 		// save the activities for each dimension
-		foreach ($unit->getActions() as $dimensions => $actions) {
-			$item = $this->cachePool->getItem($this->actionsKey($name, explode(" ",$dimensions), $order));
-			$item->set(json_encode($actions));
+		foreach ($unit->getActivities() as $activity) {
+			$item = $this->cachePool->getItem($this->activityKey($name, $activity->dimensions, $dimensions));
+			$item->set(json_encode($activity));
 			$this->cachePool->saveDeferred($item);
 		}
 
@@ -68,18 +68,15 @@ final class Cache
 	 * @param $activity  the activity to return the cached actions for
 	 * @return the actions
 	 */
-	public function getActions(Activity $activity): array
+	public function getActivity(string $unit, array $dimensions): \stdClass
 	{
-		$unit = $activity->getUnit();
-		$dimensions = $activity->getDimensions();
-
 		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
 		if (!$item->isHit()) {
 			throw new Exception("Actions not found.");
 		}
-		$order = json_decode($item->get());
+		$dimensions = json_decode($item->get());
 
-		$item = $this->cachePool->getItem($this->actionsKey($unit, $dimensions, $order));
+		$item = $this->cachePool->getItem($this->activityKey($unit, $dimensions, $dimensions));
 		if (!$item->isHit()) {
 			throw new Exception("Actions not found.");
 		}
@@ -105,20 +102,22 @@ final class Cache
 	}
 
 	/**
-	 * Construct actions key to use for caching.
+	 * Construct activity key to use for caching.
 	 *
 	 * @param $unit        the unit name
 	 * @param $dimensions  the dimensions
-	 * @param $order       the order of the dimensions
+	 * @param $order       the dimension order
 	 * @return the cache key
 	 */
-	public function actionsKey(string $unit, array $dimensions, array $order): string
+	public function activityKey(string $unit, array $dimensions, array $order): string
 	{
-		$dims = array_flip($order);
-		foreach ($dimensions as $key => $value) {
-			$dims[$key] = $value;
+		$key = "";
+		$i = 0;
+		foreach ($order as $dim) {
+			if ($i++) $key.= " ";
+			$key.= $dimensions[$dim]??"";
 		}
-		return $this->unitKey($unit)."|".implode(" ", $dims);
+		return $this->unitKey($unit)."|".$key;
 	}
 
 	/**
