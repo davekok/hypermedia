@@ -7,31 +7,9 @@ use Exception;
 use Generator;
 use stdClass;
 
-final class Diagrams
+final class UML
 {
 	private $colors;
-
-	/**
-	 * Set unit
-	 *
-	 * @param Unit $unit
-	 * @return self
-	 */
-	public function setUnit(Unit $unit): self
-	{
-		$this->unit = $unit;
-		return $this;
-	}
-
-	/**
-	 * Get unit
-	 *
-	 * @return Unit
-	 */
-	public function getUnit(): Unit
-	{
-		return $this->unit;
-	}
 
 	/**
 	 * Set class color
@@ -57,11 +35,11 @@ final class Diagrams
 	}
 
 	/**
-	 * Generate class colors for classes.
+	 * Generate colors for classes.
 	 */
-	public function generateClassColors(): void
+	public function generateClassColors(array $classes): void
 	{
-		$this->colors = array_merge(array_flip($this->unit->getClasses()), $this->colors??[]);
+		$this->colors = array_merge(array_flip($classes), $this->colors??[]);
 		foreach ($this->colors as &$color) {
 			if (is_string($color)) continue;
 			$i = 0;
@@ -80,29 +58,25 @@ final class Diagrams
 	}
 
 	/**
-	 * Generate the UML for the activity diagrams.
+	 * Generate the UML for the activity diagram.
 	 */
-	public function generate(): Generator
+	public function generate(\stdClass $activity): string
 	{
-		foreach ($this->unit->getActions() as $dims => $actions) {
-			$compiler = $this->compile($actions, "start");
-			foreach ($compiler as $action); // simply run the compiler
-			$branch = $compiler->getReturn();
+		$compiler = $this->compile($activity->actions, "start");
+		foreach ($compiler as $action); // simply run the compiler
+		$branch = $compiler->getReturn();
 
-			$filename = trim("activity $dims");
-			yield "\0$filename.uml";
-			yield "@startuml\n";
-			$dimensions = $this->unit->getDimensions();
-			if (count($dimensions)) {
-				yield "floating note left\n";
-				foreach (array_combine($dimensions, explode(" ", $dims)) as $dimension => $value) {
-					yield "\t$dimension: $value\n";
-				}
-				yield "end note\n";
+		$uml = "@startuml\n";
+		if (count($activity->dimensions)) {
+			$uml.= "floating note left\n";
+			foreach ($activity->dimensions as $dimension => $value) {
+				$uml.= "\t$dimension: $value\n";
 			}
-			yield from $this->writeDiagram($branch);
-			yield "@enduml\n";
+			$uml.= "end note\n";
 		}
+		$uml.= $this->writeBranch($branch);
+		$uml.= "@enduml\n";
+		return $uml;
 	}
 
 	/**
@@ -218,10 +192,11 @@ final class Diagrams
 	 *
 	 * @param $branch  branch to write
 	 * @param $indent  indent to prefix lines with
-	 * @return the formatted action
+	 * @return the branch in uml
 	 */
-	private function writeDiagram(array $branch, string $indent = ""): Generator
+	private function writeBranch(array $branch, string $indent = ""): string
 	{
+		$uml = "";
 		foreach ($branch as $line) {
 			if (is_string($line)) {
 				$type = "action";
@@ -232,32 +207,33 @@ final class Diagrams
 			}
 			switch ($type) {
 				case "action":
-					yield $indent.$this->formatAction($line);
+					$uml.= $indent.$this->formatAction($line);
 					break;
 				case "if":
 					$i = 0;
 					$l = count($line) - 1;
 					foreach ($line as $retval => $branch) {
 						if ($i === 0) {
-							yield $indent."if (r) then ($retval)\n";
+							$uml.= $indent."if (r) then ($retval)\n";
 						} elseif ($i === $l) {
-							yield $indent."else ($retval)\n";
+							$uml.= $indent."else ($retval)\n";
 						} else {
-							yield $indent."elseif (r) then ($retval)\n";
+							$uml.= $indent."elseif (r) then ($retval)\n";
 						}
-						yield from $this->writeDiagram($branch, "$indent\t");
+						$uml.= $this->writeBranch($branch, "$indent\t");
 						++$i;
 					}
-					yield $indent."endif\n";
+					$uml.= $indent."endif\n";
 					break;
 				case "repeat":
-					yield $indent."repeat\n";
-					yield from $this->writeDiagram($line->branch, "$indent\t");
-					yield $indent."\t".$this->formatAction($line->action);
-					yield $indent."repeat while (r = {$line->isval})\n";
+					$uml.= $indent."repeat\n";
+					$uml.= $this->writeBranch($line->branch, "$indent\t");
+					$uml.= $indent."\t".$this->formatAction($line->action);
+					$uml.= $indent."repeat while (r = {$line->isval})\n";
 					break;
 			}
 		}
+		return $uml;
 	}
 
 	/**

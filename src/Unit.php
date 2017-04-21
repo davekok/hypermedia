@@ -138,80 +138,91 @@ final class Unit
 			}
 		}
 
-		$action = "$className::$methodName";
+		$name = "$className::$methodName";
 		if ($start) {
-			$this->createAndAddAction($dimensions, "start", $action);
+			$this->_addAction("start", $name, $dimensions);
 		}
-		$this->createAndAddAction($dimensions, $action, $next);
+		$this->_addAction($name, $next, $dimensions);
 
 		return $this;
 	}
 
+	private function _addAction(string $name, $next, array $dimensions): void
+	{
+		$action = new \stdClass;
+		$action->next = $next;
+		$action->dimensions = $dimensions;
+		if (isset($this->actions[$name])) {
+			$this->actions[$name][] = $action;
+		} else {
+			$this->actions[$name] = [$action];
+		}
+	}
+
 	/**
 	 * Compile to produce all the activities.
+	 *
+	 * @return the activities
 	 */
-	public function compile(): void
+	public function compile(): array
 	{
-		$this->activities = [];
+		// make sure dimensions are in order and missing dimensions are nulled;
 		foreach ($this->actions as $actions) {
 			foreach ($actions as $action) {
-				$key = $this->activityKey($action->dimensions);
-				if (isset($this->activities[$key]))
+				$dimensions = [];
+				foreach ($this->dimensions as $dimension) {
+					$dimensions[$dimension] = $action->dimensions[$dimension]??null;
+				}
+				$action->dimensions = $dimensions;
+			}
+		}
+
+		$activities = [];
+		foreach ($this->actions as $actions) {
+			foreach ($actions as $action) {
+				$hash = hash("md5", json_encode($action->dimensions), true);
+
+				if (isset($activities[$hash]))
 					continue;
 
 				$start = $this->findBestMatch("start", $this->shouldHave($action), $this->mustNotHave($action));
 				if ($start === null) continue;
 
-				$activity = $this->createActivity($action->dimensions);
-				$activity->actions["start"] = $start->name;
+				$activity = new \stdClass;
+				$activity->dimensions = $action->dimensions;
+				$activity->actions = ["start" => $start->next];
 				$this->walk($activity->actions, $start->next, $this->shouldHave($action), $this->mustNotHave($action));
-				$this->activities[$key] = $activity;
+
+				$activities[$hash] = $activity;
 			}
 		}
+
+		$this->activities = array_values($activities);
+
+		return $this->activities;
 	}
 
-	private function createAndAddAction(array $dimensions, string $name, $next): void
-	{
-		$action = new \stdClass;
-		$action->dimensions = $dimensions;
-		$action->name = $name;
-		$action->next = $next;
-		if (!isset($this->actions[$name])) {
-			$this->actions[$name] = [];
-		}
-		$this->actions[$name][] = $action;
-	}
-
-	private function createActivity(array $dimensions): \stdClass
-	{
-		$activity = new \stdClass;
-		$activity->dimensions = $dimensions;
-		$activity->actions = [];
-		return $activity;
-	}
-
-
-	private function walk(array &$actions, $next, array $shouldHave, array $mustNotHave): void
+	public function walk(array &$actions, $next, array $shouldHave, array $mustNotHave): void
 	{
 		if (is_array($next)) {
 			foreach ($next as $nextValue => $action) {
-				$this->walk($actions, $shouldHave, $mustNotHave, $next);
+				$this->walk($actions, $action, $shouldHave, $mustNotHave);
 			}
 		} elseif (is_string($next)) {
 			if (isset($actions[$next])) // if already computed then skip
 				return;
-			$action = $this->findBestMatch[$next];
-			$actions[$next] = $action->action;
-			$this->walk($actions, $shouldHave, $mustNotHave, $action);
+			$action = $this->findBestMatch($next, $shouldHave, $mustNotHave);
+			$actions[$next] = $action->next;
+			$this->walk($actions, $action->next, $shouldHave, $mustNotHave);
 		}
 	}
 
-	private function findBestMatch(string $name, array $shouldHave, array $mustNotHave): \stdClass
+	public function findBestMatch(string $name, array $shouldHave, array $mustNotHave): ?\stdClass
 	{
 		// find best match
 		$mostSpecific = 0;
 		$matches = [];
-		foreach ($this->index[$name] as $ix => $action) {
+		foreach ($this->actions[$name] as $ix => $action) {
 			foreach ($mustNotHave as $dim) {
 				if (isset($action->dimensions[$dim])) {
 					continue 2;
@@ -263,7 +274,7 @@ final class Unit
 		}
 	}
 
-	private function shouldHave(\stdClass $action): array
+	public function shouldHave(\stdClass $action): array
 	{
 		// set should have array but in order of $this->dimensions
 		$shouldHave = [];
@@ -275,19 +286,14 @@ final class Unit
 		return $shouldHave;
 	}
 
-	private function mustNotHave(\stdClass $action): array
+	public function mustNotHave(\stdClass $action): array
 	{
-		return array_diff($this->dimensions, array_keys($action->dimensions));
-	}
-
-	private function activityKey(array $dimensions): string
-	{
-		$key = "";
-		$i = 0;
+		$mustNotHave = [];
 		foreach ($this->dimensions as $dim) {
-			if ($i++) $key.= " ";
-			$key.= $dimensions[$dim]??"";
+			if (!isset($action->dimensions[$dim])) {
+				$mustNotHave[] = $dim;
+			}
 		}
-		return $key;
+		return $mustNotHave;
 	}
 }

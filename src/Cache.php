@@ -46,15 +46,15 @@ final class Cache
 		$name = $unit->getName();
 
 		// save the order in which the dimensions are stored
-		$dimensions = $unit->getDimensions();
+		$order = $unit->getDimensions();
 		$item = $this->cachePool->getItem($this->dimensionsKey($name));
-		$item->set(json_encode($dimensions));
+		$item->set(json_encode($order));
 		$this->cachePool->saveDeferred($item);
 
 		// save the activities for each dimension
 		foreach ($unit->getActivities() as $activity) {
-			$item = $this->cachePool->getItem($this->activityKey($name, $activity->dimensions, $dimensions));
-			$item->set(json_encode($activity));
+			$item = $this->cachePool->getItem($this->activityKey($name, $activity->dimensions, $order));
+			$item->set(json_encode($activity->actions));
 			$this->cachePool->saveDeferred($item);
 		}
 
@@ -68,23 +68,23 @@ final class Cache
 	 * @param $activity  the activity to return the cached actions for
 	 * @return the actions
 	 */
-	public function getActivity(string $unit, array $dimensions): \stdClass
+	public function getActivityActions(string $unit, array $dimensions): array
 	{
 		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
 		if (!$item->isHit()) {
-			throw new Exception("Actions not found.");
+			throw new Exception("Activity not found.");
 		}
-		$dimensions = json_decode($item->get());
+		$order = json_decode($item->get());
 
-		$item = $this->cachePool->getItem($this->activityKey($unit, $dimensions, $dimensions));
+		$item = $this->cachePool->getItem($this->activityKey($unit, $dimensions, $order));
 		if (!$item->isHit()) {
-			throw new Exception("Actions not found.");
+			throw new Exception("Activity not found.");
 		}
 		$actions = $item->get();
 
 		$actions = json_decode($actions, true);
 		if (!$actions) {
-			throw new Exception("Actions not found.");
+			throw new Exception("Activity not found.");
 		}
 
 		return $actions;
@@ -98,7 +98,7 @@ final class Cache
 	 */
 	public function dimensionsKey(string $unit): string
 	{
-		return $this->unitKey($unit).".dimensions";
+		return $this->unitKey($unit) . ".dimensions";
 	}
 
 	/**
@@ -111,13 +111,11 @@ final class Cache
 	 */
 	public function activityKey(string $unit, array $dimensions, array $order): string
 	{
-		$key = "";
-		$i = 0;
+		$dims = [];
 		foreach ($order as $dim) {
-			if ($i++) $key.= " ";
-			$key.= $dimensions[$dim]??"";
+			$dims[$dim] = $dimensions[$dim] ?? null;
 		}
-		return $this->unitKey($unit)."|".$key;
+		return $this->unitKey($unit) . "|" . hash("sha256", json_encode($dims));
 	}
 
 	/**
@@ -128,6 +126,6 @@ final class Cache
 	 */
 	public function unitKey(string $unit): string
 	{
-		return "sturdy-activity|".$unit;
+		return "sturdy-activity|" . $unit;
 	}
 }

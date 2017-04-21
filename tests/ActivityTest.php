@@ -5,11 +5,11 @@ namespace Tests\Sturdy\Activity;
 use Sturdy\Activity\{
 	Activity,
 	Cache,
-	Diagrams,
 	InstanceFactory,
 	Journal,
 	JournalRepository,
 	StateFactory,
+	UML,
 	UnitFactory
 };
 use PHPUnit\Framework\TestCase;
@@ -33,32 +33,61 @@ class ActivityTest extends TestCase
 
 	public function testCreateUnit()
 	{
-		$expectedActions = [
-			'start' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action1',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action1' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action2',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action2' => [
-				1 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action3',
-				2 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action4',
-				3 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action6',
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action3' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action7',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action4' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action5',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action5' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action7',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action6' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action7',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action7' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action8',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action8' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action9',
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action9' => [
-				'true' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action8',
-				'false' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action10',
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action10' => NULL,
-		];
-
 		$unit = (new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit1', __DIR__.'/TestUnit1/');
-		$this->assertEquals($unit->getName(), "TestUnit1");
-		$this->assertEquals($unit->getClasses(), ["Tests\\Sturdy\\Activity\\TestUnit1\\Activity1"]);
-		$this->assertEquals($unit->getDimensions(), []);
-		$this->assertEquals($unit->getActions(), ["" => $expectedActions]);
+		$this->assertEquals("TestUnit1", $unit->getName(), "unit name");
+		$this->assertEquals(["Tests\\Sturdy\\Activity\\TestUnit1\\Activity1"], $unit->getClasses(), "classes");
+		$this->assertEquals([], $unit->getDimensions(), "dimensions");
+		$this->assertEquals([
+			'start' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action1','dimensions'=>[]],
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action1' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action2','dimensions'=>[]],
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action2' => [
+				(object)[
+					'next'=>[
+						1 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action3',
+						2 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action4',
+						3 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action6',
+					],
+					'dimensions'=>[]
+				],
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action3' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action7','dimensions'=>[]],
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action4' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action5','dimensions'=>[]]
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action5' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action7','dimensions'=>[]]
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action6' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action7','dimensions'=>[]]
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action7' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action8','dimensions'=>[]]
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action8' => [
+				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action9','dimensions'=>[]]
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action9' => [
+				(object)[
+					'next'=>[
+						'true' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action8',
+						'false' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action10',
+					],
+					'dimensions'=>[]
+				],
+			],
+			'Tests\Sturdy\Activity\TestUnit1\Activity1::action10' => [
+				(object)[
+					'next'=>null,
+					'dimensions'=>[]
+				],
+			]
+		], $unit->getActions(), "actions");
 
 
 		$cache = new Cache(self::$cache);
@@ -68,22 +97,35 @@ class ActivityTest extends TestCase
 		$this->assertTrue($order->isHit(), "dimensions order is not stored");
 		$this->assertEquals($order->get(), "[]");
 
-		$actions = self::$cache->getItem("sturdy-activity|TestUnit1|");
+		$actions = self::$cache->getItem("sturdy-activity|TestUnit1|".hash("sha256",json_encode([])));
 		$this->assertTrue($actions->isHit(), "actions are not stored");
-		$this->assertEquals(json_decode($actions->get(), true), $expectedActions);
+		$this->assertEquals([
+			"start" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action1",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action1" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action2",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action2" => [
+				1 => "Tests\Sturdy\Activity\TestUnit1\Activity1::action3",
+				2 => "Tests\Sturdy\Activity\TestUnit1\Activity1::action4",
+				3 => "Tests\Sturdy\Activity\TestUnit1\Activity1::action6",
+			],
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action3" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action7",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action4" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action5",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action5" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action7",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action6" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action7",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action7" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action8",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action8" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action9",
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action9" => [
+				"true" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action8",
+				"false" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action10",
+			],
+			"Tests\Sturdy\Activity\TestUnit1\Activity1::action10" => null,
+		], json_decode($actions->get(), true));
 
-		$diagrams = new Diagrams();
-		$diagrams->setUnit($unit);
-		$diagrams->setClassColor('Tests\Sturdy\Activity\TestUnit1\Activity1', '#CCCCDD');
-		$uml = "";
-		foreach ($diagrams->generate() as $line) {
-			if ($line[0] == "\0") {
-				$this->assertEquals(substr($line,1), 'activity.uml');
-			} else {
-				$uml.= $line;
-			}
-		}
-		$this->assertEquals($uml, <<<UML
+		$uml = new UML();
+		$uml->setClassColor('Tests\Sturdy\Activity\TestUnit1\Activity1', '#CCCCDD');
+
+		$activities = $unit->getActivities();
+
+		$this->assertEquals($uml->generate(reset($activities)), <<<UML
 @startuml
 :start;
 #CCCCDD:action1|

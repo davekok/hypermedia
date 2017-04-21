@@ -51,12 +51,12 @@ final class Activity implements ActivityFactory
 	public function createActivity(string $unit, array $dimensions = []): Activity
 	{
 		$self = clone $this;
+		$self->actions = $this->cache->getActivityActions($unit, $dimensions);
 		$self->state = $self->stateFactory->createState($unit, $dimensions);
 		$self->journal = $self->journalRepository->createJournal($unit, $dimensions);
 		$self->journal->setCurrentAction("start");
 		$self->journal->setRunning(false);
 		$self->journal->setState($self->state);
-		$self->actions = $this->cache->getActions($self);
 		return $self;
 	}
 
@@ -70,9 +70,9 @@ final class Activity implements ActivityFactory
 	public function loadActivity(int $journalId): Activity
 	{
 		$self = clone $this;
+		$self->actions = $this->cache->getActivityActions($unit, $dimensions);
 		$self->journal = $self->journalRepository->findOneJournalById($journalId);
 		$self->state = $self->journal->getState();
-		$self->actions = $this->cache->getActions($self);
 		return $self;
 	}
 
