@@ -52,16 +52,16 @@ final class Action
 				$this->start = true;
 				$done.= $matches[0];
 				$text = substr($text, strlen($matches[0]));
-			} elseif ($this->next === null && preg_match("/^=>$func(?=\s|$)/", $text, $matches)) {
+			} elseif ($this->next === null && preg_match("/^=>\s*$func(?=\s|$)/", $text, $matches)) {
 				$this->next = $matches[1];
 				$done.= $matches[0];
 				$text = substr($text, strlen($matches[0]));
-			} elseif (!is_string($this->next) && preg_match("/^$retval=>$func(?=\s|$)/", $text, $matches)) {
+			} elseif (!is_string($this->next) && preg_match("/^$retval\s*=>\s*$func(?=\s|$)/", $text, $matches)) {
 				if ($this->next === null) $this->next = [];
 				$this->next[$matches[1]] = $matches[2];
 				$done.= $matches[0];
 				$text = substr($text, strlen($matches[0]));
-			} elseif (preg_match("/^#$dim=$val(?=\s|$)/", $text, $matches)) {
+			} elseif (preg_match("/^#$dim\s*=\s*$val(?=\s|$)/", $text, $matches)) {
 				$this->dimensions[$matches[1]] = $matches[2];
 				$done.= $matches[0];
 				$text = substr($text, strlen($matches[0]));

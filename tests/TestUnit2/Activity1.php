@@ -3,7 +3,6 @@
 namespace Tests\Sturdy\Activity\TestUnit2;
 
 use Sturdy\Activity\Annotation\Action;
-use Sturdy\Activity\Annotation\Dimension as Dim;
 
 class Activity1
 {
