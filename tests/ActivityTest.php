@@ -151,6 +151,14 @@ UML
 		);
 	}
 
+	public function testCreateUnitWithDimensions()
+	{
+		$unit = (new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit2', __DIR__.'/TestUnit2/');
+		$this->assertEquals("TestUnit2", $unit->getName(), "unit name");
+		$this->assertEquals(["Tests\\Sturdy\\Activity\\TestUnit2\\Activity1"], $unit->getClasses(), "classes");
+		$this->assertEquals(["route", "role"], $unit->getDimensions(), "dimensions");
+	}
+
 	public function testActivity()
 	{
 		$prophet = new Prophet;
