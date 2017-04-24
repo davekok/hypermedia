@@ -127,7 +127,7 @@ class ActivityTest extends TestCase
 
 		$this->assertEquals($uml->generate(reset($activities)), <<<UML
 @startuml
-:start;
+start
 #CCCCDD:action1|
 #CCCCDD:action2|
 if (r) then (1)
@@ -144,7 +144,7 @@ repeat
 	#CCCCDD:action9|
 repeat while (r = true)
 #CCCCDD:action10|
-:stop;
+stop
 @enduml
 
 UML

@@ -250,7 +250,14 @@ final class UML
 			$methodName = substr($action, $p+2);
 			return $this->colors[$className].":$methodName|\n";
 		} else {
-			return ":$action;\n";
+			switch ($action) {
+				case "start":
+				case "stop":
+				case "end":
+					return "$action\n";
+				default:
+					return ":$action;\n";
+			}
 		}
 	}
 }
