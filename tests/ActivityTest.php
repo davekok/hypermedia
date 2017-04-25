@@ -4,7 +4,9 @@ namespace Tests\Sturdy\Activity;
 
 use Sturdy\Activity\{
 	Activity,
+	ActivityCache,
 	Cache,
+	CacheUnit,
 	InstanceFactory,
 	Journal,
 	JournalRepository,
@@ -79,68 +81,6 @@ class ActivityTest extends TestCase
 				],
 			]
 		], $unit->getActions(), "actions");
-
-
-		$cachepool = new ArrayCachePool;
-		$cache = new Cache($cachepool);
-		$cache->updateUnit($unit);
-
-		$order = $cachepool->getItem("sturdy-activity|TestUnit1.dimensions");
-		$this->assertTrue($order->isHit(), "dimensions order is not stored");
-		$this->assertEquals($order->get(), "[]");
-
-		$actions = $cachepool->getItem("sturdy-activity|TestUnit1|".hash("sha256",json_encode([])));
-		$this->assertTrue($actions->isHit(), "actions are not stored");
-		$this->assertEquals([
-			"start" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action1",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action1" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action2",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action2" => [
-				1 => "Tests\Sturdy\Activity\TestUnit1\Activity1::action3",
-				2 => "Tests\Sturdy\Activity\TestUnit1\Activity1::action4",
-				3 => "Tests\Sturdy\Activity\TestUnit1\Activity1::action6",
-			],
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action3" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action7",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action4" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action5",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action5" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action7",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action6" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action7",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action7" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action8",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action8" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action9",
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action9" => [
-				"true" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action8",
-				"false" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action10",
-			],
-			"Tests\Sturdy\Activity\TestUnit1\Activity1::action10" => null,
-		], json_decode($actions->get(), true));
-
-		$uml = new UML();
-		$uml->setClassColor('Tests\Sturdy\Activity\TestUnit1\Activity1', '#CCCCDD');
-
-		$activities = $unit->getActivities();
-
-		$this->assertEquals($uml->generate(reset($activities)), <<<UML
-@startuml
-start
-#CCCCDD:action1|
-#CCCCDD:action2|
-if (r) then (1)
-	#CCCCDD:action3|
-elseif (r) then (2)
-	#CCCCDD:action4|
-	#CCCCDD:action5|
-else (3)
-	#CCCCDD:action6|
-endif
-#CCCCDD:action7|
-repeat
-	#CCCCDD:action8|
-	#CCCCDD:action9|
-repeat while (r = true)
-#CCCCDD:action10|
-stop
-@enduml
-
-UML
-		);
 	}
 
 	public function testCreateUnitWithDimensions()
@@ -154,6 +94,32 @@ UML
 	public function testActivity()
 	{
 		$prophet = new Prophet;
+
+		$cache = $prophet->prophesize();
+		$cache->willImplement(ActivityCache::class);
+		$cache->getActivityActions('TestUnit1', [])
+			->shouldBeCalledTimes(1)
+			->willReturn([
+				"start"=>TestUnit1\Activity1::class."::action1",
+				TestUnit1\Activity1::class."::action1"=>TestUnit1\Activity1::class."::action2",
+				TestUnit1\Activity1::class."::action2"=>[
+					1=>TestUnit1\Activity1::class."::action3",
+					2=>TestUnit1\Activity1::class."::action4",
+					3=>TestUnit1\Activity1::class."::action6",
+				],
+				TestUnit1\Activity1::class."::action3"=>TestUnit1\Activity1::class."::action7",
+				TestUnit1\Activity1::class."::action4"=>TestUnit1\Activity1::class."::action5",
+				TestUnit1\Activity1::class."::action5"=>TestUnit1\Activity1::class."::action7",
+				TestUnit1\Activity1::class."::action6"=>TestUnit1\Activity1::class."::action7",
+				TestUnit1\Activity1::class."::action7"=>TestUnit1\Activity1::class."::action8",
+				TestUnit1\Activity1::class."::action8"=>TestUnit1\Activity1::class."::action9",
+				TestUnit1\Activity1::class."::action8"=>TestUnit1\Activity1::class."::action9",
+				TestUnit1\Activity1::class."::action9"=>[
+					"true"=>TestUnit1\Activity1::class."::action8",
+					"false"=>TestUnit1\Activity1::class."::action10",
+				],
+				TestUnit1\Activity1::class."::action10"=>null,
+			]);
 
 		$journal = $prophet->prophesize();
 		$journal->willImplement(Journal::class);
@@ -257,12 +223,8 @@ UML
 				return $instance;
 			});
 
-
-		$cache = new Cache(new ArrayCachePool);
-		$cache->updateUnit((new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit1', __DIR__.'/TestUnit1/'));
-
 		$activity = new Activity(
-			$cache,
+			$cache->reveal(),
 			$journalRepository->reveal(),
 			$stateFactory->reveal(),
 			$instanceFactory->reveal());
@@ -276,5 +238,87 @@ UML
 		$this->assertNull($activity->getReturn());
 		$this->assertNull($activity->getErrorMessage());
 		$this->assertEquals($activity->getCurrentAction(), "stop");
+	}
+
+	public function testCache()
+	{
+		$expectedActions = ["action1"=>"action2","action2"=>"action3","action3"=>null];
+
+		$prophet = new Prophet;
+
+		$unit = $prophet->prophesize();
+		$unit->willImplement(CacheUnit::class);
+		$unit->getName()->willReturn('testunit');
+		$unit->getDimensions()->willReturn(["dim1", "dim2", "dim3"]);
+		$unit->getActivities()->willReturn([(object)["dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);
+
+		$cachepool = new ArrayCachePool;
+		$cache = new Cache($cachepool);
+		$cache->updateUnit($unit->reveal());
+
+		$order = $cachepool->getItem("sturdy-activity|testunit.dimensions");
+		$this->assertTrue($order->isHit(), "dimensions order is not stored");
+		$this->assertEquals(json_decode($order->get()), ["dim1", "dim2", "dim3"]);
+
+		$actions = $cachepool->getItem("sturdy-activity|testunit|".hash("sha256",json_encode(["dim1"=>1, "dim2"=>2, "dim3"=>3])));
+		$this->assertTrue($actions->isHit(), "actions are not stored");
+		$this->assertEquals($expectedActions, json_decode($actions->get(), true));
+	}
+
+	public function testUml()
+	{
+		$dimensions = ["dim1"=>1,"dim2"=>2];
+		$actions = [
+			"start"=>"TestClass::action1",
+			"TestClass::action1"=>"TestClass::action2",
+			"TestClass::action2"=>[
+				1=>"TestClass::action3",
+				2=>"TestClass::action4",
+				3=>"TestClass::action6",
+			],
+			"TestClass::action3"=>"TestClass::action7",
+			"TestClass::action4"=>"TestClass::action5",
+			"TestClass::action5"=>"TestClass::action7",
+			"TestClass::action6"=>"TestClass::action7",
+			"TestClass::action7"=>"TestClass::action8",
+			"TestClass::action8"=>"TestClass::action9",
+			"TestClass::action8"=>"TestClass::action9",
+			"TestClass::action9"=>[
+				"true"=>"TestClass::action8",
+				"false"=>"TestClass::action10",
+			],
+			"TestClass::action10"=>null,
+		];
+
+		$uml = new UML();
+		$uml->setClassColor('TestClass', '#CCCCDD');
+		$this->assertEquals($uml->generate($dimensions, $actions), <<<UML
+@startuml
+floating note left
+	dim1: 1
+	dim2: 2
+end note
+start
+#CCCCDD:action1|
+#CCCCDD:action2|
+if (r) then (1)
+	#CCCCDD:action3|
+elseif (r) then (2)
+	#CCCCDD:action4|
+	#CCCCDD:action5|
+else (3)
+	#CCCCDD:action6|
+endif
+#CCCCDD:action7|
+repeat
+	#CCCCDD:action8|
+	#CCCCDD:action9|
+repeat while (r = true)
+#CCCCDD:action10|
+stop
+@enduml
+
+UML
+		);
 	}
 }

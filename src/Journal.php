@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity;
 
+use stdClass;
+
 /**
  * Interface to the journal to be implemented by the appliction.
  */
@@ -24,12 +26,12 @@ interface Journal
 	/**
 	 * Set the current state of this activity.
 	 */
-	public function setState(\stdClass $state): Journal;
+	public function setState(stdClass $state): Journal;
 
 	/**
 	 * Get the current state for this activity.
 	 */
-	public function getState(): ?\stdClass;
+	public function getState(): ?stdClass;
 
 	/**
 	 * Set return

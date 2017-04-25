@@ -91,7 +91,7 @@ final class UnitFactory
 			$dr = opendir($dir);
 			if ($dr === false) return;
 			while (($entry = readdir($dr)) !== false) {
-				if ($entry[0] == ".") continue;
+				if ($entry[0] == ".") continue; // skip hidden files
 				$file = $dir.DIRECTORY_SEPARATOR.$entry;
 				if (!is_readable($file)) continue;
 				if (is_dir($file)) {

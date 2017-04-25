@@ -2,7 +2,6 @@
 
 namespace Sturdy\Activity;
 
-use Throwable;
 use Exception;
 use Generator;
 use stdClass;
@@ -59,17 +58,20 @@ final class UML
 
 	/**
 	 * Generate the UML for the activity diagram.
+	 *
+	 * @param $dimensions  key=>value array of dimensions
+	 * @param $actions     the actions
 	 */
-	public function generate(\stdClass $activity): string
+	public function generate(array $dimensions, array $actions): string
 	{
-		$compiler = $this->compile($activity->actions, "start");
+		$compiler = $this->compile($actions, "start");
 		foreach ($compiler as $action); // simply run the compiler
 		$branch = $compiler->getReturn();
 
 		$uml = "@startuml\n";
-		if (count($activity->dimensions)) {
+		if (count($dimensions)) {
 			$uml.= "floating note left\n";
-			foreach ($activity->dimensions as $dimension => $value) {
+			foreach ($dimensions as $dimension => $value) {
 				$uml.= "\t$dimension: $value\n";
 			}
 			$uml.= "end note\n";
@@ -99,7 +101,7 @@ final class UML
 				$branch[] = "stop";
 				try {
 					yield "stop";
-				} catch (\Exception $e) {} // suppress exception
+				} catch (Exception $e) {} // suppress exception
 				break;
 			} elseif (is_string($next)) {
 				$branch[] = $action;
@@ -171,16 +173,16 @@ final class UML
 						$branch[] = $branches;
 				}
 			} else {
-				throw new \Exception("Invalid diagram");
+				throw new Exception("Invalid diagram");
 			}
 			// yield current action for parallel compiling
 			try {
 				yield $action;
-			} catch (\Exception $e) {
+			} catch (Exception $e) {
 				break;
 			}
 			if ($lastAction === $action) {
-				throw new \Exception("next failed");
+				throw new Exception("next failed");
 			}
 			$lastAction = $action;
 		}

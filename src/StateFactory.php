@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity;
 
+use stdClass;
+
 /**
  * An interface that should be implemented to by an application
  * to create instances.
@@ -19,5 +21,5 @@ interface StateFactory
 	 * @param $dimensions  the dimensions in use
 	 * @return state object
 	 */
-	public function createState(string $unit, array $dimensions): \stdClass;
+	public function createState(string $unit, array $dimensions): stdClass;
 }

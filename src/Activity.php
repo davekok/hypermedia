@@ -4,9 +4,7 @@ namespace Sturdy\Activity;
 
 use Throwable;
 use Exception;
-use DateTime;
 use Generator;
-use Psr\Cache\CacheItemPoolInterface;
 
 /**
  * The main class of the component.
@@ -30,7 +28,7 @@ final class Activity
 	 * Constructor
 	 */
 	public function __construct(
-		Cache $cache,
+		ActivityCache $cache,
 		JournalRepository $journalRepository,
 		StateFactory $stateFactory,
 		InstanceFactory $instanceFactory)

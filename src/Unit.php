@@ -2,12 +2,12 @@
 
 namespace Sturdy\Activity;
 
-use Exception;
+use stdClass;
 
 /**
  * Support class to represent a unit.
  */
-final class Unit
+final class Unit implements CacheUnit
 {
 	/**
 	 * @var string;
@@ -94,7 +94,7 @@ final class Unit
 	/**
 	 * Get activities
 	 *
-	 * @return array<string=>\stdClass>  the activities
+	 * @return array<stdClass>  the activities
 	 */
 	public function getActivities(): array
 	{
@@ -107,7 +107,7 @@ final class Unit
 	/**
 	 * Get all actions
 	 *
-	 * @return array<string=>array<\stdClass>>  actions
+	 * @return array<string=>array<stdClass>>  actions
 	 */
 	public function getActions(): array
 	{
@@ -149,7 +149,7 @@ final class Unit
 
 	private function _addAction(string $name, $next, array $dimensions): void
 	{
-		$action = new \stdClass;
+		$action = new stdClass;
 		$action->next = $next;
 		$action->dimensions = $dimensions;
 		if (isset($this->actions[$name])) {
@@ -188,7 +188,7 @@ final class Unit
 				$start = $this->findBestMatch("start", $this->shouldHave($action), $this->mustNotHave($action));
 				if ($start === null) continue;
 
-				$activity = new \stdClass;
+				$activity = new stdClass;
 				$activity->dimensions = $action->dimensions;
 				$activity->actions = ["start" => $start->next];
 				$this->walk($activity->actions, $start->next, $this->shouldHave($action), $this->mustNotHave($action));
@@ -217,7 +217,7 @@ final class Unit
 		}
 	}
 
-	public function findBestMatch(string $name, array $shouldHave, array $mustNotHave): ?\stdClass
+	public function findBestMatch(string $name, array $shouldHave, array $mustNotHave): ?stdClass
 	{
 		// find best match
 		$mostSpecific = 0;
@@ -274,7 +274,7 @@ final class Unit
 		}
 	}
 
-	public function shouldHave(\stdClass $action): array
+	public function shouldHave(stdClass $action): array
 	{
 		// set should have array but in order of $this->dimensions
 		$shouldHave = [];
@@ -286,7 +286,7 @@ final class Unit
 		return $shouldHave;
 	}
 
-	public function mustNotHave(\stdClass $action): array
+	public function mustNotHave(stdClass $action): array
 	{
 		$mustNotHave = [];
 		foreach ($this->dimensions as $dim) {

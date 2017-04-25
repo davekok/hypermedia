@@ -2,16 +2,13 @@
 
 namespace Sturdy\Activity;
 
-use Throwable;
 use Exception;
-use ReflectionClass;
-use Generator;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
  * Class dealing with caching.
  */
-final class Cache
+final class Cache implements ActivityCache
 {
 	private $cachePool;
 
@@ -41,7 +38,7 @@ final class Cache
 	 *
 	 * @param $unit  the unit to cache
 	 */
-	public function updateUnit(Unit $unit): void
+	public function updateUnit(CacheUnit $unit): void
 	{
 		$name = $unit->getName();
 
@@ -65,7 +62,8 @@ final class Cache
 	/**
 	 * Get actions for activity
 	 *
-	 * @param $activity  the activity to return the cached actions for
+	 * @param $unit        the unit to retrieve the actions for
+	 * @param $dimensions  the dimensions to retrieve the actions for
 	 * @return the actions
 	 */
 	public function getActivityActions(string $unit, array $dimensions): array
