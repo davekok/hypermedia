@@ -22,15 +22,6 @@ use Prophecy\{
 
 class ActivityTest extends TestCase
 {
-	private static $cache;
-
-	public function __construct()
-	{
-		if (self::$cache === null) {
-			self::$cache = new ArrayCachePool;
-		}
-	}
-
 	public function testCreateUnit()
 	{
 		$unit = (new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit1', __DIR__.'/TestUnit1/');
@@ -90,14 +81,15 @@ class ActivityTest extends TestCase
 		], $unit->getActions(), "actions");
 
 
-		$cache = new Cache(self::$cache);
+		$cachepool = new ArrayCachePool;
+		$cache = new Cache($cachepool);
 		$cache->updateUnit($unit);
 
-		$order = self::$cache->getItem("sturdy-activity|TestUnit1.dimensions");
+		$order = $cachepool->getItem("sturdy-activity|TestUnit1.dimensions");
 		$this->assertTrue($order->isHit(), "dimensions order is not stored");
 		$this->assertEquals($order->get(), "[]");
 
-		$actions = self::$cache->getItem("sturdy-activity|TestUnit1|".hash("sha256",json_encode([])));
+		$actions = $cachepool->getItem("sturdy-activity|TestUnit1|".hash("sha256",json_encode([])));
 		$this->assertTrue($actions->isHit(), "actions are not stored");
 		$this->assertEquals([
 			"start" => "Tests\Sturdy\Activity\TestUnit1\Activity1::action1",
@@ -265,13 +257,17 @@ UML
 				return $instance;
 			});
 
-		$activityFactory = new Activity(
-			new Cache(self::$cache),
+
+		$cache = new Cache(new ArrayCachePool);
+		$cache->updateUnit((new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit1', __DIR__.'/TestUnit1/'));
+
+		$activity = new Activity(
+			$cache,
 			$journalRepository->reveal(),
 			$stateFactory->reveal(),
 			$instanceFactory->reveal());
 
-		$activity = $activityFactory->createActivity('TestUnit1');
+		$activity = $activity->createJournal('TestUnit1');
 		$activity->run();
 		$prophet->checkPredictions();
 		$this->assertEquals($activity->getUnit(), 'TestUnit1');

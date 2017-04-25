@@ -11,9 +11,9 @@ use Psr\Cache\CacheItemPoolInterface;
 /**
  * The main class of the component.
  *
- * Create or load an activity and run, enjoy.
+ * Create or load a journal and run, enjoy.
  */
-final class Activity implements ActivityFactory
+final class Activity
 {
 	// dependencies
 	private $cache;
@@ -22,8 +22,8 @@ final class Activity implements ActivityFactory
 	private $instanceFactory;
 
 	// state
-	private $state;
 	private $journal;
+	private $state;
 	private $actions;
 
 	/**
@@ -42,38 +42,36 @@ final class Activity implements ActivityFactory
 	}
 
 	/**
-	 * Factory method to create a new activity.
+	 * Create a new journal for this activity.
 	 *
 	 * @param $unit        the unit name
 	 * @param $dimensions  the dimensions to use
-	 * @return new activity
+	 * @return self
 	 */
-	public function createActivity(string $unit, array $dimensions = []): Activity
+	public function createJournal(string $unit, array $dimensions = []): Activity
 	{
-		$self = clone $this;
-		$self->actions = $this->cache->getActivityActions($unit, $dimensions);
-		$self->state = $self->stateFactory->createState($unit, $dimensions);
-		$self->journal = $self->journalRepository->createJournal($unit, $dimensions);
-		$self->journal->setCurrentAction("start");
-		$self->journal->setRunning(false);
-		$self->journal->setState($self->state);
-		return $self;
+		$this->journal = $this->journalRepository->createJournal($unit, $dimensions);
+		$this->journal->setCurrentAction("start");
+		$this->journal->setRunning(false);
+		$this->state = $this->stateFactory->createState($unit, $dimensions);
+		$this->journal->setState($this->state);
+		$this->actions = $this->cache->getActivityActions($this->journal->getUnit(), $this->journal->getDimensions());
+		return $this;
 	}
 
 	/**
-	 * Factory method to create an activity from stored journal.
+	 * Load a previously persisted journal to continue an activity.
 	 *
 	 * @param $unit        the unit name
 	 * @param $dimensions  the dimensions to use
-	 * @return loaded activity
+	 * @return self
 	 */
-	public function loadActivity(int $journalId): Activity
+	public function loadJournal(int $journalId): Activity
 	{
-		$self = clone $this;
-		$self->actions = $this->cache->getActivityActions($unit, $dimensions);
-		$self->journal = $self->journalRepository->findOneJournalById($journalId);
-		$self->state = $self->journal->getState();
-		return $self;
+		$this->journal = $this->journalRepository->findOneJournalById($journalId);
+		$this->state = $this->journal->getState();
+		$this->actions = $this->cache->getActivityActions($this->journal->getUnit(), $this->journal->getDimensions());
+		return $this;
 	}
 
 	/**
