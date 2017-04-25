@@ -46,7 +46,7 @@ final class Activity
 	 * @param $dimensions  the dimensions to use
 	 * @return self
 	 */
-	public function createJournal(string $unit, array $dimensions = []): Activity
+	public function createJournal(string $unit, array $dimensions = []): self
 	{
 		$this->journal = $this->journalRepository->createJournal($unit, $dimensions);
 		$this->journal->setCurrentAction("start");
@@ -64,7 +64,7 @@ final class Activity
 	 * @param $dimensions  the dimensions to use
 	 * @return self
 	 */
-	public function loadJournal(int $journalId): Activity
+	public function loadJournal(int $journalId): self
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
 		$this->state = $this->journal->getState();
@@ -194,7 +194,7 @@ final class Activity
 		if ($coroutine->valid()) {
 			throw new Exception("Activity has actions that are generators.");
 		} else {
-			return $coroutine->getReturn();
+			return $this->journal->getReturn();
 		}
 	}
 
@@ -208,10 +208,10 @@ final class Activity
 	 * Pseudo example to get you started:
 	 *     $coroutine = $activity->coroutine();
 	 *     $worker = new Worker();
-	 *     $worker->add($coroutine, function($yield)use($worker,$coroutine){ // $yield is the value yielded by $coroutine
+	 *     $worker->add($coroutine, function($action)use($worker,$coroutine){ // $action is the value yielded by $coroutine
 	 *         $worker->pause($coroutine);
-	 *         $worker->add($yield);
-	 *         $worker->whenFinished($yield, function($return)use($worker,$coroutine){
+	 *         $worker->add($action);
+	 *         $worker->whenFinished($action, function($return)use($worker,$coroutine){
 	 *             $coroutine->send($return);
 	 *             $worker->resume($coroutine);
 	 *         });
