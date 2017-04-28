@@ -76,7 +76,7 @@ final class Action
 				$done.= $matches[0];
 				$text = substr($text, strlen($matches[0]));
 			} else {
-				throw new \LogicException("Syntax error near $done$text.\n".str_repeat(" ",18+strlen($done))."^\n");
+				throw new \LogicException("Syntax error '$done$text'.\n".str_repeat(" ",14+strlen($done))."^\n");
 			}
 		}
 	}
