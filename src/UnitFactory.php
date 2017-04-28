@@ -66,6 +66,7 @@ final class UnitFactory
 							$className,
 							$method->getName(),
 							$annotation->getStart(),
+							$annotation->getConst(),
 							$next,
 							$annotation->getDimensions());
 					}

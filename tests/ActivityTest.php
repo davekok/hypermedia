@@ -5,18 +5,12 @@ namespace Tests\Sturdy\Activity;
 use Sturdy\Activity\{
 	Activity,
 	ActivityCache,
-	Cache,
-	CacheUnit,
 	InstanceFactory,
 	Journal,
 	JournalRepository,
-	StateFactory,
-	UML,
-	UnitFactory
+	StateFactory
 };
 use PHPUnit\Framework\TestCase;
-use Doctrine\Common\Annotations\AnnotationReader;
-use Cache\Adapter\PHPArray\ArrayCachePool;
 use Prophecy\{
 	Argument,
 	Prophet
@@ -24,73 +18,6 @@ use Prophecy\{
 
 class ActivityTest extends TestCase
 {
-	public function testCreateUnit()
-	{
-		$unit = (new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit1', __DIR__.'/TestUnit1/');
-		$this->assertEquals("TestUnit1", $unit->getName(), "unit name");
-		$this->assertEquals(["Tests\\Sturdy\\Activity\\TestUnit1\\Activity1"], $unit->getClasses(), "classes");
-		$this->assertEquals([], $unit->getDimensions(), "dimensions");
-		$this->assertEquals([
-			'start' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action1','dimensions'=>[]],
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action1' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action2','dimensions'=>[]],
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action2' => [
-				(object)[
-					'next'=>[
-						1 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action3',
-						2 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action4',
-						3 => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action6',
-					],
-					'dimensions'=>[]
-				],
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action3' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action7','dimensions'=>[]],
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action4' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action5','dimensions'=>[]]
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action5' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action7','dimensions'=>[]]
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action6' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action7','dimensions'=>[]]
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action7' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action8','dimensions'=>[]]
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action8' => [
-				(object)['next'=>'Tests\Sturdy\Activity\TestUnit1\Activity1::action9','dimensions'=>[]]
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action9' => [
-				(object)[
-					'next'=>[
-						'true' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action8',
-						'false' => 'Tests\Sturdy\Activity\TestUnit1\Activity1::action10',
-					],
-					'dimensions'=>[]
-				],
-			],
-			'Tests\Sturdy\Activity\TestUnit1\Activity1::action10' => [
-				(object)[
-					'next'=>null,
-					'dimensions'=>[]
-				],
-			]
-		], $unit->getActions(), "actions");
-	}
-
-	public function testCreateUnitWithDimensions()
-	{
-		$unit = (new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit2', __DIR__.'/TestUnit2/');
-		$this->assertEquals("TestUnit2", $unit->getName(), "unit name");
-		$this->assertEquals(["Tests\\Sturdy\\Activity\\TestUnit2\\Activity1"], $unit->getClasses(), "classes");
-		$this->assertEquals(["route", "role"], $unit->getDimensions(), "dimensions");
-	}
-
 	public function testActivity()
 	{
 		$prophet = new Prophet;
@@ -238,87 +165,5 @@ class ActivityTest extends TestCase
 		$this->assertNull($activity->getReturn());
 		$this->assertNull($activity->getErrorMessage());
 		$this->assertEquals($activity->getCurrentAction(), "stop");
-	}
-
-	public function testCache()
-	{
-		$expectedActions = ["action1"=>"action2","action2"=>"action3","action3"=>null];
-
-		$prophet = new Prophet;
-
-		$unit = $prophet->prophesize();
-		$unit->willImplement(CacheUnit::class);
-		$unit->getName()->willReturn('testunit');
-		$unit->getDimensions()->willReturn(["dim1", "dim2", "dim3"]);
-		$unit->getActivities()->willReturn([(object)["dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);
-
-		$cachepool = new ArrayCachePool;
-		$cache = new Cache($cachepool);
-		$cache->updateUnit($unit->reveal());
-
-		$order = $cachepool->getItem("sturdy-activity|testunit.dimensions");
-		$this->assertTrue($order->isHit(), "dimensions order is not stored");
-		$this->assertEquals(json_decode($order->get()), ["dim1", "dim2", "dim3"]);
-
-		$actions = $cachepool->getItem("sturdy-activity|testunit|".hash("sha256",json_encode(["dim1"=>1, "dim2"=>2, "dim3"=>3])));
-		$this->assertTrue($actions->isHit(), "actions are not stored");
-		$this->assertEquals($expectedActions, json_decode($actions->get(), true));
-	}
-
-	public function testUml()
-	{
-		$dimensions = ["dim1"=>1,"dim2"=>2];
-		$actions = [
-			"start"=>"TestClass::action1",
-			"TestClass::action1"=>"TestClass::action2",
-			"TestClass::action2"=>[
-				1=>"TestClass::action3",
-				2=>"TestClass::action4",
-				3=>"TestClass::action6",
-			],
-			"TestClass::action3"=>"TestClass::action7",
-			"TestClass::action4"=>"TestClass::action5",
-			"TestClass::action5"=>"TestClass::action7",
-			"TestClass::action6"=>"TestClass::action7",
-			"TestClass::action7"=>"TestClass::action8",
-			"TestClass::action8"=>"TestClass::action9",
-			"TestClass::action8"=>"TestClass::action9",
-			"TestClass::action9"=>[
-				"true"=>"TestClass::action8",
-				"false"=>"TestClass::action10",
-			],
-			"TestClass::action10"=>null,
-		];
-
-		$uml = new UML();
-		$uml->setClassColor('TestClass', '#CCCCDD');
-		$this->assertEquals($uml->generate($dimensions, $actions), <<<UML
-@startuml
-floating note left
-	dim1: 1
-	dim2: 2
-end note
-start
-#CCCCDD:action1|
-#CCCCDD:action2|
-if (r) then (1)
-	#CCCCDD:action3|
-elseif (r) then (2)
-	#CCCCDD:action4|
-	#CCCCDD:action5|
-else (3)
-	#CCCCDD:action6|
-endif
-#CCCCDD:action7|
-repeat
-	#CCCCDD:action8|
-	#CCCCDD:action9|
-repeat while (r = true)
-#CCCCDD:action10|
-stop
-@enduml
-
-UML
-		);
 	}
 }

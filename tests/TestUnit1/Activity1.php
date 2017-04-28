@@ -35,7 +35,7 @@ class Activity1
 	}
 
 	/**
-	 * @Action("=> action7")
+	 * @Action("const => action7")
 	 */
 	public function action5()
 	{

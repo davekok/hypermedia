@@ -122,11 +122,12 @@ final class Unit implements CacheUnit
 	 * @param $className   the class name the action is implemented in
 	 * @param $methodName  the method name the action is implemented in
 	 * @param $start       the first action
+	 * @param $const       a constant action
 	 * @param $next        the next action to execute
 	 * @param $dimensions  dimensions to map this action on
 	 * @return $this
 	 */
-	public function addAction(string $className, string $methodName, bool $start, $next, array $dimensions): self
+	public function addAction(string $className, string $methodName, bool $start, bool $const, $next, array $dimensions): self
 	{
 		if (!in_array($className, $this->classes)) {
 			$this->classes[] = $className;
@@ -140,16 +141,17 @@ final class Unit implements CacheUnit
 
 		$name = "$className::$methodName";
 		if ($start) {
-			$this->_addAction("start", $name, $dimensions);
+			$this->_addAction("start", true, $name, $dimensions);
 		}
-		$this->_addAction($name, $next, $dimensions);
+		$this->_addAction($name, $const, $next, $dimensions);
 
 		return $this;
 	}
 
-	private function _addAction(string $name, $next, array $dimensions): void
+	private function _addAction(string $name, bool $const, $next, array $dimensions): void
 	{
 		$action = new stdClass;
+		$action->const = $const;
 		$action->next = $next;
 		$action->dimensions = $dimensions;
 		if (isset($this->actions[$name])) {
@@ -180,43 +182,67 @@ final class Unit implements CacheUnit
 		$activities = [];
 		foreach ($this->actions as $actions) {
 			foreach ($actions as $action) {
+				// create a hash so activities are only compiled once
 				$hash = hash("md5", json_encode($action->dimensions), true);
 
+				// check that activity is not already compiled
 				if (isset($activities[$hash]))
 					continue;
 
-				$start = $this->findBestMatch("start", $this->shouldHave($action), $this->mustNotHave($action));
+				$shouldHave = $this->shouldHave($action);
+				$mustNotHave = $this->mustNotHave($action);
+
+				// find the start action for activity
+				$start = $this->findBestMatch("start", $shouldHave, $mustNotHave);
 				if ($start === null) continue;
 
+				// construct temporary object for activity
 				$activity = new stdClass;
+				$activity->const = $action->const;
 				$activity->dimensions = $action->dimensions;
 				$activity->actions = ["start" => $start->next];
-				$this->walk($activity->actions, $start->next, $this->shouldHave($action), $this->mustNotHave($action));
+				$this->walk($activity, $start->next, $shouldHave, $mustNotHave);
 
+				// remember that this activity is already found
 				$activities[$hash] = $activity;
 			}
 		}
 
+		// discard hashes
 		$this->activities = array_values($activities);
 
 		return $this->activities;
 	}
 
-	public function walk(array &$actions, $next, array $shouldHave, array $mustNotHave): void
+	/**
+	 * Walk through the actions to construct the activity.
+	 */
+	public function walk(stdClass $activity, /*array|string|null*/ $next, array $shouldHave, array $mustNotHave): void
 	{
+		// does the action have multiple next posibilities?
 		if (is_array($next)) {
 			foreach ($next as $nextValue => $action) {
-				$this->walk($actions, $action, $shouldHave, $mustNotHave);
+				$this->walk($activity, $action, $shouldHave, $mustNotHave);
 			}
 		} elseif (is_string($next)) {
-			if (isset($actions[$next])) // if already computed then skip
+			if (isset($activity->actions[$next])) // if already computed then skip, should only happen for loops
 				return;
+
 			$action = $this->findBestMatch($next, $shouldHave, $mustNotHave);
-			$actions[$next] = $action->next;
-			$this->walk($actions, $action->next, $shouldHave, $mustNotHave);
+			$activity->actions[$next] = $action->next;
+			if ($action->const === false)
+				$activity->const = false;
+
+			// continue with next action
+			$this->walk($activity, $action->next, $shouldHave, $mustNotHave);
+		} elseif ($next !== null) {
+			throw new \InvalidArgumentException("Argument should either be an array, a string or null, got ".get_type($next));
 		}
 	}
 
+	/**
+	 * Find best match for an action given the should have dimensions and must not have dimensions
+	 */
 	public function findBestMatch(string $name, array $shouldHave, array $mustNotHave): ?stdClass
 	{
 		// find best match
@@ -274,6 +300,9 @@ final class Unit implements CacheUnit
 		}
 	}
 
+	/**
+	 * Retrieve the should have dimensions.
+	 */
 	public function shouldHave(stdClass $action): array
 	{
 		// set should have array but in order of $this->dimensions
@@ -286,6 +315,9 @@ final class Unit implements CacheUnit
 		return $shouldHave;
 	}
 
+	/**
+	 * Retrieve the must not have dimensions.
+	 */
 	public function mustNotHave(stdClass $action): array
 	{
 		$mustNotHave = [];

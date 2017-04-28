@@ -21,6 +21,11 @@ final class Action
 	/**
 	 * @var string
 	 */
+	private $const;
+
+	/**
+	 * @var string
+	 */
 	private $next;
 
 	/**
@@ -43,6 +48,7 @@ final class Action
 
 		$done = "";
 		$this->start = false;
+		$this->const = false;
 		$this->dimensions = [];
 		while (strlen($text) > 0) {
 			if (preg_match("/^\s+/", $text, $matches)) {
@@ -50,6 +56,10 @@ final class Action
 				$text = substr($text, strlen($matches[0]));
 			} elseif ($this->start === false && preg_match("/^start(?=\s|$)/", $text, $matches)) {
 				$this->start = true;
+				$done.= $matches[0];
+				$text = substr($text, strlen($matches[0]));
+			} elseif ($this->const === false && preg_match("/^const(?=\s|$)/", $text, $matches)) {
+				$this->const = true;
 				$done.= $matches[0];
 				$text = substr($text, strlen($matches[0]));
 			} elseif ($this->next === null && preg_match("/^=>\s*$func(?=\s|$)/", $text, $matches)) {
@@ -79,6 +89,19 @@ final class Action
 	public function getStart(): bool
 	{
 		return $this->start;
+	}
+
+	/**
+	 * This is a constant action.
+	 *
+	 * If all actions in an activity are constant the activity will not
+	 * be journalled.
+	 *
+	 * @return whether this is action is constant.
+	 */
+	public function getConst(): bool
+	{
+		return $this->const;
 	}
 
 	/**
