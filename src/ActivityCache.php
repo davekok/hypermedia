@@ -8,11 +8,11 @@ namespace Sturdy\Activity;
 interface ActivityCache
 {
 	/**
-	 * Get actions for activity
+	 * Get a cached activity
 	 *
-	 * @param $unit        the unit to retrieve the actions for
-	 * @param $dimensions  the dimensions to retrieve the actions for
-	 * @return the actions
+	 * @param $unit        the unit to retrieve the activity for
+	 * @param $dimensions  the dimensions to retrieve the activity for
+	 * @return the activity
 	 */
-	public function getActivityActions(string $unit, array $dimensions): array;
+	public function getActivity(string $unit, array $dimensions): array;
 }

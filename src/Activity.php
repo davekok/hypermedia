@@ -20,6 +20,7 @@ final class Activity
 	private $instanceFactory;
 
 	// state
+	private $const;
 	private $journal;
 	private $state;
 	private $actions;
@@ -48,12 +49,103 @@ final class Activity
 	 */
 	public function createJournal(string $unit, array $dimensions = []): self
 	{
-		$this->journal = $this->journalRepository->createJournal($unit, $dimensions);
+		if (!$this->const) {
+			$this->journal = $this->journalRepository->createJournal($unit, $dimensions);
+		} else {
+			// use a dummy journal in case of constant activity
+			$this->journal = new class($unit, $dimensions) implements Journal {
+				private $unit;
+				private $dimensions;
+				private $state;
+				private $return;
+				private $errorMessage;
+				private $currentAction;
+				private $running;
+
+				public function __construct(string $unit, array $dimensions)
+				{
+					$this->unit = $unit;
+					$this->dimensions = $dimensions;
+				}
+
+				public function getUnit(): ?string
+				{
+					return $this->unit;
+				}
+
+				public function getDimensions(): ?string
+				{
+					return $this->dimensions;
+				}
+
+				public function setState(stdClass $state): Journal
+				{
+					$this->state = $state;
+
+					return $this;
+				}
+
+				public function getState(): ?stdClass
+				{
+					return $this->state;
+				}
+
+				public function setReturn($return): Journal
+				{
+					$this->return = $return;
+				}
+
+				public function getReturn()
+				{
+					return $this->return;
+				}
+
+				public function setErrorMessage(?string $errorMessage): Journal
+				{
+					$this->errorMessage = $errorMessage;
+
+					return $this;
+				}
+
+				public function getErrorMessage(): ?string
+				{
+					return $this->errorMessage;
+				}
+
+				public function setCurrentAction(string $currentAction): Journal
+				{
+					$this->currentAction = $currentAction;
+
+					return $this;
+				}
+
+				public function getCurrentAction(): string
+				{
+					return $this->currentAction;
+				}
+
+				public function setRunning(bool $running): Journal
+				{
+					$this->running = $running;
+
+					return $this;
+				}
+
+				public function getRunning(): bool
+				{
+					return $this->running;
+				}
+			};
+		}
+
 		$this->journal->setCurrentAction("start");
 		$this->journal->setRunning(false);
+
 		$this->state = $this->stateFactory->createState($unit, $dimensions);
 		$this->journal->setState($this->state);
-		$this->actions = $this->cache->getActivityActions($this->journal->getUnit(), $this->journal->getDimensions());
+
+		$this->loadActivityFromCache();
+
 		return $this;
 	}
 
@@ -68,8 +160,15 @@ final class Activity
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
 		$this->state = $this->journal->getState();
-		$this->actions = $this->cache->getActivityActions($this->journal->getUnit(), $this->journal->getDimensions());
+		$this->loadActivityFromCache();
 		return $this;
+	}
+
+	private function loadActivityFromCache(): void
+	{
+		$activity = $this->cache->getActivity($this->journal->getUnit(), $this->journal->getDimensions());
+		$this->const = $activity["const"];
+		$this->actions = $activity["actions"];
 	}
 
 	/**
@@ -129,6 +228,14 @@ final class Activity
 	}
 
 	/**
+	 * Is constant activity?
+	 */
+	public function isConst(): bool
+	{
+		return $this->const();
+	}
+
+	/**
 	 * Is activity running?
 	 */
 	public function isRunning(): bool
@@ -177,8 +284,10 @@ final class Activity
 	 */
 	public function saveJournal(): void
 	{
-		$this->journal->setState($this->state);
-		$this->journalRepository->saveJournal($this->journal);
+		if (!$this->const) {
+			$this->journal->setState($this->state);
+			$this->journalRepository->saveJournal($this->journal);
+		}
 	}
 
 	/**

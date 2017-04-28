@@ -2,6 +2,7 @@
 
 namespace Sturdy\Activity;
 
+use stdClass;
 use Exception;
 use Psr\Cache\CacheItemPoolInterface;
 
@@ -50,8 +51,11 @@ final class Cache implements ActivityCache
 
 		// save the activities for each dimension
 		foreach ($unit->getActivities() as $activity) {
-			$item = $this->cachePool->getItem($this->activityKey($name, $activity->dimensions, $order));
-			$item->set(json_encode($activity->actions));
+			$dimensions = $activity->dimensions;
+			unset($activity->dimensions);
+			$item = $this->cachePool->getItem($this->activityKey($name, $dimensions, $order));
+			$item->set(json_encode($activity));
+			$activity->dimensions = $dimensions;
 			$this->cachePool->saveDeferred($item);
 		}
 
@@ -60,13 +64,13 @@ final class Cache implements ActivityCache
 	}
 
 	/**
-	 * Get actions for activity
+	 * Get a cached activity
 	 *
-	 * @param $unit        the unit to retrieve the actions for
-	 * @param $dimensions  the dimensions to retrieve the actions for
-	 * @return the actions
+	 * @param $unit        the unit to retrieve the activity for
+	 * @param $dimensions  the dimensions to retrieve the activity for
+	 * @return the activity
 	 */
-	public function getActivityActions(string $unit, array $dimensions): array
+	public function getActivity(string $unit, array $dimensions): array
 	{
 		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
 		if (!$item->isHit()) {
@@ -78,14 +82,14 @@ final class Cache implements ActivityCache
 		if (!$item->isHit()) {
 			throw new Exception("Activity not found.");
 		}
-		$actions = $item->get();
+		$activity = $item->get();
 
-		$actions = json_decode($actions, true);
-		if (!$actions) {
+		$activity = json_decode($activity, true);
+		if (!$activity) {
 			throw new Exception("Activity not found.");
 		}
 
-		return $actions;
+		return $activity;
 	}
 
 	/**

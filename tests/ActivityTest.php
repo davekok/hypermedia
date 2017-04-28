@@ -24,28 +24,31 @@ class ActivityTest extends TestCase
 
 		$cache = $prophet->prophesize();
 		$cache->willImplement(ActivityCache::class);
-		$cache->getActivityActions('TestUnit1', [])
+		$cache->getActivity('TestUnit1', [])
 			->shouldBeCalledTimes(1)
 			->willReturn([
-				"start"=>TestUnit1\Activity1::class."::action1",
-				TestUnit1\Activity1::class."::action1"=>TestUnit1\Activity1::class."::action2",
-				TestUnit1\Activity1::class."::action2"=>[
-					1=>TestUnit1\Activity1::class."::action3",
-					2=>TestUnit1\Activity1::class."::action4",
-					3=>TestUnit1\Activity1::class."::action6",
-				],
-				TestUnit1\Activity1::class."::action3"=>TestUnit1\Activity1::class."::action7",
-				TestUnit1\Activity1::class."::action4"=>TestUnit1\Activity1::class."::action5",
-				TestUnit1\Activity1::class."::action5"=>TestUnit1\Activity1::class."::action7",
-				TestUnit1\Activity1::class."::action6"=>TestUnit1\Activity1::class."::action7",
-				TestUnit1\Activity1::class."::action7"=>TestUnit1\Activity1::class."::action8",
-				TestUnit1\Activity1::class."::action8"=>TestUnit1\Activity1::class."::action9",
-				TestUnit1\Activity1::class."::action8"=>TestUnit1\Activity1::class."::action9",
-				TestUnit1\Activity1::class."::action9"=>[
-					"true"=>TestUnit1\Activity1::class."::action8",
-					"false"=>TestUnit1\Activity1::class."::action10",
-				],
-				TestUnit1\Activity1::class."::action10"=>null,
+				"const"=>false,
+				"actions"=>[
+					"start"=>TestUnit1\Activity1::class."::action1",
+					TestUnit1\Activity1::class."::action1"=>TestUnit1\Activity1::class."::action2",
+					TestUnit1\Activity1::class."::action2"=>[
+						1=>TestUnit1\Activity1::class."::action3",
+						2=>TestUnit1\Activity1::class."::action4",
+						3=>TestUnit1\Activity1::class."::action6",
+					],
+					TestUnit1\Activity1::class."::action3"=>TestUnit1\Activity1::class."::action7",
+					TestUnit1\Activity1::class."::action4"=>TestUnit1\Activity1::class."::action5",
+					TestUnit1\Activity1::class."::action5"=>TestUnit1\Activity1::class."::action7",
+					TestUnit1\Activity1::class."::action6"=>TestUnit1\Activity1::class."::action7",
+					TestUnit1\Activity1::class."::action7"=>TestUnit1\Activity1::class."::action8",
+					TestUnit1\Activity1::class."::action8"=>TestUnit1\Activity1::class."::action9",
+					TestUnit1\Activity1::class."::action8"=>TestUnit1\Activity1::class."::action9",
+					TestUnit1\Activity1::class."::action9"=>[
+						"true"=>TestUnit1\Activity1::class."::action8",
+						"false"=>TestUnit1\Activity1::class."::action10",
+					],
+					TestUnit1\Activity1::class."::action10"=>null,
+				]
 			]);
 
 		$journal = $prophet->prophesize();
