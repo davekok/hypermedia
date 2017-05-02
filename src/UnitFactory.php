@@ -18,10 +18,11 @@ final class UnitFactory
 	/**
 	 * Constructor
 	 *
-	 * @param a annotation reader
+	 * @param $annotationReader  a annotation reader
 	 */
 	public function __construct(Reader $annotationReader)
 	{
+		class_exists('Sturdy\Activity\Annotation\Action'); // make sure annotation class is loaded
 		$this->annotationReader = $annotationReader;
 	}
 
@@ -147,9 +148,4 @@ final class UnitFactory
 		}
 		throw new Exception("No class found in source.");
 	}
-}
-
-// register annotation namespace
-if (class_exists('\Doctrine\Common\Annotations\AnnotationRegistry')) {
-	\Doctrine\Common\Annotations\AnnotationRegistry::registerFile(__DIR__.DIRECTORY_SEPARATOR.'Annotation'.DIRECTORY_SEPARATOR.'Action.php');
 }
