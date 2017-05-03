@@ -3,6 +3,7 @@
 namespace Sturdy\Activity;
 
 use Exception;
+use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
  * A worker implementation
@@ -47,6 +48,7 @@ use Exception;
  *               // worker not running
  *           }
  *           break;
+ *   }
  */
 final class Worker
 {
@@ -62,6 +64,8 @@ final class Worker
 	private $outputfile;
 	private $inputfile;
 	private $errorfile;
+	private $safeEnvironmentVariables;
+	private $environmentVariableDefaults;
 
 	/**
 	 * Cosntructor
@@ -78,10 +82,12 @@ final class Worker
 		}
 		$this->background = $config['background'] ?? true;
 		$this->redirect = $config['redirect'] ?? true;
-		$this->pidfile = $config['pidfile'] ?? $kernel->getRunDir()."/{$this->name}.pid";
+		$this->pidfile = $config['pidfile'] ?? $kernel->getLogDir()."/{$this->name}.pid";
 		$this->outputfile = $config['outputfile'] ?? $kernel->getLogDir()."/{$this->name}.log";
 		$this->inputfile = $config['inputfile'] ?? "/dev/zero";
 		$this->errorfile = $config['errorfile'] ?? $this->outputfile;
+		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["LANG"];
+		$this->environmentVariableDefaults = $config['environmentVariableDefaults'] ?? ["LANG"=>"en_US.UTF-8"];
 	}
 
 	/**
@@ -89,12 +95,11 @@ final class Worker
 	 */
 	public function boot(): void
 	{
-		$this->cleanEnvironment($this->kernel->getSafeEnvironmentVariables(), $this->kernel->getEnvironmentVariableDefaults());
+		$this->cleanEnvironment();
 
 		if ($this->checkRunning($this->pidfile)) {
 			throw new Exception("{$this->name} is already running, quiting");
 		}
-
 
 		// reset umask, adopting user's default umask may mess things up
 		umask(0);
@@ -167,7 +172,7 @@ final class Worker
 	 * Use this to harden the security of your scripts. As it prevents
 	 * injection through environment variables.
 	 */
-	public function cleanEnvironment(array $safe, array $defaults): void
+	public function cleanEnvironment(): void
 	{
 		global $argv;
 
@@ -191,7 +196,7 @@ final class Worker
 		}
 
 		// strip the unsafe keys from safe
-		$safe = array_diff($safe, array_keys($unsafe));
+		$safe = array_diff($this->safeEnvironmentVariables, array_keys($unsafe));
 
 		// check environment
 		foreach ($_ENV as $key=>$value) {
@@ -205,7 +210,7 @@ final class Worker
 		}
 
 		// set default environment variables if allowed by safe but are not already set
-		foreach ($defaults as $key=>$value) {
+		foreach ($this->environmentVariableDefaults as $key=>$value) {
 			if (!isset($_ENV[$key]) && in_array($key, $safe)) {
 				$env[$key] = $value;
 				$reload = true;
@@ -378,7 +383,8 @@ final class Worker
 	public static function args(): array
 	{
 		global $argv;
-		$usage = "Usage: worker [-bBrRdDh?] [-e ENVIRONEMT] WORKER [INSTANCE] [start|stop|restart|status]\n";
+		$progname = basename($argv[0]);
+		$usage = "Usage: $progname [-bBrRdDh?] [-e ENVIRONEMT] WORKER [INSTANCE] [start|stop|restart|status]\n";
 		$usage.= "\n";
 		$usage.= "Options:\n";
 		$usage.= " -b, --background\n";
@@ -391,7 +397,7 @@ final class Worker
 		$usage.= "        turn debugging off\n";
 		$usage.= " -e, --env ENVIRONMENT\n";
 		$usage.= "        set environment\n";
-		$usage.= " -h, -?, --help\n";
+		$usage.= " -h, -?, --help, --usage\n";
 		$usage.= "        display this help screen\n";
 		$usage.= " -r, --redirect\n";
 		$usage.= "        redirect output, default\n";
