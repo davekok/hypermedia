@@ -408,7 +408,6 @@ final class Worker
 		$args = [];
 		for ($i = 1; $i < $l; ++$i) {
 			$arg = $argv[$i];
-			var_dump($argv[$i]);
 			if ($arg === "--env") {
 				$env = $argv[++$i];
 			} elseif ($arg === "--debug") {
