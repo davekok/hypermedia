@@ -408,6 +408,7 @@ final class Worker
 		$args = [];
 		for ($i = 1; $i < $l; ++$i) {
 			$arg = $argv[$i];
+			var_dump($argv[$i]);
 			if ($arg === "--env") {
 				$env = $argv[++$i];
 			} elseif ($arg === "--debug") {
@@ -419,9 +420,9 @@ final class Worker
 			} elseif ($arg === "--no-background") {
 				$background = false;
 			} elseif ($arg[0] == "-" && $arg[1] != "-") {
-				$l = strlen($arg);
-				for ($i = 1; $i < $l; ++$i) {
-					switch ($arg[$i]) {
+				$cl = strlen($arg);
+				for ($c = 1; $c < $cl; ++$c) {
+					switch ($arg[$c]) {
 						case "d":
 							$debug = true;
 							break;
@@ -441,10 +442,10 @@ final class Worker
 							$redirect = false;
 							break;
 						case "e":
-							$env = $args[++$i];
+							$env = $args[++$c];
 							break;
 						default:
-							echo "unknown option {$arg[$i]}\n";
+							echo "unknown option {$arg[$c]}\n";
 						case "?":
 						case "h":
 							exit($usage);
@@ -459,8 +460,8 @@ final class Worker
 			} elseif ($arg[0] == "-") {
 				echo "unknown option: $arg\n";
 				exit($usage);
-			} elseif (!isset($worker)) {
-				$worker = $arg;
+			} elseif (!isset($name)) {
+				$name = $arg;
 			} elseif (!isset($instance)) {
 				$instance = $arg;
 			} else {
@@ -468,7 +469,7 @@ final class Worker
 			}
 		}
 		return [
-			"name" => $worker ?? "default",
+			"name" => $name ?? "default",
 			"command" => $command ?? "start",
 			"instance" => $instance ?? null,
 			"env" => $env ?? getenv("SYMFONY_ENV") ?: "dev",
