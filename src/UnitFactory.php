@@ -72,6 +72,8 @@ final class UnitFactory
 							$annotation->getDimensions());
 					}
 				}
+			} catch (NoClassInSourceException $e) {
+				//
 			} catch (Throwable $e) {
 				echo "\n",$e->getMessage()," (",$e->getFile(),":",$e->getLine(),")\n";
 			}
@@ -111,6 +113,8 @@ final class UnitFactory
 	/**
 	 * Get the class defined in the PHP source.
 	 *
+	 * Note only one class per source expected.
+	 *
 	 * @param $source  the source to scan
 	 * @return the full class name
 	 */
@@ -146,6 +150,6 @@ final class UnitFactory
 					}
 			}
 		}
-		throw new Exception("No class found in source.");
+		throw new NoClassInSourceException();
 	}
 }
