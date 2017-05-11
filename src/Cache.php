@@ -29,7 +29,7 @@ final class Cache implements ActivityCache
 	 * @param $unit  the unit name
 	 * @return true if cached, false otherwise
 	 */
-	public function haveUnit(string $unit): bool
+	public function hasUnit(string $unit): bool
 	{
 		return $this->cachePool->getItem($this->dimensionsKey($unit))->isHit();
 	}
@@ -64,6 +64,26 @@ final class Cache implements ActivityCache
 	}
 
 	/**
+	 * Whether an activity is already cached.
+	 *
+	 * @param $unit        the unit name
+	 * @param $dimensions  the dimensions
+	 * @return true if cached, false otherwise
+	 */
+	public function hasActivity(string $unit, array $dimensions): bool
+	{
+		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
+		if (!$item->isHit()) {
+			throw new Exception("Unit not found.");
+		}
+		$order = json_decode($item->get());
+
+		$item = $this->cachePool->getItem($this->activityKey($unit, $dimensions, $order));
+
+		return $item->isHit();
+	}
+
+	/**
 	 * Get a cached activity
 	 *
 	 * @param $unit        the unit to retrieve the activity for
@@ -74,7 +94,7 @@ final class Cache implements ActivityCache
 	{
 		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
 		if (!$item->isHit()) {
-			throw new Exception("Activity not found.");
+			throw new Exception("Unit not found.");
 		}
 		$order = json_decode($item->get());
 

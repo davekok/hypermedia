@@ -164,6 +164,18 @@ final class Activity
 		return $this;
 	}
 
+	/**
+	 * Wether an activity is available.
+	 *
+	 * @param  $unit        the activity
+	 * @param  $dimensions  the dimensions
+	 * @return bool
+	 */
+	public function hasActivity($unit, $dimensions): bool
+	{
+		return $this->cache->hasActivity($unit, $dimensions);
+	}
+
 	private function loadActivityFromCache(): void
 	{
 		$activity = $this->cache->getActivity($this->journal->getUnit(), $this->journal->getDimensions());
