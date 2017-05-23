@@ -50,26 +50,12 @@ final class UnitFactory
 				foreach ($reflect->getMethods() as $method) {
 					$annotations = $this->annotationReader->getMethodAnnotations($method);
 					foreach ($annotations as $annotation) {
-						if (!$annotation instanceof Annotation\Action) continue;
-						$next = $annotation->getNext();
-						if (is_string($next)) {
-							if (strpos($next, "::") === false) {
-								$next = "$className::$next";
-							}
-						} elseif (is_array($next)) {
-							foreach ($next as $value => &$action) {
-								if (strpos($action, "::") === false) {
-									$action = "$className::$action";
-								}
-							}
-						}
-						$unit->addAction(
-							$className,
-							$method->getName(),
-							$annotation->getStart(),
-							$annotation->getConst(),
-							$next,
-							$annotation->getDimensions());
+						if (!$annotation instanceof Action) continue;
+						$action = $annotation;
+						$action->setClassName($className);
+						$action->setName($method->getName());
+						$action->parse();
+						$unit->addAction($action);
 					}
 				}
 			} catch (NoClassInSourceException $e) {

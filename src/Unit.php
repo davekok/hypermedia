@@ -119,41 +119,38 @@ final class Unit implements CacheUnit
 	 *
 	 * As actions are added also classes and dimensions are added.
 	 *
-	 * @param $className   the class name the action is implemented in
-	 * @param $methodName  the method name the action is implemented in
-	 * @param $start       the first action
-	 * @param $const       a constant action
-	 * @param $next        the next action to execute
-	 * @param $dimensions  dimensions to map this action on
+	 * @param $action  the action
 	 * @return $this
 	 */
-	public function addAction(string $className, string $methodName, bool $start, bool $const, $next, array $dimensions): self
+	public function addAction(Action $action): self
 	{
+		$className = $action->getClassName()
 		if (!in_array($className, $this->classes)) {
 			$this->classes[] = $className;
 		}
 
-		foreach ($dimensions as $dim => $value) {
+		foreach ($action->getDimensions() as $dim => $value) {
 			if (!in_array($dim, $this->dimensions)) {
 				$this->dimensions[] = $dim;
 			}
 		}
 
-		$name = "$className::$methodName";
-		if ($start) {
-			$this->_addAction("start", true, $name, $dimensions);
+		if ($action->getStart()) {
+			$start = new Action();
+			$start->setName("start");
+			$start->setNext($action->getKey());
+			$start->setReturnValues(false);
+			$start->setDimensions($action->getDimensions());
+			$this->_addAction($start);
 		}
-		$this->_addAction($name, $const, $next, $dimensions);
+		$this->_addAction($action);
 
 		return $this;
 	}
 
-	private function _addAction(string $name, bool $const, $next, array $dimensions): void
+	private function _addAction(Action $action): void
 	{
-		$action = new stdClass;
-		$action->const = $const;
-		$action->next = $next;
-		$action->dimensions = $dimensions;
+		$name = $action->getName();
 		if (isset($this->actions[$name])) {
 			$this->actions[$name][] = $action;
 		} else {
@@ -171,11 +168,7 @@ final class Unit implements CacheUnit
 		// make sure dimensions are in order and missing dimensions are nulled;
 		foreach ($this->actions as $actions) {
 			foreach ($actions as $action) {
-				$dimensions = [];
-				foreach ($this->dimensions as $dimension) {
-					$dimensions[$dimension] = $action->dimensions[$dimension]??null;
-				}
-				$action->dimensions = $dimensions;
+				$action->orderDimensions($this->dimensions);
 			}
 		}
 
@@ -183,25 +176,26 @@ final class Unit implements CacheUnit
 		foreach ($this->actions as $actions) {
 			foreach ($actions as $action) {
 				// create a hash so activities are only compiled once
-				$hash = hash("md5", json_encode($action->dimensions), true);
+				$hash = hash("md5", json_encode($action->getDimensions()), true);
 
 				// check that activity is not already compiled
 				if (isset($activities[$hash]))
 					continue;
 
-				$shouldHave = $this->shouldHave($action);
-				$mustNotHave = $this->mustNotHave($action);
+				$activity = new stdClass;
+
+				$activity->shouldHave = $this->shouldHave($action);
+				$activity->mustNotHave = $this->mustNotHave($action);
 
 				// find the start action for activity
-				$start = $this->findBestMatch("start", $shouldHave, $mustNotHave);
+				$start = $this->findBestMatch($activity, "start");
 				if ($start === null) continue;
 
 				// construct temporary object for activity
-				$activity = new stdClass;
-				$activity->const = $action->const;
-				$activity->dimensions = $action->dimensions;
-				$activity->actions = ["start" => $start->next];
-				$this->walk($activity, $start->next, $shouldHave, $mustNotHave);
+				$activity->readonly = $action->getReadonly();
+				$activity->dimensions = $action->getDimensions();
+				$this->walk($activity, $start);
+				unset($activity->shouldHave, $activity->mustNotHave);
 
 				// remember that this activity is already found
 				$activities[$hash] = $activity;
@@ -217,50 +211,65 @@ final class Unit implements CacheUnit
 	/**
 	 * Walk through the actions to construct the activity.
 	 */
-	public function walk(stdClass $activity, /*array|string|null*/ $next, array $shouldHave, array $mustNotHave): void
+	public function walk(stdClass $activity, Action $action): void
 	{
-		// does the action have multiple next posibilities?
-		if (is_array($next)) {
-			foreach ($next as $nextValue => $action) {
-				$this->walk($activity, $action, $shouldHave, $mustNotHave);
+		$key = $action->getKey();
+		$next = $action->getNext();
+
+		// does the action have return values?
+		if ($action->hasReturnValues()) {
+			$activity->actions[$key] = $next;
+			foreach ($next as $returnValue => $exp) {
+				if ($exp === false) { // end
+				} elseif (is_string($exp)) { // next
+					$this->walk($activity, $this->actions[$exp]);
+				} elseif (is_array($exp)) {
+					foreach ($exp as $exp) { // fork
+						$this->walk($activity, $this->actions[$exp]);
+					}
+				}
 			}
-		} elseif (is_string($next)) {
-			if (isset($activity->actions[$next])) // if already computed then skip, should only happen for loops
-				return;
+		} else {
+			if (is_string($next)) { // next action
+				if (isset($activity->actions[$next])) // if already computed then skip, should only happen for loops
+					return;
 
-			$action = $this->findBestMatch($next, $shouldHave, $mustNotHave);
-			$activity->actions[$next] = $action->next;
-			if ($action->const === false)
-				$activity->const = false;
+				$nextAction = $this->findBestMatch($next);
+				if ($action->getReadonly() === false)
+					$activity->readonly = false;
 
-			// continue with next action
-			$this->walk($activity, $action->next, $shouldHave, $mustNotHave);
-		} elseif ($next !== null) {
-			throw new \InvalidArgumentException("Argument should either be an array, a string or null, got ".get_type($next));
+				// continue with next action
+				$this->walk($activity, $nextAction);
+			} elseif (is_array($next)) { // fork actions
+				foreach ($next as $returnValue => $exp) {
+					$this->walk($activity, $action);
+				}
+			}
+			$activity->actions[$key] = $next;
 		}
 	}
 
 	/**
 	 * Find best match for an action given the should have dimensions and must not have dimensions
 	 */
-	public function findBestMatch(string $name, array $shouldHave, array $mustNotHave): ?stdClass
+	public function findBestMatch(stdClass $activity, string $name): ?stdClass
 	{
 		// find best match
 		$mostSpecific = 0;
 		$matches = [];
 		foreach ($this->actions[$name] as $ix => $action) {
-			foreach ($mustNotHave as $dim) {
+			foreach ($activity->mustNotHave as $dim) {
 				if (isset($action->dimensions[$dim])) {
 					continue 2;
 				}
 			}
-			foreach ($shouldHave as $dim => $value) {
+			foreach ($activity->shouldHave as $dim => $value) {
 				if (isset($action->dimensions[$dim]) && $action->dimensions[$dim] !== $value) {
 					continue 2;
 				}
 			}
 			$specific = 0;
-			foreach ($shouldHave as $dim => $value) {
+			foreach ($activity->shouldHave as $dim => $value) {
 				if (isset($action->dimensions[$dim]) && $action->dimensions[$dim] === $value) {
 					++$specific;
 				}
@@ -280,7 +289,7 @@ final class Unit implements CacheUnit
 			case 1:
 				return reset($matches);
 			default:
-				foreach ($shouldHave as $dim => $value) {
+				foreach ($activity->shouldHave as $dim => $value) {
 					$dimFound = false;
 					foreach ($matches as $action) {
 						if (isset($action->dimensions[$dim])) {

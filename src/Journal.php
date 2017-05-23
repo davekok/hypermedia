@@ -56,20 +56,26 @@ interface Journal
 	/**
 	 * Set current action.
 	 *
-	 * Will be called with $action = "start" when the activity is starting.
-	 * Will be called with $action = "stop" when the activity is finished.
-	 * Will be called with $action = "exception" when an exception occurred.
+	 * The predefined actions "start", "stop", "exception" are used to mark
+	 * when an activity has started, has stopped or when an exception has
+	 * occured.
+	 *
+	 * An activity may fork into concurrent flows. The flow number 0 is the
+	 * default flow. However when setting the current action. The flow number
+	 * indicates for which flow the action is set.
 	 *
 	 * @param $action  the action to execute
+	 * @param $flow    the flow number
 	 */
-	public function setCurrentAction(string $action): Journal;
+	public function setCurrentAction(string $action, int $flow): Journal;
 
 	/**
 	 * Get current action.
 	 *
+	 * @param $flow    the flow number
 	 * @return get current action
 	 */
-	public function getCurrentAction(): string;
+	public function getCurrentAction(int $flow): string;
 
 	/**
 	 * Set whether the activity is running.

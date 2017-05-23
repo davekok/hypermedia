@@ -52,20 +52,21 @@ final class Activity
 		if (!$this->const) {
 			$this->journal = $this->journalRepository->createJournal($unit, $dimensions);
 		} else {
-			// use a dummy journal in case of constant activity
+			// use a dummy journal in case of readonly activity
 			$this->journal = new class($unit, $dimensions) implements Journal {
 				private $unit;
 				private $dimensions;
 				private $state;
 				private $return;
 				private $errorMessage;
-				private $currentAction;
+				private $currentActions;
 				private $running;
 
 				public function __construct(string $unit, array $dimensions)
 				{
 					$this->unit = $unit;
 					$this->dimensions = $dimensions;
+					$this->currentActions = [];
 				}
 
 				public function getUnit(): ?string
@@ -112,16 +113,16 @@ final class Activity
 					return $this->errorMessage;
 				}
 
-				public function setCurrentAction(string $currentAction): Journal
+				public function setCurrentAction(string $currentAction, int $flow = 0): Journal
 				{
-					$this->currentAction = $currentAction;
+					$this->currentActions[$flow] = $currentAction;
 
 					return $this;
 				}
 
-				public function getCurrentAction(): string
+				public function getCurrentAction(int $flow = 0): string
 				{
-					return $this->currentAction;
+					return $this->currentActions[$flow];
 				}
 
 				public function setRunning(bool $running): Journal
