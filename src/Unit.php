@@ -124,7 +124,7 @@ final class Unit implements CacheUnit
 	 */
 	public function addAction(Action $action): self
 	{
-		$className = $action->getClassName()
+		$className = $action->getClassName();
 		if (!in_array($className, $this->classes)) {
 			$this->classes[] = $className;
 		}
@@ -175,27 +175,17 @@ final class Unit implements CacheUnit
 		$activities = [];
 		foreach ($this->actions as $actions) {
 			foreach ($actions as $action) {
+				$dimensions = $action->getDimensions();
+
 				// create a hash so activities are only compiled once
-				$hash = hash("md5", json_encode($action->getDimensions()), true);
+				$hash = hash("md5", json_encode($dimensions), true);
 
 				// check that activity is not already compiled
 				if (isset($activities[$hash]))
 					continue;
 
-				$activity = new stdClass;
-
-				$activity->shouldHave = $this->shouldHave($action);
-				$activity->mustNotHave = $this->mustNotHave($action);
-
-				// find the start action for activity
-				$start = $this->findBestMatch($activity, "start");
-				if ($start === null) continue;
-
-				// construct temporary object for activity
-				$activity->readonly = $action->getReadonly();
-				$activity->dimensions = $action->getDimensions();
-				$this->walk($activity, $start);
-				unset($activity->shouldHave, $activity->mustNotHave);
+				$activity = $this->createActivity($dimensions);
+				if ($activity === null) continue;
 
 				// remember that this activity is already found
 				$activities[$hash] = $activity;
@@ -209,132 +199,159 @@ final class Unit implements CacheUnit
 	}
 
 	/**
-	 * Walk through the actions to construct the activity.
+	 * Create an activity.
+	 *
+	 * @param  array  $dimensions  the dimensions to create the activity for
+	 * @return {dimensions: array, readonly: bool, actions: array}
 	 */
-	public function walk(stdClass $activity, Action $action): void
+	public function createActivity(array $dimensions): ?stdClass
 	{
-		$key = $action->getKey();
-		$next = $action->getNext();
-
-		// does the action have return values?
-		if ($action->hasReturnValues()) {
-			$activity->actions[$key] = $next;
-			foreach ($next as $returnValue => $exp) {
-				if ($exp === false) { // end
-				} elseif (is_string($exp)) { // next
-					$this->walk($activity, $this->actions[$exp]);
-				} elseif (is_array($exp)) {
-					foreach ($exp as $exp) { // fork
-						$this->walk($activity, $this->actions[$exp]);
-					}
-				}
-			}
-		} else {
-			if (is_string($next)) { // next action
-				if (isset($activity->actions[$next])) // if already computed then skip, should only happen for loops
-					return;
-
-				$nextAction = $this->findBestMatch($next);
-				if ($action->getReadonly() === false)
-					$activity->readonly = false;
-
-				// continue with next action
-				$this->walk($activity, $nextAction);
-			} elseif (is_array($next)) { // fork actions
-				foreach ($next as $returnValue => $exp) {
-					$this->walk($activity, $action);
-				}
-			}
-			$activity->actions[$key] = $next;
-		}
-	}
-
-	/**
-	 * Find best match for an action given the should have dimensions and must not have dimensions
-	 */
-	public function findBestMatch(stdClass $activity, string $name): ?stdClass
-	{
-		// find best match
-		$mostSpecific = 0;
-		$matches = [];
-		foreach ($this->actions[$name] as $ix => $action) {
-			foreach ($activity->mustNotHave as $dim) {
-				if (isset($action->dimensions[$dim])) {
-					continue 2;
-				}
-			}
-			foreach ($activity->shouldHave as $dim => $value) {
-				if (isset($action->dimensions[$dim]) && $action->dimensions[$dim] !== $value) {
-					continue 2;
-				}
-			}
-			$specific = 0;
-			foreach ($activity->shouldHave as $dim => $value) {
-				if (isset($action->dimensions[$dim]) && $action->dimensions[$dim] === $value) {
-					++$specific;
-				}
-			}
-			if ($specific < $mostSpecific) {
-				continue;
-			} elseif ($specific > $mostSpecific) {
-				$mostSpecific = $specific;
-				$matches = [$action];
-			} else {
-				$matches[] = $action;
-			}
-		}
-		switch (count($matches)) {
-			case 0:
-				return null;
-			case 1:
-				return reset($matches);
-			default:
-				foreach ($activity->shouldHave as $dim => $value) {
-					$dimFound = false;
-					foreach ($matches as $action) {
-						if (isset($action->dimensions[$dim])) {
-							$dimFound = true;
-							break;
-						}
-					}
-					if ($dimFound) {
-						foreach ($matches as $ix => $action) {
-							if (!isset($action->dimensions[$dim])) {
-								unset($matches[$ix]);
-							}
-						}
-					}
-				}
-				return reset($matches);
-		}
-	}
-
-	/**
-	 * Retrieve the should have dimensions.
-	 */
-	public function shouldHave(stdClass $action): array
-	{
-		// set should have array but in order of $this->dimensions
 		$shouldHave = [];
 		foreach ($this->dimensions as $dim) {
-			if (isset($action->dimensions[$dim])) {
-				$shouldHave[$dim] = $action->dimensions[$dim];
+			if (isset($dimensions[$dim])) {
+				$shouldHave[$dim] = $dimensions[$dim];
 			}
 		}
-		return $shouldHave;
-	}
-
-	/**
-	 * Retrieve the must not have dimensions.
-	 */
-	public function mustNotHave(stdClass $action): array
-	{
 		$mustNotHave = [];
 		foreach ($this->dimensions as $dim) {
-			if (!isset($action->dimensions[$dim])) {
+			if (!isset($dimensions[$dim])) {
 				$mustNotHave[] = $dim;
 			}
 		}
-		return $mustNotHave;
+		$joins = [];
+		$join = 0;
+		$found = [];
+		$readonly = true;
+
+		$walk = function($key)use($shouldHave,$mustNotHave,&$joins,&$join,&$found,&$readonly,&$walk):\Generator{
+			// find best matching action to key
+			$mostSpecific = 0;
+			$matches = [];
+			foreach ($this->actions[$key] as $ix => $action) {
+				foreach ($mustNotHave as $dim) {
+					if (isset($action->dimensions[$dim])) {
+						continue 2;
+					}
+				}
+				foreach ($shouldHave as $dim => $value) {
+					if (isset($action->dimensions[$dim]) && $action->dimensions[$dim] !== $value) {
+						continue 2;
+					}
+				}
+				$specific = 0;
+				foreach ($shouldHave as $dim => $value) {
+					if (isset($action->dimensions[$dim]) && $action->dimensions[$dim] === $value) {
+						++$specific;
+					}
+				}
+				if ($specific < $mostSpecific) {
+					continue;
+				} elseif ($specific > $mostSpecific) {
+					$mostSpecific = $specific;
+					$matches = [$action];
+				} else {
+					$matches[] = $action;
+				}
+			}
+			switch (count($matches)) {
+				case 0:
+					return;
+				case 1:
+					$action = reset($matches);
+					break;
+				default:
+					foreach ($shouldHave as $dim => $value) {
+						$dimFound = false;
+						foreach ($matches as $action) {
+							if (isset($action->dimensions[$dim])) {
+								$dimFound = true;
+								break;
+							}
+						}
+						if ($dimFound) {
+							foreach ($matches as $ix => $action) {
+								if (!isset($action->dimensions[$dim])) {
+									unset($matches[$ix]);
+								}
+							}
+						}
+					}
+					$action = reset($matches);
+					break;
+			}
+
+			if ($action->getReadonly() === false) {
+				$readonly = false;
+			}
+
+			$hash = spl_object_hash($action);
+
+			// return a join in case this is a join action
+			if ($action->isJoin()) {
+				if (isset($joins[$hash])) {
+					$joinNumber = $joins[$hash];
+				} else {
+					$joinNumber = $joins[$hash] = ++$join;
+				}
+				$clone = clone $key; // clone first, key is part of a next expression
+				yield $joinNumber => $clone;
+				// modify key which has already been yielded by reference
+				$key = $joinNumber;
+			}
+
+			// already walked over this action? should only happen for loops and joins
+			if (isset($found[$hash])) {
+				return;
+			} else {
+				$found[$hash] = true;
+			}
+
+			// get the next action(s)
+			$next = $action->getNext();
+
+			yield $key => $next; // yield action
+
+			// does the action have return values?
+			if (is_object($next)) {
+				foreach ($next as $returnValue => &$expr) {
+					if (is_string($expr)) { // expr is key of next action
+						yield from $walk($expr);
+					} elseif (is_array($expr)) { // expr is array of keys, forking the activity
+						foreach ($expr as $expr) {
+							yield from $walk($expr);
+						}
+					} elseif ($expr === false) { // expr is end of activity
+						return;
+					}
+				}
+			} else {
+				if (is_string($next)) { // expr is key of next action
+					yield from $walk($next);
+				} elseif (is_array($next)) { // fork actions
+					foreach ($next as &$expr) { // expr is array of keys, forking the activity
+						yield from $walk($expr);
+					}
+				} elseif ($next === false) { // expr is end of activity
+					return;
+				}
+			}
+		};
+
+		$key = "start";
+		$actions = [];
+
+		foreach ($walk($key) as $key => $next) {
+			$actions[$key] = $next; // next may get changed, in case of a join
+		}
+
+		if (count($actions)) {
+			$activity = new stdClass;
+			$activity->dimensions = $dimensions;
+			$activity->readonly = $readonly;
+			$activity->actions = $actions;
+			return $activity;
+		} else {
+			return null;
+		}
 	}
 }

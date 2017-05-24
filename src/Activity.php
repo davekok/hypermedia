@@ -20,7 +20,7 @@ final class Activity
 	private $instanceFactory;
 
 	// state
-	private $const;
+	private $readonly;
 	private $journal;
 	private $state;
 	private $actions;
@@ -49,7 +49,9 @@ final class Activity
 	 */
 	public function createJournal(string $unit, array $dimensions = []): self
 	{
-		if (!$this->const) {
+		$this->loadActivityFromCache($unit, $dimensions);
+
+		if (!$this->readonly) {
 			$this->journal = $this->journalRepository->createJournal($unit, $dimensions);
 		} else {
 			// use a dummy journal in case of readonly activity
@@ -113,14 +115,14 @@ final class Activity
 					return $this->errorMessage;
 				}
 
-				public function setCurrentAction(string $currentAction, int $flow = 0): Journal
+				public function setCurrentAction(string $currentAction, int $flow): Journal
 				{
 					$this->currentActions[$flow] = $currentAction;
 
 					return $this;
 				}
 
-				public function getCurrentAction(int $flow = 0): string
+				public function getCurrentAction(int $flow): string
 				{
 					return $this->currentActions[$flow];
 				}
@@ -145,8 +147,6 @@ final class Activity
 		$this->state = $this->stateFactory->createState($unit, $dimensions);
 		$this->journal->setState($this->state);
 
-		$this->loadActivityFromCache();
-
 		return $this;
 	}
 
@@ -161,7 +161,7 @@ final class Activity
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
 		$this->state = $this->journal->getState();
-		$this->loadActivityFromCache();
+		$this->loadActivityFromCache($this->journal->getUnit(), $this->journal->getDimensions());
 		return $this;
 	}
 
@@ -177,10 +177,16 @@ final class Activity
 		return $this->cache->hasActivity($unit, $dimensions);
 	}
 
-	private function loadActivityFromCache(): void
+	/**
+	 * Load activity from cache.
+	 *
+	 * @param  string $unit       the unit to load the activity from
+	 * @param  array  $dimensions the dimensions to load the activity for
+	 */
+	private function loadActivityFromCache(string $unit, array $dimensions): void
 	{
-		$activity = $this->cache->getActivity($this->journal->getUnit(), $this->journal->getDimensions());
-		$this->const = $activity["const"];
+		$activity = $this->cache->getActivity($unit, $dimensions);
+		$this->readonly = $activity["readonly"];
 		$this->actions = $activity["actions"];
 	}
 
@@ -243,9 +249,9 @@ final class Activity
 	/**
 	 * Is constant activity?
 	 */
-	public function isConst(): bool
+	public function isReadonly(): bool
 	{
-		return $this->const();
+		return $this->readonly;
 	}
 
 	/**
@@ -297,7 +303,7 @@ final class Activity
 	 */
 	public function saveJournal(): void
 	{
-		if (!$this->const) {
+		if (!$this->readonly) {
 			$this->journal->setState($this->state);
 			$this->journalRepository->saveJournal($this->journal);
 		}

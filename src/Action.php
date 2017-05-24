@@ -3,6 +3,7 @@
 namespace Sturdy\Activity;
 
 use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
+use stdClass;
 
 /**
  * The action annotation.
@@ -34,7 +35,7 @@ use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attrib
  * - Marks method methodname of class classname to be executed as the next action. The InstanceFactory must be able to
  * - load an instance of this class. Either shared or unshared.
  *
- * |< methodname1 methodname2 classname::methodname3
+ * >methodname1|methodname2|classname::methodname3
  * - Forks the activity, each action will be executed concurrently.
  *
  * =true/false/integer end
@@ -43,7 +44,7 @@ use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attrib
  * =true/false/integer >methodname/classname::methodname
  * - The next action will only be executed if the defined return value is matched.
  *
- * =true/false/integer |< methodname1 methodname2 classname::methodname3
+ * =true/false/integer >methodname1|methodname2|classname::methodname3
  * - Forks the activity if defined return value is matched, each action will be executed concurrently.
  *
  * >|
@@ -61,8 +62,8 @@ use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attrib
  * Example:
  * [class::action1] start >action2
  * [class::action2] >action3
- * [class::action3] =true |< action5 action6 action7  =false end
- * [class::action4] |< action5 action8 action10
+ * [class::action3] =true >action5|action6|action7  =false end
+ * [class::action4] >action5|action8|action10
  * [class::action5] =true >action6  =false >action7
  * [class::action6] >action11
  * [class::action7] >action11
@@ -93,7 +94,7 @@ use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attrib
  * <end> = "end"
  * <join> = ">|"
  * <next> = ">" ( <method> / <end> )
- * <fork> = "|<" 1*( <s> <method> )
+ * <fork> = "|>" 1*( <s> <method> )
  * <retval> = "=" ( "true" / "false" / <int> )
  * <dimension> = "#" <name> "=" <value>
  * <method> = [ <classname> "::" ] <name>
@@ -110,6 +111,18 @@ use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attrib
  */
 final class Action
 {
+	const NAME_START = "[";
+	const NAME_SEPARATOR = "::";
+	const NAME_END = "]";
+	const START = "start";
+	const END = "end";
+	const READONLY = "readonly";
+	const EQUALS = "=";
+	const NEXT = ">";
+	const FORK = "|";
+	const JOIN = self::NEXT.self::FORK;
+	const TAG = "#";
+
 	/**
 	 * @var string
 	 */
@@ -156,14 +169,14 @@ final class Action
 	private $returnValues;
 
 	/**
-	 * @var bool
-	 */
-	private $join;
-
-	/**
 	 * @var array
 	 */
 	private $dimensions;
+
+	/**
+	 * @var int
+	 */
+	private $joinNumber;
 
 	/**
 	 * Constructor
@@ -303,11 +316,11 @@ final class Action
 	}
 
 	/**
-	 * Get join
+	 * Is join
 	 *
 	 * @return bool
 	 */
-	public function getJoin(): bool
+	public function isJoin(): bool
 	{
 		return $this->join;
 	}
@@ -417,18 +430,54 @@ final class Action
 	 */
 	public function parse(): void
 	{
-		$retval = '=(true|false|0|[1-9][0-9]*)';
+		$respecial = '[]|/\\(){}*+?';
+		$equals = addcslashes(self::EQUALS, $respecial);
+		$start = addcslashes(self::START, $respecial);
+		$end = addcslashes(self::END, $respecial);
+		$readonly = addcslashes(self::READONLY, $respecial);
+		$next = addcslashes(self::NEXT, $respecial);
+		$fork = addcslashes(self::FORK, $respecial);
+		$join = addcslashes(self::JOIN, $respecial);
+		$tag = addcslashes(self::TAG, $respecial);
+		$nameStart = addcslashes(self::NAME_START, $respecial);
+		$nameSep = addcslashes(self::NAME_SEPARATOR, $respecial);
+		$nameEnd = addcslashes(self::NAME_END, $respecial);
+		$retval = 'true|false|0|[1-9][0-9]*';
 		$classname = '[A-Za-z\\\\_][A-Za-z0-9\\\\_]+';
 		$name = '[A-Za-z_][A-Za-z0-9_]+';
-		$func = "(?:$classname::)?$name";
-		$start = 'start';
-		$end = 'end';
-		$readonly = 'readonly';
-		$join = '>\|';
-		$fork = '\|<';
-		$next = '>';
+		$func = "(?:$classname$nameSep)?$name";
 		$e = '(?=\s|$)'; // end of token
 		$val = '\S*';
+
+		$spacerule = "/^\s+/";
+		$namerule = "/^$nameStart($classname)$nameSep($name)$nameEnd/";
+		$namecapture = function(&$value, $matches){
+			$value->className = $matches[1];
+			$value->name = $matches[2];
+		};
+		$nextrule = "/^$next($func)$e/";
+		$nextcapture = function(&$value, $matches){
+			$value = $this->parseNextAction($matches[1]);
+		};
+		$forkrule = "/^$next$func($fork$func)+$e/";
+		$forkcapture = function(&$value, $matches){
+			$value = array_map([$this, "parseNextAction"], explode(self::FORK, ltrim($matches[0], self::NEXT)));
+		};
+		$endrule = "/^$end$e/";
+		$endcapture = function(&$value, $matches){
+			$value = false;
+		};
+		$startrule = "/^$start$e/";
+		$readonlyrule = "/^$readonly$e/";
+		$joinrule = "/^$join$e/";
+		$equalsrule = "/^$equals($retval)$e/";
+		$equalscapture = function(&$value, $matches){
+			$value = $matches[1];
+		};
+		$dimensionrule = "/^$tag($name)$equals($val)$e/";
+		$dimensioncapture = function(&$value, $matches){
+			$value[$matches[1]] = $matches[2];
+		};
 
 		$this->done = "";
 		$this->start = false;
@@ -441,58 +490,57 @@ final class Action
 
 		while (strlen($this->text) > 0) {
 			if ($returnValue !== null) {
-				if (preg_match("/^\s+/", $this->text, $matches)) {
+				if (preg_match($spacerule, $this->text, $matches)) {
 					// nothing to do
-				} elseif (preg_match("/^$next($func)$e/", $this->text, $matches)) {
-					$this->next->$returnValue = $this->parseNextAction($matches[1]);
+				} elseif (preg_match($nextrule, $this->text, $matches)) {
+					$nextcapture($this->next->$returnValue, $matches);
 					$returnValue = null;
-				} elseif (preg_match("/^$fork( $func)+$e/", $this->text, $matches)) {
-					$this->next->$returnValue = array_map([$this, "parseNextAction"], explode(" ", ltrim($matches[0], "$fork ")));
+				} elseif (preg_match($forkrule, $this->text, $matches)) {
+					$forkcapture($this->next->$returnValue, $matches);
 					$returnValue = null;
-				} elseif (preg_match("/^$end$e/", $this->text, $matches)) {
-					$this->next->$returnValue = false;
+				} elseif (preg_match($endrule, $this->text, $matches)) {
+					$endcapture($this->next->$returnValue, $matches);
 					$returnValue = null;
 				} else {
 					throw $this->parseError("Parse error");
 				}
 			} else {
-				if (preg_match("/^\s+/", $this->text, $matches)) {
+				if (preg_match($spacerule, $this->text, $matches)) {
 					// nothing to do
-				} elseif (preg_match("/^$start$e/", $this->text, $matches)) {
+				} elseif (preg_match($startrule, $this->text, $matches)) {
 					if ($this->start === true) {
-						throw $this->parseError("Token '$start' is only expected once.");
+						throw $this->parseError("Token '".self::START."' is only expected once.");
 					}
 					$this->start = true;
-				} elseif (preg_match("/^$readonly$e/", $this->text, $matches)) {
+				} elseif (preg_match($readonlyrule, $this->text, $matches)) {
 					if ($this->readonly === true) {
-						throw $this->parseError("Token '$readonly' is only expected once.");
+						throw $this->parseError("Token '".self::READONLY."' is only expected once.");
 					}
 					$this->readonly = true;
-				} elseif (preg_match("/^$join$e/", $this->text, $matches)) {
+				} elseif (preg_match($joinrule, $this->text, $matches)) {
 					if ($this->join === true) {
-						throw $this->parseError("Token '$join' is only expected once.");
+						throw $this->parseError("Token '".self::JOIN."' is only expected once.");
 					}
 					$this->join = true;
-				} elseif (preg_match("/^$retval$e/", $this->text, $matches)) {
+				} elseif (preg_match($equalsrule, $this->text, $matches)) {
 					$this->turnOnReturnValues();
-					$returnValue = $matches[1];
-				} elseif (preg_match("/^$next($func)$e/", $this->text, $matches)) {
+					$equalscapture($returnValue, $matches);
+				} elseif (preg_match($nextrule, $this->text, $matches)) {
 					$this->turnOffReturnValues();
-					$this->next = $this->parseNextAction($matches[1]);
-				} elseif (preg_match("/^$fork( $func)+$e/", $this->text, $matches)) {
+					$nextcapture($this->next, $matches);
+				} elseif (preg_match($forkrule, $this->text, $matches)) {
 					$this->turnOffReturnValues();
-					$this->next = array_map([$this, "parseNextAction"], explode(" ", ltrim($matches[0], "$fork ")));
-				} elseif (preg_match("/^$end$e/", $this->text, $matches)) {
+					$forkcapture($this->next, $matches);
+				} elseif (preg_match($endrule, $this->text, $matches)) {
 					$this->turnOffReturnValues();
-					$this->next = false;
-				} elseif (preg_match("/^#($name)=($val)$e/", $this->text, $matches)) {
-					$this->dimensions[$matches[1]] = $matches[2];
-				} elseif (preg_match("/^\[($classname)::($name)\]/", $this->text, $matches)) {
+					$endcapture($this->next, $matches);
+				} elseif (preg_match($dimensionrule, $this->text, $matches)) {
+					$dimensioncapture($this->dimensions, $matches);
+				} elseif (preg_match($namerule, $this->text, $matches)) {
 					if (strlen($this->done) !== 0) {
 						throw $this->parseError("Action name must be at the start of the text.");
 					}
-					$this->className = $matches[1];
-					$this->name = $matches[2];
+					$namecapture($this, $matches);
 					$this->constructKey();
 				} else {
 					throw $this->parseError("Parse error");
@@ -502,7 +550,7 @@ final class Action
 			$this->text = substr($this->text, strlen($matches[0]));
 		}
 		if ($this->returnValues === true) {
-			if (count($this->next) < 2) {
+			if (count(get_object_vars($this->next)) < 2) {
 				throw new \LogicException("At least two next expressions are required when using return values.");
 			} else {
 				$trueValue = false;
@@ -518,7 +566,7 @@ final class Action
 				if ($trueValue xor $falseValue) {
 					throw new \LogicException("When using boolean return values, you must declare a next expression for both true and false.");
 				}
-				if ($trueValue and count($this->next) > 2) {
+				if ($trueValue and count(get_object_vars($this->next)) > 2) {
 					throw new \LogicException("When using boolean return values, only two next expressions are allowed.");
 				}
 			}
@@ -529,8 +577,8 @@ final class Action
 
 	private function parseNextAction(string $nextAction)
 	{
-		if (strpos($nextAction, "::") === false) {
-			$nextAction = "{$this->className}::$nextAction";
+		if (strpos($nextAction, self::NAME_SEPARATOR) === false) {
+			$nextAction = $this->className.self::NAME_SEPARATOR.$nextAction;
 		}
 		return $nextAction;
 	}
@@ -568,39 +616,39 @@ final class Action
 	{
 		$text = "";
 		if ($this->className && $this->name) {
-			$text.= "[{$this->className}::{$this->name}] ";
+			$text.= self::NAME_START.$this->className.self::NAME_SEPARATOR.$this->name.self::NAME_END." ";
 		}
 		if ($this->start) {
-			$text.= "start ";
+			$text.= self::START." ";
 		}
 		if ($this->readonly) {
-			$text.= "readonly ";
+			$text.= self::READONLY." ";
 		}
 		if ($this->join) {
-			$text.= ">| ";
+			$text.= self::JOIN." ";
 		}
 		if ($this->returnValues) {
 			foreach ($this->next as $returnValue => $next) {
-				$text.= "={$returnValue} ";
+				$text.= self::EQUALS.$returnValue." ";
 				if ($next === false) {
-					$text.= "end ";
+					$text.= self::END." ";
 				} elseif (is_array($next)) {
-					$text.= "|< ".implode(" ", $next)." ";
+					$text.= self::NEXT.implode(self::FORK, $next)." ";
 				} elseif (is_string($next)) {
-					$text.= ">$next ";
+					$text.= self::NEXT.$next." ";
 				}
 			}
 		} else {
 			if ($this->next === false) {
-				$text.= "end ";
+				$text.= self::END." ";
 			} elseif (is_array($this->next)) {
-				$text.= "|< ".implode(" ", $this->next);
+				$text.= self::NEXT.implode(self::FORK, $this->next)." ";
 			} elseif (is_string($this->next)) {
-				$text.= ">{$this->next}";
+				$text.= self::NEXT.$this->next." ";
 			}
 		}
 		foreach ($this->dimension as $key => $value) {
-			$text.= "#$key=$value ";
+			$text.= self::TAG.$key.self::EQUALS.$value." ";
 		}
 		return rtrim($text);
 	}
