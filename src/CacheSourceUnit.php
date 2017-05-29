@@ -3,9 +3,9 @@
 namespace Sturdy\Activity;
 
 /**
- * The unit interface as required by cache
+ * The source unit interface as required by cache
  */
-interface CacheUnit
+interface CacheSourceUnit
 {
 	/**
 	 * Get the name of the unit.

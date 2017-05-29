@@ -9,9 +9,9 @@ use ReflectionClass;
 use Doctrine\Common\Annotations\Reader;
 
 /**
- * Unit factory
+ * SourceUnitFactory
  */
-final class UnitFactory
+final class SourceUnitFactory
 {
 	private $annotationReader;
 
@@ -27,14 +27,14 @@ final class UnitFactory
 	}
 
 	/**
-	 * Create a unit from source
+	 * Create a source unit from source code
 	 *
 	 * @param $unit  the unit to update
 	 * @param $dirs  the directories to scan for sources
 	 */
-	public function createUnitFromSource(string $unitName, string $dirs): Unit
+	public function createSourceUnit(string $unitName, string $dirs): Unit
 	{
-		$unit = new Unit($unitName);
+		$unit = new SourceUnit($unitName);
 		foreach ($this->iterateDirectory($dirs, ["php"]) as $file) {
 			try {
 				$source = file_get_contents($file);

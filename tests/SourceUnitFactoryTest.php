@@ -6,11 +6,11 @@ use Sturdy\Activity\UnitFactory;
 use PHPUnit\Framework\TestCase;
 use Doctrine\Common\Annotations\AnnotationReader;
 
-class UnitFactoryTest extends TestCase
+class SourceUnitFactoryTest extends TestCase
 {
 	public function testCreateUnit1()
 	{
-		$unit = (new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit1', __DIR__.'/TestUnit1/');
+		$unit = (new SourceUnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit1', __DIR__.'/TestUnit1/');
 		$this->assertEquals($unit->getName(), "TestUnit1", "unit name");
 		$this->assertEquals($unit->getClasses(), [TestUnit1\Activity1::class], "classes");
 		$this->assertEquals($unit->getDimensions(), [], "dimensions");
@@ -72,7 +72,7 @@ class UnitFactoryTest extends TestCase
 
 	public function testCreateUnit2()
 	{
-		$unit = (new UnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit2', __DIR__.'/TestUnit2/');
+		$unit = (new SourceUnitFactory(new AnnotationReader))->createUnitFromSource('TestUnit2', __DIR__.'/TestUnit2/');
 		$this->assertEquals($unit->getName(), "TestUnit2", "unit name");
 		$classes = $unit->getClasses();
 		$this->assertTrue(in_array(TestUnit2\Activity1::class, $classes));

@@ -4,7 +4,7 @@ namespace Tests\Sturdy\Activity;
 
 use Sturdy\Activity\{
 	Cache,
-	CacheUnit
+	CacheSourceUnit
 };
 use PHPUnit\Framework\TestCase;
 use Cache\Adapter\PHPArray\ArrayCachePool;
@@ -22,7 +22,7 @@ class CacheTest extends TestCase
 		$prophet = new Prophet;
 
 		$unit = $prophet->prophesize();
-		$unit->willImplement(CacheUnit::class);
+		$unit->willImplement(CacheSourceUnit::class);
 		$unit->getName()->willReturn('testunit');
 		$unit->getDimensions()->willReturn(["dim1", "dim2", "dim3"]);
 		$unit->getActivities()->willReturn([(object)["const"=>false,"dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);

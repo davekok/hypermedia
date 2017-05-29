@@ -159,6 +159,11 @@ final class Action
 	private $readonly;
 
 	/**
+	 * @var bool
+	 */
+	private $join;
+
+	/**
 	 * @var false|string|array
 	 */
 	private $next;
@@ -174,20 +179,29 @@ final class Action
 	private $dimensions;
 
 	/**
-	 * @var int
-	 */
-	private $joinNumber;
-
-	/**
 	 * Constructor
 	 *
-	 * @param array $values  values as injected by annotation reader
+	 * @param array $values  the values as injected by annotation reader
 	 */
 	public function __construct(array $values = null)
 	{
 		if (isset($values["value"])) {
 			$this->text = $values["value"];
 		}
+	}
+
+	/**
+	 * Create a new instance of action based on the given text.
+	 *
+	 * @param  string $text  the text describing the action
+	 * @return self  an instance of this class
+	 */
+	public static function createFromText(string $text): self
+	{
+		$inst = new self;
+		$inst->text = $text;
+		$inst->parse();
+		return $inst;
 	}
 
 	/**
@@ -383,11 +397,33 @@ final class Action
 	/**
 	 * Get dimensions
 	 *
-	 * @return a array of Dimension objects
+	 * @return a array of dimensions
 	 */
 	public function getDimensions(): array
 	{
 		return $this->dimensions;
+	}
+
+	/**
+	 * Has dimension
+	 *
+	 * @param  string $key  the dimension key
+	 * @return bool
+	 */
+	public function hasDimension(string $key): bool
+	{
+		return isset($this->dimensions[$key]);
+	}
+
+	/**
+	 * Get dimension
+	 *
+	 * @param  string $key  the dimension key
+	 * @return string
+	 */
+	public function getDimension(string $key): ?string
+	{
+		return $this->dimensions[$key]??null;
 	}
 
 	/**
@@ -617,6 +653,8 @@ final class Action
 		$text = "";
 		if ($this->className && $this->name) {
 			$text.= self::NAME_START.$this->className.self::NAME_SEPARATOR.$this->name.self::NAME_END." ";
+		} elseif ($this->className === null && $this->name === "start") {
+			$text.= self::NAME_START.$this->name.self::NAME_END." ";
 		}
 		if ($this->start) {
 			$text.= self::START." ";
@@ -647,7 +685,7 @@ final class Action
 				$text.= self::NEXT.$this->next." ";
 			}
 		}
-		foreach ($this->dimension as $key => $value) {
+		foreach ($this->dimensions as $key => $value) {
 			$text.= self::TAG.$key.self::EQUALS.$value." ";
 		}
 		return rtrim($text);

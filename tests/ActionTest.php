@@ -166,4 +166,10 @@ class ActionTest extends TestCase
 		$action->parse();
 		$this->assertEquals(["foo"=>"bar", "baz"=>"1"], $action->getDimensions());
 	}
+
+	public function testToString()
+	{
+		$action = Action::createFromText('[Foo::action1] >action2 #foo=bar #baz=1');
+		$this->assertEquals('[Foo::action1] >Foo::action2 #foo=bar #baz=1', "$action");
+	}
 }

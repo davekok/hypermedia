@@ -35,11 +35,11 @@ final class Cache implements ActivityCache
 	}
 
 	/**
-	 * Update unit in cache.
+	 * Update source unit in cache.
 	 *
-	 * @param $unit  the unit to cache
+	 * @param $unit  the source unit to cache
 	 */
-	public function updateUnit(CacheUnit $unit): void
+	public function updateUnit(CacheSourceUnit $unit): void
 	{
 		$name = $unit->getName();
 
