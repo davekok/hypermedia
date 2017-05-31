@@ -2,19 +2,19 @@
 
 namespace Tests\Sturdy\Activity\TestUnit2;
 
-use Sturdy\Activity\Annotation\Action;
+use Sturdy\Activity\Action;
 
 class Activity2
 {
 	/**
-	 * @Action("start const =>action2")
+	 * @Action("start readonly >action2")
 	 */
 	public function action1()
 	{
 	}
 
 	/**
-	 * @Action("const")
+	 * @Action("readonly")
 	 */
 	public function action2()
 	{

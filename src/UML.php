@@ -95,19 +95,23 @@ final class UML
 		$lastAction = $action;
 		while (array_key_exists($action, $actions)) {
 			$next = $actions[$action];
-			if (empty($next)) {
+			if ($next === false) {
 				$branch[] = $action;
 				end($branch); $pastActions[$action] = key($branch);
-				$branch[] = "stop";
-				try {
-					yield "stop";
-				} catch (Exception $e) {} // suppress exception
-				break;
+				$action = $next;
 			} elseif (is_string($next)) {
 				$branch[] = $action;
 				end($branch); $pastActions[$action] = key($branch);
 				$action = $next;
 			} elseif (is_array($next)) {
+				$branch[] = $action;
+				end($branch); $pastActions[$action] = key($branch);
+				$line = new stdClass;
+				$line->type = "fork";
+				[$action, $line->branches] = $this->parallel($next, $actions);
+				$branch[] = $line;
+			} elseif (is_object($next)) {
+				$next = get_object_vars($next);
 				switch (count($next)) {
 					case 2:
 						// check if it is a loop
@@ -123,6 +127,7 @@ final class UML
 								$line->type = "repeat";
 								$line->isval = $retval;
 								$line->action = $action;
+								// remove portial from $branch and assign to $line->branch, replace that portion with $tial
 								$line->branch = array_splice($branch, $pastActions[$altaction], count($branch), $tail);
 								return $branch;
 							}
@@ -130,47 +135,7 @@ final class UML
 					default:
 						$branch[] = $action;
 						end($branch); $pastActions[$action] = key($branch);
-						// create compilers
-						$compilers = [];
-						foreach ($next as $retval => $altaction) {
-							$compilers[$retval] = $this->compile($actions, $altaction);
-						}
-						// run compilers in parallel until an action is found that is executed by all branches
-						$alts = [];
-						$branches = [];
-						$method = 'rewind';
-						while (1) {
-							foreach ($compilers as $retval => $compiler) {
-								if (!$compiler->valid()) continue;
-								$compiler->$method();
-								if (!$compiler->valid()) { // compiler is done
-									$branches[$retval] = $compiler->getReturn();
-									continue;
-								}
-								$action = $compiler->current();
-								$alts[$action][$retval] = $retval;
-								if (count($alts[$action]) === count($next)) {
-									unset($alts);
-									// end of alternatives found
-									foreach ($compilers as $retval => $compiler) {
-										try {
-											$compiler->throw(new \Exception("interrupt"));
-										} catch (\Exception $e) {}
-										while ($compiler->valid()) $compiler->next();
-										$branches[$retval] = $compiler->getReturn();
-									}
-									foreach ($branches as $retval => $altbranch) {
-										$ix = array_search($action, $altbranch);
-										if ($ix !== false) {
-											$branches[$retval] = array_slice($altbranch, 0, $ix);
-										}
-									}
-									break 2;
-								}
-							}
-							$method = 'next';
-						}
-						$branch[] = $branches;
+						[$action, $branch[]] = $this->parallel($next, $actions);
 				}
 			} else {
 				throw new Exception("Invalid diagram");
@@ -179,14 +144,74 @@ final class UML
 			try {
 				yield $action;
 			} catch (Exception $e) {
-				break;
+				return $branch;
 			}
-			if ($lastAction === $action) {
+			if ($action === $lastAction) {
 				throw new Exception("next failed");
+			} elseif ($action === false) {
+				$branch[] = "stop";
+				try {
+					yield "stop";
+				} catch (Exception $e) {} // suppress exception
+				return $branch;
+			} else {
+				$lastAction = $action;
 			}
-			$lastAction = $action;
 		}
-		return $branch;
+		throw new Exception("end not found");
+	}
+
+	/**
+	 * Run multiple branches in parallel until common action is found, which is considered the join point.
+	 * This is used for both alternative branches (if) and concurrent branches (fork).
+	 *
+	 * @param  array $next     the actions that kick of the parallel branches
+	 * @param  array $actions  the actions to work from
+	 * @return array           a tuple containing the join action and the branches
+	 */
+	private function parallel(array $next, array $actions): array
+	{
+		// create compilers
+		$compilers = [];
+		foreach ($next as $key => $paraction) {
+			$compilers[$key] = $this->compile($actions, $paraction);
+		}
+		// run compilers in parallel until an action is found that is executed by all parallel branches
+		$parallel = [];
+		$branches = [];
+		$method = 'rewind';
+		while (1) {
+			foreach ($compilers as $key => $compiler) {
+				if (!$compiler->valid()) continue;
+				$compiler->$method();
+				if (!$compiler->valid()) { // compiler is done
+					$branches[$key] = $compiler->getReturn();
+					continue;
+				}
+				$action = $compiler->current();
+				$parallel[$action][$key] = $key;
+				if (count($parallel[$action]) === count($next)) {
+					unset($parallel);
+					// end of parallels found
+					foreach ($compilers as $key => $compiler) {
+						try {
+							$compiler->throw(new \Exception("interrupt"));
+						} catch (\Exception $e) {}
+						while ($compiler->valid()) $compiler->next();
+						$branches[$key] = $compiler->getReturn();
+					}
+					foreach ($branches as $key => &$parbranch) {
+						$key = array_search($action, $parbranch);
+						if ($key !== false) {
+							$parbranch = array_slice($parbranch, 0, $key);
+						}
+					}
+					break 2;
+				}
+			}
+			$method = 'next';
+		}
+		return [$action, $branches];
 	}
 
 	/**
@@ -232,6 +257,15 @@ final class UML
 					$uml.= $this->writeBranch($line->branch, "$indent\t");
 					$uml.= $indent."\t".$this->formatAction($line->action);
 					$uml.= $indent."repeat while (r = {$line->isval})\n";
+					break;
+				case "fork":
+					$again = "";
+					foreach ($line->branches as $branch) {
+						$uml.= $indent."fork$again\n";
+						$uml.= $this->writeBranch($branch, "$indent\t");
+						$again = " again";
+					}
+					$uml.= $indent."end fork\n";
 					break;
 			}
 		}

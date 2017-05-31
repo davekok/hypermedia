@@ -58,9 +58,9 @@ final class Activity
 			$this->journal = new class($unit, $dimensions) implements Journal {
 				private $unit;
 				private $dimensions;
-				private $state;
+				private $states;
 				private $return;
-				private $errorMessage;
+				private $errorMessages;
 				private $currentActions;
 				private $running;
 
@@ -69,6 +69,9 @@ final class Activity
 					$this->unit = $unit;
 					$this->dimensions = $dimensions;
 					$this->currentActions = [];
+					$this->running = [];
+					$this->states = [];
+					$this->errorMessages = [];
 				}
 
 				public function getUnit(): ?string
@@ -81,16 +84,16 @@ final class Activity
 					return $this->dimensions;
 				}
 
-				public function setState(stdClass $state): Journal
+				public function setState(int $branch, stdClass $state): Journal
 				{
-					$this->state = $state;
+					$this->states[$branch] = $state;
 
 					return $this;
 				}
 
-				public function getState(): ?stdClass
+				public function getState(int $branch): ?stdClass
 				{
-					return $this->state;
+					return $this->states[$branch];
 				}
 
 				public function setReturn($return): Journal
@@ -103,49 +106,49 @@ final class Activity
 					return $this->return;
 				}
 
-				public function setErrorMessage(?string $errorMessage): Journal
+				public function setErrorMessage(int $branch, ?string $errorMessage): Journal
 				{
-					$this->errorMessage = $errorMessage;
+					$this->errorMessages[$branch] = $errorMessage;
 
 					return $this;
 				}
 
-				public function getErrorMessage(): ?string
+				public function getErrorMessage(int $branch): ?string
 				{
-					return $this->errorMessage;
+					return $this->errorMessages[$branch];
 				}
 
-				public function setCurrentAction(string $currentAction, int $flow): Journal
+				public function setCurrentAction(int $branch, string $currentAction): Journal
 				{
-					$this->currentActions[$flow] = $currentAction;
+					$this->currentActions[$branch] = $currentAction;
 
 					return $this;
 				}
 
-				public function getCurrentAction(int $flow): string
+				public function getCurrentAction(int $branch): string
 				{
-					return $this->currentActions[$flow];
+					return $this->currentActions[$branch];
 				}
 
-				public function setRunning(bool $running): Journal
+				public function setRunning(int $branch, bool $running): Journal
 				{
-					$this->running = $running;
+					$this->running[$branch] = $running;
 
 					return $this;
 				}
 
-				public function getRunning(): bool
+				public function getRunning(int $branch): bool
 				{
-					return $this->running;
+					return $this->running[$branch];
 				}
 			};
 		}
 
-		$this->journal->setCurrentAction("start");
-		$this->journal->setRunning(false);
+		$this->journal->setCurrentAction(0, "start");
+		$this->journal->setRunning(0, false);
 
 		$this->state = $this->stateFactory->createState($unit, $dimensions);
-		$this->journal->setState($this->state);
+		$this->journal->setState(0, $this->state);
 
 		return $this;
 	}
@@ -160,7 +163,7 @@ final class Activity
 	public function loadJournal(int $journalId): self
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
-		$this->state = $this->journal->getState();
+		$this->state = $this->journal->getState(0);
 		$this->loadActivityFromCache($this->journal->getUnit(), $this->journal->getDimensions());
 		return $this;
 	}
@@ -257,17 +260,17 @@ final class Activity
 	/**
 	 * Is activity running?
 	 */
-	public function isRunning(): bool
+	public function isRunning(int $branch): bool
 	{
-		return $this->journal->getRunning();
+		return $this->journal->getRunning($branch);
 	}
 
 	/**
 	 * Pauses the activity until it is resumed.
 	 */
-	public function pause(): self
+	public function pause(int $branch): self
 	{
-		$this->journal->setRunning(false);
+		$this->journal->setRunning($branch, false);
 
 		return $this;
 	}
@@ -275,9 +278,9 @@ final class Activity
 	/**
 	 * Resume the activity.
 	 */
-	public function resume(): self
+	public function resume(int $branch): self
 	{
-		$this->journal->setRunning(true);
+		$this->journal->setRunning($branch, true);
 
 		return $this;
 	}
@@ -285,17 +288,17 @@ final class Activity
 	/**
 	 * Get the error message
 	 */
-	public function getErrorMessage(): ?string
+	public function getErrorMessage(int $branch): ?string
 	{
-		return $this->journal->getErrorMessage();
+		return $this->journal->getErrorMessage($branch);
 	}
 
 	/**
 	 * Get current action
 	 */
-	public function getCurrentAction(): string
+	public function getCurrentAction(int $branch): string
 	{
-		return $this->journal->getCurrentAction();
+		return $this->journal->getCurrentAction($branch);
 	}
 
 	/**
@@ -304,7 +307,7 @@ final class Activity
 	public function saveJournal(): void
 	{
 		if (!$this->readonly) {
-			$this->journal->setState($this->state);
+			$this->journal->setState(0, $this->state);
 			$this->journalRepository->saveJournal($this->journal);
 		}
 	}
@@ -349,26 +352,26 @@ final class Activity
 	public function coroutine(): Generator
 	{
 		try {
-			$action = $this->journal->getCurrentAction();
+			$action = $this->journal->getCurrentAction(0);
 			switch ($action) {
 				case "start":
 					if (!array_key_exists($action, $this->actions)) {
 						throw new Exception("Start action does not exist.");
 					}
 					$action = $this->actions["start"];
-					$this->journal->setCurrentAction($action);
-					$this->journal->setRunning(true);
+					$this->journal->setCurrentAction(0, $action);
+					$this->journal->setRunning(0, true);
 					break;
 				case "stop":
 				case "exception":
-					if ($this->journal->getRunning()) {
-						$this->journal->setRunning(false);
+					if ($this->journal->getRunning(0)) {
+						$this->journal->setRunning(0, false);
 						$this->saveJournal();
 					}
 					return;
 			}
 
-			while ($this->journal->getRunning()) {
+			while ($this->journal->getRunning(0)) {
 
 				if (!array_key_exists($action, $this->actions)) {
 					throw new Exception("Action '$action' does not exist.");
@@ -395,30 +398,30 @@ final class Activity
 				if ($ret === null || is_bool($ret) || is_int($ret)) {
 					$nextValue = $ret;
 				} elseif (is_object($ret)) {
-					$nextValue = $ret->next??$ret->getNext();
+					$nextValue = $ret->next ?? $ret->getNext();
 				} else {
 					throw new Exception("Unexpected return value for $action: ".var_export($ret,true));
 				}
 
 				$next = $this->actions[$action];
-				if ($next === null) {
+				if ($next === false) {
 					if ($nextValue !== null) {
 						throw new Exception("Expected no next value.");
 					}
-					$this->journal->setCurrentAction("stop");
-					$this->journal->setRunning(false);
+					$this->journal->setCurrentAction(0, "stop");
+					$this->journal->setRunning(0, false);
 					$this->saveJournal();
 					return;
 				} elseif (is_string($next)) {
 					if ($nextValue !== null) {
 						throw new Exception("Expected no next value.");
 					}
-					$this->journal->setCurrentAction($action = $next);
+					$this->journal->setCurrentAction(0, $action = $next);
 					$this->saveJournal();
 				} else if (is_array($next)) {
 					foreach ($next as $nv => $na) {
 						if (($nv === "true" && $ret === true) || ($nv === "false" && $ret === false) || (((int)$nv) === $ret)) {
-							$this->journal->setCurrentAction($action = $na);
+							$this->journal->setCurrentAction(0, $action = $na);
 							$this->saveJournal();
 							continue 2;
 						}
@@ -427,9 +430,9 @@ final class Activity
 				}
 			}
 		} catch (Throwable $e) {
-			$this->journal->setCurrentAction("exception");
-			$this->journal->setErrorMessage($e->getMessage());
-			$this->journal->setRunning(false);
+			$this->journal->setCurrentAction(0, "exception");
+			$this->journal->setErrorMessage(0, $e->getMessage());
+			$this->journal->setRunning(0, false);
 			$this->saveJournal();
 			throw $e;
 		}

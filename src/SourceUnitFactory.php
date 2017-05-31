@@ -22,7 +22,7 @@ final class SourceUnitFactory
 	 */
 	public function __construct(Reader $annotationReader)
 	{
-		class_exists('Sturdy\Activity\Annotation\Action'); // make sure annotation class is loaded
+		class_exists('Sturdy\Activity\Action'); // make sure annotation class is loaded
 		$this->annotationReader = $annotationReader;
 	}
 
@@ -32,7 +32,7 @@ final class SourceUnitFactory
 	 * @param $unit  the unit to update
 	 * @param $dirs  the directories to scan for sources
 	 */
-	public function createSourceUnit(string $unitName, string $dirs): Unit
+	public function createSourceUnit(string $unitName, string $dirs): SourceUnit
 	{
 		$unit = new SourceUnit($unitName);
 		foreach ($this->iterateDirectory($dirs, ["php"]) as $file) {

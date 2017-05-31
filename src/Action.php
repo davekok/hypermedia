@@ -486,10 +486,14 @@ final class Action
 		$val = '\S*';
 
 		$spacerule = "/^\s+/";
-		$namerule = "/^$nameStart($classname)$nameSep($name)$nameEnd/";
+		$namerule = "/^$nameStart($classname$nameSep$name|start)$nameEnd/";
 		$namecapture = function(&$value, $matches){
-			$value->className = $matches[1];
-			$value->name = $matches[2];
+			if (strpos($matches[1], self::NAME_SEPARATOR) !== false) {
+				[$value->className, $value->name] = explode(self::NAME_SEPARATOR, $matches[1]);
+			} else {
+				$value->className = null;
+				$value->name = $matches[1];
+			}
 		};
 		$nextrule = "/^$next($func)$e/";
 		$nextcapture = function(&$value, $matches){

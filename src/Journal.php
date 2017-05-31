@@ -26,12 +26,12 @@ interface Journal
 	/**
 	 * Set the current state of this activity.
 	 */
-	public function setState(stdClass $state): Journal;
+	public function setState(int $branch, stdClass $state): Journal;
 
 	/**
 	 * Get the current state for this activity.
 	 */
-	public function getState(): ?stdClass;
+	public function getState(int $branch): ?stdClass;
 
 	/**
 	 * Set return
@@ -46,49 +46,51 @@ interface Journal
 	/**
 	 * Set error message.
 	 */
-	public function setErrorMessage(?string $errorMessage): Journal;
+	public function setErrorMessage(int $branch, ?string $errorMessage): Journal;
 
 	/**
 	 * Get error message.
 	 */
-	public function getErrorMessage(): ?string;
+	public function getErrorMessage(int $branch): ?string;
 
 	/**
 	 * Set current action.
 	 *
 	 * The predefined actions "start", "stop", "exception" are used to mark
 	 * when an activity has started, has stopped or when an exception has
-	 * occured.
+	 * occurred.
 	 *
-	 * An activity may fork into concurrent flows. The flow number 0 is the
-	 * default flow. However when setting the current action. The flow number
-	 * indicates for which flow the action is set.
+	 * An activity may fork into concurrent branches. The branch number 0 is the
+	 * default branch. The branch number indicates for which branch the action is
+	 * set.
 	 *
+	 * @param $branch  the branch number
 	 * @param $action  the action to execute
-	 * @param $flow    the flow number
 	 */
-	public function setCurrentAction(string $action, int $flow): Journal;
+	public function setCurrentAction(int $branch, string $action): Journal;
 
 	/**
 	 * Get current action.
 	 *
-	 * @param $flow    the flow number
+	 * @param $branch  the branch number
 	 * @return get current action
 	 */
-	public function getCurrentAction(int $flow): string;
+	public function getCurrentAction(int $branch): string;
 
 	/**
-	 * Set whether the activity is running.
+	 * Set whether a concurrent branch is running.
 	 *
-	 * @param bool $running
+	 * @param int  $branch   the branch number
+	 * @param bool $running  true is running, false is not running
 	 * @return self
 	 */
-	public function setRunning(bool $running): Journal;
+	public function setRunning(int $branch, bool $running): Journal;
 
 	/**
-	 * Whether the activity is running (not paused).
+	 * Whether the activity is running.
 	 *
+	 * @param int  $branch   the branch number
 	 * @return bool
 	 */
-	public function getRunning(): bool;
+	public function getRunning(int $branch): bool;
 }

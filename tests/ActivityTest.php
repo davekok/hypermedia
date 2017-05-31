@@ -28,7 +28,7 @@ class ActivityTest extends TestCase
 		$cache->getActivity('TestUnit1', [])
 			->shouldBeCalledTimes(1)
 			->willReturn([
-				"const"=>false,
+				"readonly"=>false,
 				"actions"=>[
 					"start"=>TestUnit1\Activity1::class."::action1",
 					TestUnit1\Activity1::class."::action1"=>TestUnit1\Activity1::class."::action2",
@@ -48,7 +48,7 @@ class ActivityTest extends TestCase
 						"true"=>TestUnit1\Activity1::class."::action8",
 						"false"=>TestUnit1\Activity1::class."::action10",
 					],
-					TestUnit1\Activity1::class."::action10"=>null,
+					TestUnit1\Activity1::class."::action10"=>false,
 				]
 			]);
 
@@ -56,11 +56,11 @@ class ActivityTest extends TestCase
 		$journal->willImplement(Journal::class);
 		$journal->getUnit()->willReturn(null);
 		$journal->getDimensions()->willReturn(null);
-		$journal->getState()->willReturn(null);
-		$journal->setState(Argument::type(\stdClass::class))
+		$journal->getState(Argument::type("int"))->willReturn(null);
+		$journal->setState(Argument::type("int"), Argument::type(\stdClass::class))
 			->shouldBeCalled()
 			->will(function($args, $self)use($journal) {
-				$journal->getState()->willReturn($args[0]);
+				$journal->getState($args[0])->willReturn($args[1]);
 				return $self;
 			});
 		$journal->getReturn()->willReturn(null);
@@ -83,10 +83,10 @@ class ActivityTest extends TestCase
 			"stop",
 		];
 		$currentAction = null;
-		$journal->getCurrentAction()->willReturn($currentAction);
-		$journal->setCurrentAction(Argument::type("string"))
+		$journal->getCurrentAction(Argument::type("int"))->willReturn($currentAction);
+		$journal->setCurrentAction(Argument::type("int"), Argument::type("string"))
 			->will(function($args, $self)use($journal,$actions,&$currentAction) {
-				[$action] = $args;
+				[$branch, $action] = $args;
 				if ($currentAction !== null) {
 					$ix = array_search($currentAction,$actions);
 					$nextAction = $actions[$ix+1];
@@ -98,20 +98,22 @@ class ActivityTest extends TestCase
 						throw new \Exception("expected start got $action");
 					}
 				}
-				$journal->getCurrentAction()->willReturn($action);
+				$journal->getCurrentAction($branch)->willReturn($action);
 				$currentAction = $action;
 				return $self;
 			});
-		$journal->getErrorMessage()->willReturn(null);
-		$journal->setErrorMessage(Argument::type('string'))
+		$journal->getErrorMessage(Argument::type("int"))->willReturn(null);
+		$journal->setErrorMessage(Argument::type("int"), Argument::type('string'))
 			->will(function($args, $self)use($journal) {
-				$journal->getErrorMessage()->willReturn($args[0]);
+				[$branch, $errorMessage] = $args;
+				$journal->getErrorMessage($branch)->willReturn($errorMessage);
 				return $self;
 			});
-		$journal->getRunning()->willReturn(false);
-		$journal->setRunning(Argument::type('bool'))
+		$journal->getRunning(Argument::type("int"))->willReturn(false);
+		$journal->setRunning(Argument::type("int"), Argument::type('bool'))
 			->will(function($args, $self)use($journal) {
-				$journal->getRunning()->willReturn($args[0]);
+				[$branch, $running] = $args;
+				$journal->getRunning($branch)->willReturn($running);
 				return $self;
 			});
 
@@ -165,11 +167,11 @@ class ActivityTest extends TestCase
 		$activity->createJournal('TestUnit1');
 		$activity->run();
 		$prophet->checkPredictions();
-		$this->assertEquals($activity->getUnit(), 'TestUnit1');
-		$this->assertEquals($activity->getDimensions(), []);
-		$this->assertFalse($activity->isRunning());
+		$this->assertEquals('TestUnit1', $activity->getUnit());
+		$this->assertEquals([], $activity->getDimensions());
+		$this->assertFalse($activity->isRunning(0));
 		$this->assertNull($activity->getReturn());
-		$this->assertNull($activity->getErrorMessage());
-		$this->assertEquals($activity->getCurrentAction(), "stop");
+		$this->assertNull($activity->getErrorMessage(0));
+		$this->assertEquals("stop", $activity->getCurrentAction(0));
 	}
 }
