@@ -5,6 +5,7 @@ namespace Sturdy\Activity;
 use Throwable;
 use Exception;
 use Generator;
+use stdClass;
 
 /**
  * The main class of the component.
@@ -79,7 +80,7 @@ final class Activity
 					return $this->unit;
 				}
 
-				public function getDimensions(): ?string
+				public function getDimensions(): ?array
 				{
 					return $this->dimensions;
 				}
@@ -87,7 +88,6 @@ final class Activity
 				public function setState(int $branch, stdClass $state): Journal
 				{
 					$this->states[$branch] = $state;
-
 					return $this;
 				}
 
@@ -99,6 +99,7 @@ final class Activity
 				public function setReturn($return): Journal
 				{
 					$this->return = $return;
+					return $this;
 				}
 
 				public function getReturn()
@@ -109,7 +110,6 @@ final class Activity
 				public function setErrorMessage(int $branch, ?string $errorMessage): Journal
 				{
 					$this->errorMessages[$branch] = $errorMessage;
-
 					return $this;
 				}
 
@@ -121,7 +121,6 @@ final class Activity
 				public function setCurrentAction(int $branch, string $currentAction): Journal
 				{
 					$this->currentActions[$branch] = $currentAction;
-
 					return $this;
 				}
 
@@ -133,7 +132,6 @@ final class Activity
 				public function setRunning(int $branch, bool $running): Journal
 				{
 					$this->running[$branch] = $running;
-
 					return $this;
 				}
 
