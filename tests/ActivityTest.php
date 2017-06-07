@@ -24,7 +24,6 @@ class ActivityTest extends TestCase
 
 		$cache = $prophet->prophesize();
 		$cache->willImplement(ActivityCache::class);
-		$cache->hasActivity('TestUnit1', [])->shouldBeCalledTimes(1)->willReturn(true);
 		$cache->getActivity('TestUnit1', [])
 			->shouldBeCalledTimes(1)
 			->willReturn([
@@ -162,9 +161,8 @@ class ActivityTest extends TestCase
 			$stateFactory->reveal(),
 			$instanceFactory->reveal());
 
-		$this->assertTrue($activity->hasActivity('TestUnit1', []));
-
-		$activity->createJournal('TestUnit1');
+		$activity->load('TestUnit1', []);
+		$activity->createJournal();
 		$activity->run();
 		$prophet->checkPredictions();
 		$this->assertEquals('TestUnit1', $activity->getUnit());

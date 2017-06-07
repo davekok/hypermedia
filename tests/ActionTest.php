@@ -24,10 +24,19 @@ class ActionTest extends TestCase
 		$this->assertEquals("Foo::action1", $action->getKey());
 	}
 
+	public function testSingle()
+	{
+		$action = new Action();
+		$action->setText("");
+		$action->parse();
+		$this->assertTrue($action->getStart());
+		$this->assertFalse($action->getNext());
+	}
+
 	public function testStart()
 	{
 		$action = new Action();
-		$action->setText("start");
+		$action->setText("start end");
 		$action->parse();
 		$this->assertTrue($action->getStart());
 	}
@@ -162,14 +171,14 @@ class ActionTest extends TestCase
 	public function testDimensions()
 	{
 		$action = new Action();
-		$action->setText('#foo=bar #baz=1');
+		$action->setText('#foo=bar #baz= #bas ');
 		$action->parse();
-		$this->assertEquals(["foo"=>"bar", "baz"=>"1"], $action->getDimensions());
+		$this->assertEquals(["foo"=>"bar", "baz"=>null, "bas"=>true], $action->getDimensions());
 	}
 
 	public function testToString()
 	{
-		$action = Action::createFromText('[Foo::action1] >action2 #foo=bar #baz=1');
-		$this->assertEquals('[Foo::action1] >Foo::action2 #foo=bar #baz=1', "$action");
+		$action = Action::createFromText('[Foo::action1] >action2 #foo=bar #baz= #bas');
+		$this->assertEquals('[Foo::action1] >Foo::action2 #foo=bar #baz= #bas', "$action");
 	}
 }

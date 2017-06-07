@@ -25,7 +25,8 @@ class CacheTest extends TestCase
 		$unit->willImplement(CacheSourceUnit::class);
 		$unit->getName()->willReturn('testunit');
 		$unit->getDimensions()->willReturn(["dim1", "dim2", "dim3"]);
-		$unit->getActivities()->willReturn([(object)["const"=>false,"dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);
+		$unit->getWildCardDimensions()->willReturn([]);
+		$unit->getActivities()->willReturn([(object)["readonly"=>false,"dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);
 
 		$cachepool = new ArrayCachePool;
 		$cache = new Cache($cachepool);
@@ -33,14 +34,11 @@ class CacheTest extends TestCase
 
 		$order = $cachepool->getItem("sturdy-activity|testunit.dimensions");
 		$this->assertTrue($order->isHit(), "dimensions order is not stored");
-		$this->assertEquals(json_decode($order->get()), ["dim1", "dim2", "dim3"]);
+		$this->assertEquals([["dim1", "dim2", "dim3"],[]], json_decode($order->get()));
 
 		$actions = $cachepool->getItem("sturdy-activity|testunit|".hash("sha256",json_encode(["dim1"=>1, "dim2"=>2, "dim3"=>3])));
 		$this->assertTrue($actions->isHit(), "actions are not stored");
-		$this->assertEquals(json_decode($actions->get(), true), ["const"=>false, "actions"=>$expectedActions]);
-
-		$this->assertTrue($cache->hasActivity("testunit", ["dim1"=>1, "dim2"=>2, "dim3"=>3]));
-		$this->assertFalse($cache->hasActivity("testunit", ["dim1"=>1, "dim2"=>2, "dim3"=>4]));
+		$this->assertEquals(["readonly"=>false, "actions"=>$expectedActions], json_decode($actions->get(), true));
 
 		$activity = $cache->getActivity("testunit", ["dim1"=>1, "dim2"=>2, "dim3"=>3]);
 		$this->assertTrue(is_array($activity));

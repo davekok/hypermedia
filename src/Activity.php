@@ -21,6 +21,8 @@ final class Activity
 	private $instanceFactory;
 
 	// state
+	private $unit;
+	private $dimensions;
 	private $readonly;
 	private $journal;
 	private $state;
@@ -42,18 +44,34 @@ final class Activity
 	}
 
 	/**
+	 * Load activity.
+	 *
+	 * @param string $unit        the unit to load the activity from
+	 * @param array  $dimensions  the dimensions to load the activity for
+	 * @return true if activity is loaded, false otherwise
+	 */
+	public function load(string $unit, array $dimensions): bool
+	{
+		$activity = $this->cache->getActivity($unit, $dimensions);
+		if ($activity === null) {
+			return false;
+		}
+		$this->unit = $unit;
+		$this->dimensions = $dimensions;
+		$this->readonly = $activity["readonly"];
+		$this->actions = $activity["actions"];
+		return true;
+	}
+
+	/**
 	 * Create a new journal for this activity.
 	 *
-	 * @param $unit        the unit name
-	 * @param $dimensions  the dimensions to use
 	 * @return self
 	 */
-	public function createJournal(string $unit, array $dimensions = []): self
+	public function createJournal(): self
 	{
-		$this->loadActivityFromCache($unit, $dimensions);
-
 		if (!$this->readonly) {
-			$this->journal = $this->journalRepository->createJournal($unit, $dimensions);
+			$this->journal = $this->journalRepository->createJournal($this->unit, $this->dimensions);
 		} else {
 			// use a dummy journal in case of readonly activity
 			$this->journal = new class($unit, $dimensions) implements Journal {
@@ -145,7 +163,7 @@ final class Activity
 		$this->journal->setCurrentAction(0, "start");
 		$this->journal->setRunning(0, false);
 
-		$this->state = $this->stateFactory->createState($unit, $dimensions);
+		$this->state = $this->stateFactory->createState($this->unit, $this->dimensions);
 		$this->journal->setState(0, $this->state);
 
 		return $this;
@@ -154,41 +172,22 @@ final class Activity
 	/**
 	 * Load a previously persisted journal to continue an activity.
 	 *
-	 * @param $unit        the unit name
-	 * @param $dimensions  the dimensions to use
+	 * @param int $journalId  the id of the journal to load
 	 * @return self
 	 */
 	public function loadJournal(int $journalId): self
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
 		$this->state = $this->journal->getState(0);
-		$this->loadActivityFromCache($this->journal->getUnit(), $this->journal->getDimensions());
+
+		if ($this->activity === null) {
+			if (!$this->load($this->journal->getUnit(), $this->journal->getDimensions())) {
+				throw new \Exception("Activity not found.");
+			}
+		} elseif ($this->unit !== $this->journal->getUnit() || $this->dimensions !== $this->journal->getDimensions()) {
+			throw new \Exception("The journal has been created for a different activity.");
+		}
 		return $this;
-	}
-
-	/**
-	 * Wether an activity is available.
-	 *
-	 * @param  $unit        the activity
-	 * @param  $dimensions  the dimensions
-	 * @return bool
-	 */
-	public function hasActivity($unit, $dimensions): bool
-	{
-		return $this->cache->hasActivity($unit, $dimensions);
-	}
-
-	/**
-	 * Load activity from cache.
-	 *
-	 * @param  string $unit       the unit to load the activity from
-	 * @param  array  $dimensions the dimensions to load the activity for
-	 */
-	private function loadActivityFromCache(string $unit, array $dimensions): void
-	{
-		$activity = $this->cache->getActivity($unit, $dimensions);
-		$this->readonly = $activity["readonly"];
-		$this->actions = $activity["actions"];
 	}
 
 	/**

@@ -45,15 +45,16 @@ final class Cache implements ActivityCache
 
 		// save the order in which the dimensions are stored
 		$order = $unit->getDimensions();
+		$wildcards = $unit->getWildCardDimensions();
 		$item = $this->cachePool->getItem($this->dimensionsKey($name));
-		$item->set(json_encode($order));
+		$item->set(json_encode([$order, $wildcards]));
 		$this->cachePool->saveDeferred($item);
 
 		// save the activities for each dimension
 		foreach ($unit->getActivities() as $activity) {
-			$dimensions = $activity->dimensions;
+			$dimensions = $this->reorder($activity->dimensions, $order);
 			unset($activity->dimensions);
-			$item = $this->cachePool->getItem($this->activityKey($name, $dimensions, $order));
+			$item = $this->cachePool->getItem($this->activityKey($name, $dimensions));
 			$item->set(json_encode($activity));
 			$activity->dimensions = $dimensions;
 			$this->cachePool->saveDeferred($item);
@@ -64,52 +65,85 @@ final class Cache implements ActivityCache
 	}
 
 	/**
-	 * Whether an activity is already cached.
-	 *
-	 * @param $unit        the unit name
-	 * @param $dimensions  the dimensions
-	 * @return true if cached, false otherwise
-	 */
-	public function hasActivity(string $unit, array $dimensions): bool
-	{
-		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
-		if (!$item->isHit()) {
-			throw new Exception("Unit not found.");
-		}
-		$order = json_decode($item->get());
-
-		$item = $this->cachePool->getItem($this->activityKey($unit, $dimensions, $order));
-
-		return $item->isHit();
-	}
-
-	/**
 	 * Get a cached activity
 	 *
 	 * @param $unit        the unit to retrieve the activity for
 	 * @param $dimensions  the dimensions to retrieve the activity for
 	 * @return the activity
 	 */
-	public function getActivity(string $unit, array $dimensions): array
+	public function getActivity(string $unit, array $dimensions): ?array
 	{
 		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
 		if (!$item->isHit()) {
-			throw new Exception("Unit not found.");
+			return null;
 		}
-		$order = json_decode($item->get());
+		[$order, $wildcards] = json_decode($item->get());
 
-		$item = $this->cachePool->getItem($this->activityKey($unit, $dimensions, $order));
+		$dimensions = $this->reorder($dimensions, $order);
+
+		$item = $this->cachePool->getItem($this->activityKey($unit, $dimensions));
+
+		if (!$item->isHit()) { // try wildcards
+			// filter out any dimension that are already wildcards
+			foreach ($wildcards as $ix => &$wildcard) {
+				if ($dimensions[$wildcard] === true) {
+					unset($wildcards[$ix]);
+				}
+			}
+
+			// iterate all wildcard permutations
+			foreach ($this->wildcardPermutations($wildcards) as $wildcards) {
+				$dup = $dimensions;
+				foreach ($wildcards as $wildcard) {
+					$dup[$wildcard] = true; // set dimension to wildcard
+				}
+
+				// check if an activity exists
+				$item = $this->cachePool->getItem($this->activityKey($unit, $dup));
+				if ($item->isHit()) {
+					break;
+				}
+			}
+		}
+
 		if (!$item->isHit()) {
-			throw new Exception("Activity not found.");
+			return null;
 		}
-		$activity = $item->get();
 
-		$activity = json_decode($activity, true);
+		$activity = json_decode($item->get(), true);
 		if (!$activity) {
-			throw new Exception("Activity not found.");
+			return null;
 		}
 
 		return $activity;
+	}
+
+	/**
+	 * Return all permutations of wildcards without duplicates.
+	 *
+	 * @param  array  $wildcards  the wildcards to return the permutations for
+	 * @return Generator  a generator to iterate the permutations
+	 */
+	private function wildcardPermutations(array $wildcards): \Generator
+	{
+		switch (count($wildcards)) {
+			case 0:
+				break;
+			case 1:
+				yield $wildcards;
+				break;
+			default:
+				foreach ($wildcards as $value) {
+					yield [$value];
+				}
+				foreach ($wildcards as $ix => &$value) {
+					array_splice($wildcards, $ix, 1);
+					foreach ($this->wildcardPermutations($wildcards) as $ws) {
+						array_unshift($ws, $value);
+						yield $ws;
+					}
+				}
+		}
 	}
 
 	/**
@@ -124,20 +158,31 @@ final class Cache implements ActivityCache
 	}
 
 	/**
+	 * Reorder array, any missing keys will be added and have a value of null.
+	 *
+	 * @param $array  the original array
+	 * @param $order  the order of the new array
+	 * @return reordered array
+	 */
+	public function reorder(array $array, array $order): array
+	{
+		$reordered = [];
+		foreach ($order as $key) {
+			$reordered[$key] = $array[$key] ?? null;
+		}
+		return $reordered;
+	}
+
+	/**
 	 * Construct activity key to use for caching.
 	 *
 	 * @param $unit        the unit name
 	 * @param $dimensions  the dimensions
-	 * @param $order       the dimension order
 	 * @return the cache key
 	 */
-	public function activityKey(string $unit, array $dimensions, array $order): string
+	public function activityKey(string $unit, array $dimensions): string
 	{
-		$dims = [];
-		foreach ($order as $dim) {
-			$dims[$dim] = $dimensions[$dim] ?? null;
-		}
-		return $this->unitKey($unit) . "|" . hash("sha256", json_encode($dims));
+		return $this->unitKey($unit) . "|" . hash("sha256", json_encode($dimensions));
 	}
 
 	/**

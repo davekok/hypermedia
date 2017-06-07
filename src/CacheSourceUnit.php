@@ -22,6 +22,13 @@ interface CacheSourceUnit
 	public function getDimensions(): array;
 
 	/**
+	 * Get wild card dimensions
+	 *
+	 * @return array<string>  the wild card dimensions
+	 */
+	public function getWildCardDimensions(): array;
+
+	/**
 	 * Get activities
 	 *
 	 * @return array<\stdClass>  the activities

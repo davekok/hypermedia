@@ -25,6 +25,11 @@ final class SourceUnit implements CacheSourceUnit
 	private $dimensions = [];
 
 	/**
+	 * @var array<string>
+	 */
+	private $wildCardDimensions = [];
+
+	/**
 	 * @var array
 	 */
 	private $activities = [];
@@ -89,6 +94,28 @@ final class SourceUnit implements CacheSourceUnit
 	public function getDimensions(): array
 	{
 		return $this->dimensions;
+	}
+
+	/**
+	 * Set wild card dimensions
+	 *
+	 * @param array $wildCardDimensions
+	 * @return self
+	 */
+	public function setWildCardDimensions(array $wildCardDimensions): self
+	{
+		$this->wildCardDimensions = $wildCardDimensions;
+		return $this;
+	}
+
+	/**
+	 * Get wild card dimensions
+	 *
+	 * @return array
+	 */
+	public function getWildCardDimensions(): array
+	{
+		return $this->wildCardDimensions;
 	}
 
 	/**
@@ -192,6 +219,13 @@ final class SourceUnit implements CacheSourceUnit
 
 				// remember that this activity is already found
 				$activities[$hash] = $activity;
+
+				// check for wild card dimensions
+				foreach ($dimensions as $key => $value) {
+					if ($value === true) {
+						$this->wildCardDimensions[] = $key;
+					}
+				}
 			}
 		}
 
@@ -201,13 +235,12 @@ final class SourceUnit implements CacheSourceUnit
 		return $this->activities;
 	}
 
-
 	/**
 	 * Find the best match for given key.
 	 *
-	 * @param  string $key         the key the search for
-	 * @param  array $shouldHave   dimensions the action should have
-	 * @param  array $mustNotHave  dimensions the action must not have
+	 * @param string $key         the key the search for
+	 * @param array $shouldHave   dimensions the action should have
+	 * @param array $mustNotHave  dimensions the action must not have
 	 * @return Action              the best match
 	 */
 	public function findBestMatch(string $key, array $shouldHave, array $mustNotHave): ?Action
@@ -222,14 +255,18 @@ final class SourceUnit implements CacheSourceUnit
 				}
 			}
 			foreach ($shouldHave as $dim => $value) {
-				if ($action->hasDimension($dim) && $action->getDimension($dim) !== $value) {
+				if ($action->hasDimension($dim) && $action->getDimension($dim) !== $value && $action->getDimension($dim) !== true) {
 					continue 2;
 				}
 			}
 			$specific = 0;
 			foreach ($shouldHave as $dim => $value) {
-				if ($action->hasDimension($dim) && $action->getDimension($dim) === $value) {
-					++$specific;
+				if ($action->hasDimension($dim)) {
+					if ($action->getDimension($dim) === $value) {
+						$specific += 2;
+					} elseif ($action->getDimension($dim) === true) {
+						++$specific;
+					}
 				}
 			}
 			if ($specific < $mostSpecific) {

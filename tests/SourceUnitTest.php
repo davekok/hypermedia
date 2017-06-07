@@ -85,8 +85,8 @@ class SourceUnitTest extends TestCase
 		$this->assertEquals("[start] >Home::action1a #route=/ #role=admin", (string)$this->unit->findBestMatch("start", ["route"=>"/","role"=>"admin"], []), "best match 3");
 		$this->assertEquals("[Home::action3] end", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/foo"], ["role"]), "best match 4");
 		$this->assertEquals("[Home::action3] >Home::action4 #role=user", (string)$this->unit->findBestMatch("Home::action3", ["role"=>"user"], ["route"]), "best match 5");
-		$this->assertEquals("[Home::action3] >Home::action7 #route=/", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/","role"=>"user"], []), "best match 7");
-		$this->assertEquals("[Home::action3] >Home::action7 #route=/", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/"], ["role"]), "best match 6");
+		$this->assertEquals("[Home::action3] >Home::action7 #route=/", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/","role"=>"user"], []), "best match 6");
+		$this->assertEquals("[Home::action3] >Home::action7 #route=/", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/"], ["role"]), "best match 7");
 		$this->assertEquals("[Home::action3] >Home::action5 #role=admin", (string)$this->unit->findBestMatch("Home::action3", ["role"=>"admin"], ["route"]), "best match 8");
 		$this->assertEquals("[Home::action3] >Home::action6 #route=/ #role=admin", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/","role"=>"admin"], []), "best match 9");
 	}

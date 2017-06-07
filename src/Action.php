@@ -52,8 +52,11 @@ use stdClass;
  * - must be able to reach this action or end. Once all concurrent flows have reach the join action or have ended
  * - the join action is executed. For every fork action there can only be one join action.
  *
+ * #dimension
+ * - The action is only valid when the dimension is available.
+ *
  * #dimension=value
- * - The action is only valid for when dimension has the given value.
+ * - The action is only valid when dimension is available and has the given value.
  *
  * Predefined actions:
  * end - end the activity, omitted a next action is same as defining end as the next action.
@@ -96,7 +99,7 @@ use stdClass;
  * <next> = ">" ( <method> / <end> )
  * <fork> = "|>" 1*( <s> <method> )
  * <retval> = "=" ( "true" / "false" / <int> )
- * <dimension> = "#" <name> "=" <value>
+ * <dimension> = "#" <name> [ "=" <value> ]
  * <method> = [ <classname> "::" ] <name>
  * <classname> = <startcchar> *<cchar>
  * <name> = <startnchar> *<nchar>
@@ -514,8 +517,19 @@ final class Action
 		$equalscapture = function(&$value, $matches){
 			$value = $matches[1];
 		};
-		$dimensionrule = "/^$tag($name)$equals($val)$e/";
-		$dimensioncapture = function(&$value, $matches){
+		// #dimension is required
+		$dimensionrule1 = "/^$tag($name)$e/";
+		$dimensioncapture1 = function(&$value, $matches){
+			$value[$matches[1]] = true;
+		};
+		// #dimension is required but no value is given
+		$dimensionrule2 = "/^$tag($name)$equals$e/";
+		$dimensioncapture2 = function(&$value, $matches){
+			$value[$matches[1]] = null;
+		};
+		// #dimension is required with given value
+		$dimensionrule3 = "/^$tag($name)$equals($val)$e/";
+		$dimensioncapture3 = function(&$value, $matches){
 			$value[$matches[1]] = $matches[2];
 		};
 
@@ -574,8 +588,12 @@ final class Action
 				} elseif (preg_match($endrule, $this->text, $matches)) {
 					$this->turnOffReturnValues();
 					$endcapture($this->next, $matches);
-				} elseif (preg_match($dimensionrule, $this->text, $matches)) {
-					$dimensioncapture($this->dimensions, $matches);
+				} elseif (preg_match($dimensionrule1, $this->text, $matches)) {
+					$dimensioncapture1($this->dimensions, $matches);
+				} elseif (preg_match($dimensionrule2, $this->text, $matches)) {
+					$dimensioncapture2($this->dimensions, $matches);
+				} elseif (preg_match($dimensionrule3, $this->text, $matches)) {
+					$dimensioncapture3($this->dimensions, $matches);
 				} elseif (preg_match($namerule, $this->text, $matches)) {
 					if (strlen($this->done) !== 0) {
 						throw $this->parseError("Action name must be at the start of the text.");
@@ -588,6 +606,14 @@ final class Action
 			}
 			$this->done.= $matches[0];
 			$this->text = substr($this->text, strlen($matches[0]));
+		}
+		// if there is no start and no next the rule is considered a single action
+		if ($this->start === false && $this->next === null) {
+			$this->start = true;
+			$this->next = false;
+		}
+		if ($this->next === null) {
+			throw new \LogicException("No next action defined.");
 		}
 		if ($this->returnValues === true) {
 			if (count(get_object_vars($this->next)) < 2) {
@@ -690,7 +716,14 @@ final class Action
 			}
 		}
 		foreach ($this->dimensions as $key => $value) {
-			$text.= self::TAG.$key.self::EQUALS.$value." ";
+			$text.= self::TAG.$key;
+			if ($value === true) {
+			} elseif ($value === null) {
+				$text.= self::EQUALS;
+			} else {
+				$text.= self::EQUALS.$value;
+			}
+			$text.= " ";
 		}
 		return rtrim($text);
 	}
