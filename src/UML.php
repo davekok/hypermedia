@@ -72,7 +72,11 @@ final class UML
 		if (count($dimensions)) {
 			$uml.= "floating note left\n";
 			foreach ($dimensions as $dimension => $value) {
-				$uml.= "\t$dimension: $value\n";
+				if ($value === true) {
+					$uml.= "\t$dimension\n";
+				} elseif ($value !== null) {
+					$uml.= "\t$dimension: $value\n";
+				}
 			}
 			$uml.= "end note\n";
 		}

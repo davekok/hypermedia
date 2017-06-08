@@ -41,6 +41,10 @@ final class Cache implements ActivityCache
 	 */
 	public function updateUnit(CacheSourceUnit $unit): void
 	{
+		if ($unit->isCompiled() === false) {
+			$unit->compile();
+		}
+
 		$name = $unit->getName();
 
 		// save the order in which the dimensions are stored

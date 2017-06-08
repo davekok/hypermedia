@@ -40,6 +40,11 @@ final class SourceUnit implements CacheSourceUnit
 	private $actions = [];
 
 	/**
+	 * @var boolean
+	 */
+	private $isCompiled = false;
+
+	/**
 	 * Constructor
 	 *
 	 * @param $name  the name of the unit
@@ -81,8 +86,8 @@ final class SourceUnit implements CacheSourceUnit
 	 */
 	public function setDimensions(array $dimensions): self
 	{
+		$this->isCompiled = false;
 		$this->dimensions = $dimensions;
-
 		return $this;
 	}
 
@@ -104,6 +109,7 @@ final class SourceUnit implements CacheSourceUnit
 	 */
 	public function setWildCardDimensions(array $wildCardDimensions): self
 	{
+		$this->isCompiled = false;
 		$this->wildCardDimensions = $wildCardDimensions;
 		return $this;
 	}
@@ -125,9 +131,6 @@ final class SourceUnit implements CacheSourceUnit
 	 */
 	public function getActivities(): array
 	{
-		if (empty($this->activities)) {
-			$this->compile();
-		}
 		return $this->activities;
 	}
 
@@ -151,6 +154,7 @@ final class SourceUnit implements CacheSourceUnit
 	 */
 	public function addAction(Action $action): self
 	{
+		$this->isCompiled = false;
 		$className = $action->getClassName();
 		if (!in_array($className, $this->classes)) {
 			$this->classes[] = $className;
@@ -188,12 +192,23 @@ final class SourceUnit implements CacheSourceUnit
 	}
 
 	/**
+	 * Whether the sourc unit is compiled.
+	 * @return boolean
+	 */
+	public function isCompiled(): bool
+	{
+		return $this->isCompiled;
+	}
+
+	/**
 	 * Compile to produce all the activities.
 	 *
 	 * @return the activities
 	 */
 	public function compile(): array
 	{
+		$this->isCompiled = false;
+
 		// make sure dimensions are in order and missing dimensions are nulled;
 		foreach ($this->actions as $actions) {
 			foreach ($actions as $action) {
@@ -222,15 +237,16 @@ final class SourceUnit implements CacheSourceUnit
 
 				// check for wild card dimensions
 				foreach ($dimensions as $key => $value) {
-					if ($value === true) {
+					if ($value === true && !in_array($key, $this->wildCardDimensions)) {
 						$this->wildCardDimensions[] = $key;
 					}
 				}
 			}
 		}
 
-		// discard hashes
-		$this->activities = array_values($activities);
+		$this->activities = array_values($activities); // discard hashes
+
+		$this->isCompiled = true;
 
 		return $this->activities;
 	}

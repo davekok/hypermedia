@@ -74,7 +74,7 @@ final class Activity
 			$this->journal = $this->journalRepository->createJournal($this->unit, $this->dimensions);
 		} else {
 			// use a dummy journal in case of readonly activity
-			$this->journal = new class($unit, $dimensions) implements Journal {
+			$this->journal = new class($this->unit, $this->dimensions) implements Journal {
 				private $unit;
 				private $dimensions;
 				private $states;
@@ -225,7 +225,7 @@ final class Activity
 	 */
 	public function get(string $name)
 	{
-		return $this->state->$name;
+		return $this->state->$name??null;
 	}
 
 	/**
