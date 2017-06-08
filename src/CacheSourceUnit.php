@@ -34,4 +34,18 @@ interface CacheSourceUnit
 	 * @return array<\stdClass>  the activities
 	 */
 	public function getActivities(): array;
+
+	/**
+	 * Is compiled
+	 *
+	 * @return boolean
+	 */
+	public function isCompiled(): bool;
+
+	/**
+	 * Compile source unit
+	 *
+	 * @return array
+	 */
+	public function compile(): array;
 }

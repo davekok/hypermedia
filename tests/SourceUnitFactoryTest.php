@@ -40,13 +40,14 @@ class SourceUnitFactoryTest extends TestCase
 	public function testCreateUnit2()
 	{
 		$unit = (new SourceUnitFactory(new AnnotationReader))->createSourceUnit('TestUnit2', __DIR__.'/TestUnit2/');
-		$this->assertEquals($unit->getName(), "TestUnit2", "unit name");
+		$unit->compile();
+		$this->assertEquals("TestUnit2", $unit->getName(), "unit name");
 		$classes = $unit->getClasses();
 		$this->assertTrue(in_array(TestUnit2\Activity1::class, $classes));
 		$this->assertTrue(in_array(TestUnit2\Activity2::class, $classes));
 		$this->assertEquals(["route", "role"], $unit->getDimensions(), "dimensions");
 		$activities = $unit->getActivities();
-		$this->assertEquals(count($activities), 2);
+		$this->assertEquals(2, count($activities));
 		$this->assertTrue($activities[0]->readonly xor $activities[1]->readonly);
 	}
 }

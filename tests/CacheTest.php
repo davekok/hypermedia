@@ -23,6 +23,7 @@ class CacheTest extends TestCase
 
 		$unit = $prophet->prophesize();
 		$unit->willImplement(CacheSourceUnit::class);
+		$unit->isCompiled()->willReturn(true);
 		$unit->getName()->willReturn('testunit');
 		$unit->getDimensions()->willReturn(["dim1", "dim2", "dim3"]);
 		$unit->getWildCardDimensions()->willReturn([]);
@@ -55,6 +56,7 @@ class CacheTest extends TestCase
 		$unit->getDimensions()->willReturn(["dim1","dim2"]);
 		$unit->getWildCardDimensions()->willReturn(["dim2"]);
 		$unit->getActivities()->willReturn([(object)["readonly"=>false,"dimensions"=>["dim1"=>"1", "dim2"=>true],"actions"=>["action"=>false]]]);
+		$unit->isCompiled()->willReturn(true);
 
 		$cachepool = new ArrayCachePool;
 		$cache = new Cache($cachepool);
