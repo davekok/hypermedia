@@ -197,7 +197,7 @@ final class Activity
 	 */
 	public function getUnit(): string
 	{
-		return $this->journal->getUnit();
+		return $this->unit;
 	}
 
 	/**
@@ -207,7 +207,7 @@ final class Activity
 	 */
 	public function getDimensions(): array
 	{
-		return $this->journal->getDimensions();
+		return $this->dimensions;
 	}
 
 	/**

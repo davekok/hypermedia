@@ -422,9 +422,9 @@ final class Action
 	 * Get dimension
 	 *
 	 * @param  string $key  the dimension key
-	 * @return string
+	 * @return string, null or true
 	 */
-	public function getDimension(string $key): ?string
+	public function getDimension(string $key)
 	{
 		return $this->dimensions[$key]??null;
 	}
