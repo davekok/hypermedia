@@ -525,7 +525,7 @@ final class Action
 		// #dimension is required but no value is given
 		$dimensionrule2 = "/^$tag($name)$equals$e/";
 		$dimensioncapture2 = function(&$value, $matches){
-			$value[$matches[1]] = null;
+			$value[$matches[1]] = "";
 		};
 		// #dimension is required with given value
 		$dimensionrule3 = "/^$tag($name)$equals($val)$e/";
@@ -718,7 +718,7 @@ final class Action
 		foreach ($this->dimensions as $key => $value) {
 			$text.= self::TAG.$key;
 			if ($value === true) {
-			} elseif ($value === null) {
+			} elseif ($value === "") {
 				$text.= self::EQUALS;
 			} else {
 				$text.= self::EQUALS.$value;

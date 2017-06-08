@@ -15,9 +15,9 @@ use Prophecy\{
 
 class CacheTest extends TestCase
 {
-	public function testCache()
+	public function testBasics()
 	{
-		$expectedActions = ["action1"=>"action2","action2"=>"action3","action3"=>null];
+		$expectedActions = ["action1"=>"action2","action2"=>"action3","action3"=>false];
 
 		$prophet = new Prophet;
 
@@ -42,6 +42,31 @@ class CacheTest extends TestCase
 
 		$activity = $cache->getActivity("testunit", ["dim1"=>1, "dim2"=>2, "dim3"=>3]);
 		$this->assertTrue(is_array($activity));
-		$this->assertEquals($activity["actions"], $expectedActions);
+		$this->assertEquals($expectedActions, $activity["actions"]);
+	}
+
+	public function testWildCardDimensions()
+	{
+		$prophet = new Prophet;
+
+		$unit = $prophet->prophesize();
+		$unit->willImplement(CacheSourceUnit::class);
+		$unit->getName()->willReturn('testunit');
+		$unit->getDimensions()->willReturn(["dim1","dim2"]);
+		$unit->getWildCardDimensions()->willReturn(["dim2"]);
+		$unit->getActivities()->willReturn([(object)["readonly"=>false,"dimensions"=>["dim1"=>"1", "dim2"=>true],"actions"=>["action"=>false]]]);
+
+		$cachepool = new ArrayCachePool;
+		$cache = new Cache($cachepool);
+		$cache->updateUnit($unit->reveal());
+
+		$activity = $cache->getActivity("testunit", ["dim1"=>"1"]);
+		$this->assertNull($activity);
+
+		$activity = $cache->getActivity("testunit", ["dim1"=>"1", "dim2"=>true]);
+		$this->assertTrue(is_array($activity));
+
+		$activity = $cache->getActivity("testunit", ["dim1"=>"1", "dim2"=>"2"]);
+		$this->assertTrue(is_array($activity));
 	}
 }

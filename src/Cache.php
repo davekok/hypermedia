@@ -86,7 +86,7 @@ final class Cache implements ActivityCache
 		if (!$item->isHit()) { // try wildcards
 			// filter out any dimension that are already wildcards
 			foreach ($wildcards as $ix => &$wildcard) {
-				if ($dimensions[$wildcard] === true) {
+				if ($dimensions[$wildcard] === true || $dimensions[$wildcard] === null) {
 					unset($wildcards[$ix]);
 				}
 			}
