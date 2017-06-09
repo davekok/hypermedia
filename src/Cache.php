@@ -96,10 +96,10 @@ final class Cache implements ActivityCache
 			}
 
 			// iterate all wildcard permutations
-			foreach ($this->wildcardPermutations($wildcards) as $wildcards) {
+			foreach ($this->wildcardPermutations($wildcards) as $wcs) {
 				$dup = $dimensions;
-				foreach ($wildcards as $wildcard) {
-					$dup[$wildcard] = true; // set dimension to wildcard
+				foreach ($wcs as $wc) {
+					$dup[$wc] = true; // set dimension to wildcard
 				}
 
 				// check if an activity exists
@@ -128,23 +128,24 @@ final class Cache implements ActivityCache
 	 * @param  array  $wildcards  the wildcards to return the permutations for
 	 * @return Generator  a generator to iterate the permutations
 	 */
-	private function wildcardPermutations(array $wildcards): \Generator
+	private function wildcardPermutations(array $array): \Generator
 	{
-		switch (count($wildcards)) {
+		$l = count($array);
+		switch ($l) {
 			case 0:
 				break;
 			case 1:
-				yield $wildcards;
+				yield $array;
 				break;
 			default:
-				foreach ($wildcards as $value) {
+				foreach ($array as $value) {
 					yield [$value];
 				}
-				foreach ($wildcards as $ix => &$value) {
-					array_splice($wildcards, $ix, 1);
-					foreach ($this->wildcardPermutations($wildcards) as $ws) {
-						array_unshift($ws, $value);
-						yield $ws;
+				for ($i = 0; $i < $l; ++$i) {
+					$value = array_shift($array);
+					foreach ($this->wildcardPermutations($array) as $sub) {
+						array_unshift($sub, $value);
+						yield $sub;
 					}
 				}
 		}
