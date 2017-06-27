@@ -11,26 +11,25 @@ use Symfony\Component\HttpKernel\KernelInterface;
  * Usefull for running stuff in the background.
  *
  * Example:
- *   $worker = new Worker(AppKernel($env, $debug), ["name"=>"myscript", "instance"=>1]);
+ *   $worker = new Worker(["name"=>"myscript", "instance"=>1]);
  *   $worker->boot(); // boot your script into the background, if not already running
- *   $container = $worker->getContainer();
  *   // do your stuff
  *   $worker->shutdown();
  *
  * Example:
- *   $worker = new Worker(AppKernel($env, $debug), ["name"=>"myscript", "instance"=>1]);
+ *   $worker = new Worker(["name"=>"myscript", "instance"=>1]);
  *   $worker->stop(); // stop running worker
  *
  * Complete example:
  *   // include your autoloader
  *   $args = Worker::args();
+ *   $worker = new Worker(["name"=>"myscript", "instance"=>1]);
  *   switch ($args['command']) {
  *       case "restart":
  *           $worker->stop();
  *       case "start":
  *           try {
  *               $worker->boot();
- *               $container = $worker->getContainer();
  *               // do your stuff
  *           } catch(Throwable $e) {
  *               echo $e->getMessage(), "\n";
@@ -38,10 +37,10 @@ use Symfony\Component\HttpKernel\KernelInterface;
  *               $worker->shutdown();
  *           }
  *           break;
- *       case "stop";
+ *       case "stop":
  *           $worker->stop();
  *           break;
- *       case "status";
+ *       case "status":
  *           if ($worker->checkRunning()) {
  *               // connect to worker some how and output status
  *           } else {
@@ -56,7 +55,6 @@ final class Worker
 	private $stdout = STDOUT;
 	private $stderr = STDERR;
 	private $detached = false;
-	private $kernel;
 	private $name;
 	private $background;
 	private $redirect;
@@ -68,22 +66,20 @@ final class Worker
 	private $environmentVariableDefaults;
 
 	/**
-	 * Cosntructor
+	 * Constructor
 	 *
-	 * @param KernelInterface $kernel  the kernel
-	 * @param array           $config  worker configuration
+	 * @param array  $config  worker configuration
 	 */
-	public function __construct(KernelInterface $kernel, array $config = [])
+	public function __construct(array $config = [])
 	{
-		$this->kernel = $kernel;
-		$this->name = $config['name'] ?? $kernel->getName();
+		$this->name = $config['name'] ?? basename(tempnam(sys_get_temp_dir(), "worker"));
 		if (isset($config['instance'])) {
 			$this->name .= "-".$config['instance'];
 		}
 		$this->background = $config['background'] ?? true;
 		$this->redirect = $config['redirect'] ?? true;
-		$this->pidfile = $config['pidfile'] ?? $kernel->getLogDir()."/{$this->name}.pid";
-		$this->outputfile = $config['outputfile'] ?? $kernel->getLogDir()."/{$this->name}.log";
+		$this->pidfile = $config['pidfile'] ?? sys_get_temp_dir()."/{$this->name}.pid";
+		$this->outputfile = $config['outputfile'] ?? sys_get_temp_dir()."/{$this->name}.log";
 		$this->inputfile = $config['inputfile'] ?? "/dev/zero";
 		$this->errorfile = $config['errorfile'] ?? $this->outputfile;
 		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["LANG"];
@@ -124,19 +120,6 @@ final class Worker
 			throw new Exception("failed to change directory");
 
 		cli_set_process_title($this->name);
-
-		$this->kernel->boot();
-		$this->getContainer()->set('worker', $this);
-	}
-
-	/**
-	 * Gets the container
-	 *
-	 * @return the container
-	 */
-	public function getContainer()
-	{
-		return $this->kernel->getContainer();
 	}
 
 	/**
@@ -144,8 +127,6 @@ final class Worker
 	 */
 	public function shutdown(): void
 	{
-		$this->kernel->shutdown();
-
 		// remove pid file
 		if ($this->pidfile) {
 			unlink($this->pidfile);
@@ -180,8 +161,8 @@ final class Worker
 		// never rely on PATH and SHELL variables in your script
 		// never rely on the shell
 		$unsafe = [
-			'PATH'=>'/bin:/usr/bin',
-			'SHELL'=>'/bin/sh',
+			'PATH' => '/bin:/usr/bin',
+			'SHELL' => '/bin/sh',
 		];
 
 		$reload = false;
@@ -189,7 +170,7 @@ final class Worker
 		$env = $unsafe;
 
 		// check unsafe environment variables
-		foreach ($unsafe as $key=>$value) {
+		foreach ($unsafe as $key => $value) {
 			if (!isset($_ENV[$key]) || $_ENV[$key] != $value) {
 				$reload = true;
 			}
@@ -384,7 +365,7 @@ final class Worker
 	{
 		global $argv;
 		$progname = basename($argv[0]);
-		$usage = "Usage: $progname [-bBrRdDh?] [-e ENVIRONEMT] WORKER [INSTANCE] [start|stop|restart|status]\n";
+		$usage = "Usage: $progname [-bBrRdDh?] [-e ENVIRONMENT] WORKER [INSTANCE] [start|stop|restart|status]\n";
 		$usage.= "\n";
 		$usage.= "Options:\n";
 		$usage.= " -b, --background\n";

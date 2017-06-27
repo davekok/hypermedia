@@ -7,7 +7,7 @@ use stdClass;
 /**
  * Implementation of SourceUnitCompiler
  */
-class SourceUnitCompiler
+final class SourceUnitCompiler
 {
 	private $unit;
 	private $shouldHave;
