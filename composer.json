@@ -1,7 +1,7 @@
 {
     "name": "davekok/sturdy-activity",
     "license": "MIT",
-    "type": "project",
+    "type": "library",
     "description": "A component to journal activities as they execute and update activity diagrams when you code.",
     "autoload": {
         "psr-4": { "Sturdy\\Activity\\": "src/" }
