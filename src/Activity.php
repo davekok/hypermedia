@@ -12,7 +12,7 @@ use stdClass;
  *
  * Create or load a journal and run, enjoy.
  */
-final class Activity
+final class Activity implements ActivityInterface
 {
 	// dependencies
 	private $cache;
@@ -213,7 +213,7 @@ final class Activity
 	/**
 	 * Set state variable
 	 */
-	public function set(string $name, $value): self
+	public function set(string $name, $value): ActivityInterface
 	{
 		$this->state->$name = $value;
 
@@ -231,7 +231,7 @@ final class Activity
 	/**
 	 * Set return
 	 */
-	public function setReturn($return): self
+	public function setReturn($return): ActivityInterface
 	{
 		$this->journal->setReturn($return);
 
@@ -265,7 +265,7 @@ final class Activity
 	/**
 	 * Pauses the activity until it is resumed.
 	 */
-	public function pause(int $branch): self
+	public function pause(int $branch): ActivityInterface
 	{
 		$this->journal->setRunning($branch, false);
 
@@ -275,7 +275,7 @@ final class Activity
 	/**
 	 * Resume the activity.
 	 */
-	public function resume(int $branch): self
+	public function resume(int $branch): ActivityInterface
 	{
 		$this->journal->setRunning($branch, true);
 
