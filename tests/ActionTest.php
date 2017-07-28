@@ -71,7 +71,7 @@ class ActionTest extends TestCase
 	{
 		$action = new Action();
 		$action->setClassName("Foo");
-		$action->setText("end >action1");
+		$action->setText("end > action1");
 		try {
 			$action->parse();
 		} catch (\Throwable $e) {
@@ -83,7 +83,7 @@ class ActionTest extends TestCase
 	{
 		$action = new Action();
 		$action->setClassName("Foo");
-		$action->setText(">action");
+		$action->setText("> action");
 		$action->parse();
 		$this->assertEquals("Foo::action", $action->getNext());
 		$this->assertFalse($action->hasReturnValues());
@@ -93,9 +93,29 @@ class ActionTest extends TestCase
 	{
 		$action = new Action();
 		$action->setClassName("Foo");
-		$action->setText('>action1|Bar::action2|Foo\Bar::action3');
+		$action->setText('> action1 | Bar::action2 | Foo\Bar::action3');
 		$action->parse();
 		$this->assertEquals(["Foo::action1", "Bar::action2", "Foo\Bar::action3"], $action->getNext());
+		$this->assertFalse($action->hasReturnValues());
+	}
+
+	public function testNextSplit1()
+	{
+		$action = new Action();
+		$action->setClassName("Foo");
+		$action->setText('> rel:action1');
+		$action->parse();
+		$this->assertEquals(["rel"=>"Foo::action1"], $action->getNext());
+		$this->assertFalse($action->hasReturnValues());
+	}
+
+	public function testNextSplitN()
+	{
+		$action = new Action();
+		$action->setClassName("Foo");
+		$action->setText('> next:action1 | prev:Bar::action2 | end:Foo\Bar::action3');
+		$action->parse();
+		$this->assertEquals(["next"=>"Foo::action1", "prev"=>"Bar::action2", "end"=>"Foo\Bar::action3"], $action->getNext());
 		$this->assertFalse($action->hasReturnValues());
 	}
 
@@ -103,7 +123,7 @@ class ActionTest extends TestCase
 	{
 		$action = new Action();
 		$action->setClassName("Foo");
-		$action->setText("=true end  =false >action2");
+		$action->setText("=true end  =false > action2");
 		$action->parse();
 		$this->assertEquals((object)["true"=>false, "false"=>"Foo::action2"], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
@@ -113,7 +133,7 @@ class ActionTest extends TestCase
 	{
 		$action = new Action();
 		$action->setClassName("Foo");
-		$action->setText("=0 end  =1 >action2  =2 >action3  =3 >action4");
+		$action->setText("=0 end  =1 > action2  =2 > action3  =3 > action4");
 		$action->parse();
 		$this->assertEquals((object)[0=>false, 1=>"Foo::action2", 2=>"Foo::action3", 3=>"Foo::action4"], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
@@ -149,7 +169,7 @@ class ActionTest extends TestCase
 	{
 		$action = new Action();
 		$action->setClassName("Foo");
-		$action->setText("=0 end  =true >action2  =false >action3");
+		$action->setText("=0 end  =true > action2  =false > action3");
 		try {
 			$action->parse();
 			$this->fail();
@@ -162,9 +182,19 @@ class ActionTest extends TestCase
 	{
 		$action = new Action();
 		$action->setClassName("Foo");
-		$action->setText('=true >action1|Bar::action2|Foo\Bar::action3  =false end');
+		$action->setText('=true > action1 | Bar::action2 | Foo\Bar::action3  =false end');
 		$action->parse();
 		$this->assertEquals((object)["true"=>["Foo::action1", "Bar::action2", "Foo\Bar::action3"], "false"=>false], $action->getNext());
+		$this->assertTrue($action->hasReturnValues());
+	}
+
+	public function testNextSplitReturnValues()
+	{
+		$action = new Action();
+		$action->setClassName("Foo");
+		$action->setText('=true > rel1:action1 | rel2:Bar::action2 | rel3:Foo\Bar::action3  =false end');
+		$action->parse();
+		$this->assertEquals((object)["true"=>["rel1"=>"Foo::action1", "rel2"=>"Bar::action2", "rel3"=>"Foo\Bar::action3"], "false"=>false], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
 	}
 
@@ -176,9 +206,20 @@ class ActionTest extends TestCase
 		$this->assertEquals(["foo"=>"bar", "baz"=>null, "bas"=>true], $action->getDimensions());
 	}
 
+	public function testMultilineInDocBlock()
+	{
+		$action = new Action();
+		$action->setText("#foo=bar
+			*    #baz=
+			*    #bas
+			* ");
+		$action->parse();
+		$this->assertEquals(["foo"=>"bar", "baz"=>null, "bas"=>true], $action->getDimensions());
+	}
+
 	public function testToString()
 	{
-		$action = Action::createFromText('[Foo::action1] >action2 #foo=bar #baz= #bas');
-		$this->assertEquals('[Foo::action1] >Foo::action2 #foo=bar #baz= #bas', "$action");
+		$action = Action::createFromText('[Foo::action1] > action2 #foo=bar #baz= #bas');
+		$this->assertEquals('[Foo::action1] > Foo::action2 #foo=bar #baz= #bas', "$action");
 	}
 }

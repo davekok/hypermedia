@@ -14,65 +14,124 @@ use stdClass;
  *
  * The action annotation makes use of a simple syntax.
  *
- * Syntax:
  *
- * start
- * - Marks the action as the start action of an activity.
+ * Syntax
+ * -------------------------------------------
  *
- * readonly
- * - Marks the action as readonly, if all actions in an activity are readonly the activity is not journalled.
- * - A readonly activity is not supposed to change any persisted state in any way. However it may read
- * - persisted state. It is considered safe for readonly activity to be repeated or aborted.
  *
- * end
- * - End the activity after this action.
+ *   start
  *
- * >methodname
- * - Marks method methodname as the next action to be executed after this one. The method resides in the same class
- * - as the current action.
+ * Marks the action as the start action of an activity.
  *
- * >classname::methodname
- * - Marks method methodname of class classname to be executed as the next action. The InstanceFactory must be able to
- * - load an instance of this class. Either shared or unshared.
  *
- * >methodname1|methodname2|classname::methodname3
- * - Forks the activity, each action will be executed concurrently.
+ *   end
  *
- * =true/false/integer end
- * - End the activity if the defined return value is matched.
+ * Marks the action as the end action of an activity, shortcut for '> end'
  *
- * =true/false/integer >methodname/classname::methodname
- * - The next action will only be executed if the defined return value is matched.
  *
- * =true/false/integer >methodname1|methodname2|classname::methodname3
- * - Forks the activity if defined return value is matched, each action will be executed concurrently.
+ *   readonly
  *
- * >|
- * - Join concurrent flows of the activity before this action is executed. All concurrent flows started with a fork
- * - must be able to reach this action or end. Once all concurrent flows have reach the join action or have ended
- * - the join action is executed. For every fork action there can only be one join action.
+ * Marks the action as readonly, if all actions in an activity are readonly the activity is not journaled.
+ * A readonly activity is not supposed to change any persisted state in any way. However it may read
+ * persisted state. It is considered safe for readonly activity to be repeated or aborted.
  *
- * #dimension
- * - The action is only valid when the dimension is available.
  *
- * #dimension=value
- * - The action is only valid when dimension is available and has the given value.
+ *   detach
+ *
+ * Detach the activity from the current activity starting a new journal.
+ *
+ *
+ *   >
+ *
+ * Start a next expression. The > character must be followed by a next expression.
+ *
+ *
+ *   >?
+ *
+ * Start multiple next expressions. The return value of the action decides which next expression is used.
+ *
+ *
+ *   >|
+ *
+ * Join branches of the activity before this action is executed. All branches started by either forking or splitting
+ * must be able to reach this action or end or detach. Once all flows have reached the join action or have ended
+ * or detached the join action is executed. For every split/fork action there can only be one join action.
+ *
+ *
+ *   #dimension
+ *
+ * The action is only valid when the dimension is set, with any value.
+ *
+ *
+ *   #dimension=
+ *
+ * The action is only valid when the dimension is set and has no value.
+ *
+ *
+ *   #dimension=value
+ *
+ * The action is only valid when the dimension is set and has the given value.
+ *
+ *
+ *
+ * Next expression syntax
+ * -------------------------------------------
+ *
+ *
+ *   action   regex: [A-Za-z_][A-Za-z0-9_]+
+ *
+ * 'action' is a method of the current class which is the next action.
+ *
+ *
+ *   class::action   regex: [A-Za-z\\_][A-Za-z0-9\\_]+::[A-Za-z_][A-Za-z0-9_]+
+ *
+ * Same as above but action is in a different class. An instance of the class is retrieved through the instance factory.
+ *
+ *
+ *   branch:action   regex: [A-Za-z_][A-Za-z0-9_]+:[A-Za-z_][A-Za-z0-9_]+
+ *
+ * 'branch' is the name of the branch, 'action' is as above, the first action of this named branch.
+ *
+ *
+ *   branch:class::action   regex: [A-Za-z\\_][A-Za-z0-9\\_]+::[A-Za-z_][A-Za-z0-9_]+
+ *
+ * Same as above but action is in a different class.
+ *
+ *
+ *   =true/false/integer  regex: =(true|false|0|[1-9][0-9]*)
+ *
+ * When using multiple next expressions start a new expression. The value behind the = character must be unique
+ * within the action. When this value is returned by the action the following next expression is used.
+ *
+ *
+ *   |
+ *
+ * Split the activity creating multiple branches. When the branches are unnamed all branches are concurrently executed.
+ * Otherwise the branch that is followed must be specified by the code running the activity. Branches must either all
+ * be named or unnamed. The actions have no control over this.
+ *
+ *
+ *   end
+ *
+ * End the activity. Can not be combined with the split operator.
+ *
+ *
  *
  * Predefined actions:
- * end - end the activity, omitted a next action is same as defining end as the next action.
- * exception - raise an exception, only used for the journal
+ * end - end the activity, omitting a next action is same as defining end as the next action.
+ * exception - exception has been raised, only used for the journal
  *
  * Example:
  * [class::action1] start >action2
- * [class::action2] >action3
- * [class::action3] =true >action5|action6|action7  =false end
- * [class::action4] >action5|action8|action10
- * [class::action5] =true >action6  =false >action7
- * [class::action6] >action11
- * [class::action7] >action11
- * [class::action8] >action9
+ * [class::action2] > action3
+ * [class::action3] >? =true action5 | action6 | action7  =false end
+ * [class::action4] > action5 | action8 | action10
+ * [class::action5] >? =true action6  =false action7
+ * [class::action6] > action11
+ * [class::action7] > action11
+ * [class::action8] > action9
  * [class::action9]
- * [class::action10] >action11
+ * [class::action10] > action11
  * [class::action11] >| end
  *
  * @Annotation
@@ -80,37 +139,6 @@ use stdClass;
  * @Attributes({
  *   @Attribute("value", type = "string"),
  * })
- *
- * ABNF:
- * <action> = [ <actionname> ] <options>
- * <actionname> = "[" <classname> "::" <name> "]"
- * <options> =  *( <s> / <start> / <readonly> / <next> / <dimension> )
- * <options> =/ *( <s> / <start> / <readonly> / <fork> / <dimension> )
- * <options> =/ *( <s> / <start> / <readonly> / <end> / <dimension> )
- * <options> =/ *( <s> / <start> / <readonly> / <retval> <s> ( <next> / <fork> / <end> ) / <dimension>  )
- * <options> =/ *( <s> / <join> / <readonly> / <next> / <dimension> )
- * <options> =/ *( <s> / <join> / <readonly> / <fork> / <dimension> )
- * <options> =/ *( <s> / <join> / <readonly> / <end> / <dimension> )
- * <options> =/ *( <s> / <join> / <readonly> / <retval> <s> ( <next> / <fork> / <end> ) / <dimension>  )
- * <readonly> = "readonly"
- * <start> = "start"
- * <end> = "end"
- * <join> = ">|"
- * <next> = ">" ( <method> / <end> )
- * <fork> = "|>" 1*( <s> <method> )
- * <retval> = "=" ( "true" / "false" / <int> )
- * <dimension> = "#" <name> [ "=" <value> ]
- * <method> = [ <classname> "::" ] <name>
- * <classname> = <startcchar> *<cchar>
- * <name> = <startnchar> *<nchar>
- * <startnchar> = %x41-5A / %x5F / %x61-7A ; name start character
- * <nchar> = %x30-39 / %x41-5A / %x5F / %x61-7A ; name character
- * <startcchar> = %x41-5A / %x5C / %x5F / %x61-7A ; class name start character
- * <cchar> = %x30-39 / %x41-5A / %x5C / %x5F / %x61-7A ; class name character
- * <int> =  %x30 ; 0
- * <int> =/ %x31-39 *(%x30-39) ; number not starting with zero
- * <s> = 1*(%x20) ; one or more spaces
- * <value> = 1*( %x21-7E )
  */
 final class Action
 {
@@ -120,11 +148,19 @@ final class Action
 	const START = "start";
 	const END = "end";
 	const READONLY = "readonly";
-	const EQUALS = "=";
+	const DETACH = "detach";
 	const NEXT = ">";
-	const FORK = "|";
-	const JOIN = self::NEXT.self::FORK;
+	const NEXT_IF = ">?";
+	const JOIN = ">|";
+	const EQUALS = "=";
+	const SPLIT = "|";
+	const BRANCH_SEPARATOR = ":";
 	const TAG = "#";
+
+	const STATE_START = 0;
+	const STATE_TOP = self::STATE_START + 1;
+	const STATE_EQUALS = self::STATE_TOP + 1;
+	const STATE_NEXT_EXP = self::STATE_EQUALS + 1;
 
 	/**
 	 * @var string
@@ -165,6 +201,11 @@ final class Action
 	 * @var bool
 	 */
 	private $join;
+
+	/**
+	 * @var bool
+	 */
+	private $detach;
 
 	/**
 	 * @var false|string|array
@@ -321,6 +362,28 @@ final class Action
 	}
 
 	/**
+	 * Set detach
+	 *
+	 * @param bool $detach
+	 * @return self
+	 */
+	public function setDetach(bool $detach): self
+	{
+		$this->detach = $detach;
+		return $this;
+	}
+
+	/**
+	 * Get detach
+	 *
+	 * @return bool
+	 */
+	public function getDetach(): bool
+	{
+		return $this->detach;
+	}
+
+	/**
 	 * Set join
 	 *
 	 * @param bool $join
@@ -474,64 +537,38 @@ final class Action
 		$start = addcslashes(self::START, $respecial);
 		$end = addcslashes(self::END, $respecial);
 		$readonly = addcslashes(self::READONLY, $respecial);
+		$detach = addcslashes(self::DETACH, $respecial);
 		$next = addcslashes(self::NEXT, $respecial);
-		$fork = addcslashes(self::FORK, $respecial);
+		$nextIf = addcslashes(self::NEXT_IF, $respecial);
+		$split = addcslashes(self::SPLIT, $respecial);
 		$join = addcslashes(self::JOIN, $respecial);
 		$tag = addcslashes(self::TAG, $respecial);
 		$nameStart = addcslashes(self::NAME_START, $respecial);
 		$nameSep = addcslashes(self::NAME_SEPARATOR, $respecial);
 		$nameEnd = addcslashes(self::NAME_END, $respecial);
+		$branchSep = addcslashes(self::BRANCH_SEPARATOR, $respecial);
 		$retval = 'true|false|0|[1-9][0-9]*';
 		$classname = '[A-Za-z\\\\_][A-Za-z0-9\\\\_]+';
 		$name = '[A-Za-z_][A-Za-z0-9_]+';
-		$func = "(?:$classname$nameSep)?$name";
-		$e = '(?=\s|$)'; // end of token
+		$e = '(?=\s|\*|$)'; // end of token
 		$val = '\S*';
 
-		$spacerule = "/^\s+/";
-		$namerule = "/^$nameStart($classname$nameSep$name|start)$nameEnd/";
-		$namecapture = function(&$value, $matches){
-			if (strpos($matches[1], self::NAME_SEPARATOR) !== false) {
-				[$value->className, $value->name] = explode(self::NAME_SEPARATOR, $matches[1]);
-			} else {
-				$value->className = null;
-				$value->name = $matches[1];
-			}
-		};
-		$nextrule = "/^$next($func)$e/";
-		$nextcapture = function(&$value, $matches){
-			$value = $this->parseNextAction($matches[1]);
-		};
-		$forkrule = "/^$next$func($fork$func)+$e/";
-		$forkcapture = function(&$value, $matches){
-			$value = array_map([$this, "parseNextAction"], explode(self::FORK, ltrim($matches[0], self::NEXT)));
-		};
-		$endrule = "/^$end$e/";
-		$endcapture = function(&$value, $matches){
-			$value = false;
-		};
-		$startrule = "/^$start$e/";
-		$readonlyrule = "/^$readonly$e/";
-		$joinrule = "/^$join$e/";
-		$equalsrule = "/^$equals($retval)$e/";
-		$equalscapture = function(&$value, $matches){
-			$value = $matches[1];
-		};
-		// #dimension is required
-		$dimensionrule1 = "/^$tag($name)$e/";
-		$dimensioncapture1 = function(&$value, $matches){
-			$value[$matches[1]] = true;
-		};
-		// #dimension is required but no value is given
-		$dimensionrule2 = "/^$tag($name)$equals$e/";
-		$dimensioncapture2 = function(&$value, $matches){
-			$value[$matches[1]] = "";
-		};
-		// #dimension is required with given value
-		$dimensionrule3 = "/^$tag($name)$equals($val)$e/";
-		$dimensioncapture3 = function(&$value, $matches){
-			$value[$matches[1]] = $matches[2];
-		};
+		$spaceToken = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
+		$nameToken = "/^$nameStart($classname$nameSep$name|start)$nameEnd/";
+		$startToken = "/^$start$e/";
+		$endToken = "/^$end$e/";
+		$readonlyToken = "/^$readonly$e/";
+		$detachToken = "/^$detach$e/";
+		$joinToken = "/^$join$e/";
+		$dimensionRequiredAnyValue = "/^$tag($name)$e/";
+		$dimensionRequiredNoValue = "/^$tag($name)$equals$e/";
+		$dimensionRequiredWithGivenValue = "/^$tag($name)$equals($val)$e/";
+		$nextToken = "/^$next/";
+		$nextIfToken = "/^$nextIf/";
+		$equalsToken = "/^$equals($retval)$e/";
+		$splitToken = "/^$split/";
+		$actionToken = "/^(?:$classname$nameSep)?$name/";
+		$branchActionToken = "/^$name$branchSep(?:$classname$nameSep)?$name/";
 
 		$this->done = "";
 		$this->start = false;
@@ -539,79 +576,147 @@ final class Action
 		$this->join = false;
 		$this->next = null;
 		$this->dimensions = [];
-		$this->returnValues = null;
-		$returnValue = null;
+		$this->returnValues = false;
 
+		$states = [];
+		$state = self::STATE_START;
 		while (strlen($this->text) > 0) {
-			if ($returnValue !== null) {
-				if (preg_match($spacerule, $this->text, $matches)) {
-					// nothing to do
-				} elseif (preg_match($nextrule, $this->text, $matches)) {
-					$nextcapture($this->next->$returnValue, $matches);
-					$returnValue = null;
-				} elseif (preg_match($forkrule, $this->text, $matches)) {
-					$forkcapture($this->next->$returnValue, $matches);
-					$returnValue = null;
-				} elseif (preg_match($endrule, $this->text, $matches)) {
-					$endcapture($this->next->$returnValue, $matches);
-					$returnValue = null;
-				} else {
-					throw $this->parseError("Parse error");
-				}
-			} else {
-				if (preg_match($spacerule, $this->text, $matches)) {
-					// nothing to do
-				} elseif (preg_match($startrule, $this->text, $matches)) {
-					if ($this->start === true) {
-						throw $this->parseError("Token '".self::START."' is only expected once.");
+			echo "[$state] ", $this->text, "\n";
+			switch ($state) {
+				case self::STATE_START:
+					if (preg_match($spaceToken, $this->text, $matches)) {
+						echo "matched spaceToken\n";
+						// nothing to do
+					} elseif (preg_match($nameToken, $this->text, $matches)) {
+						echo "matched nameToken\n";
+						if (strpos($matches[1], self::NAME_SEPARATOR) !== false) {
+							[$this->className, $this->name] = explode(self::NAME_SEPARATOR, $matches[1]);
+						} else {
+							$this->className = null;
+							$this->name = $matches[1];
+						}
+						$this->constructKey();
+					} else {
+						echo "matched nothing\n";
+						$state = self::STATE_TOP;
+						continue 2; // do not consume token
 					}
-					$this->start = true;
-				} elseif (preg_match($readonlyrule, $this->text, $matches)) {
-					if ($this->readonly === true) {
-						throw $this->parseError("Token '".self::READONLY."' is only expected once.");
+					break;
+
+				case self::STATE_TOP:
+					if (preg_match($spaceToken, $this->text, $matches)) {
+						echo "matched spaceToken\n";
+						// nothing to do
+					} elseif (preg_match($dimensionRequiredAnyValue, $this->text, $matches)) {
+						echo "matched dimensionRequiredAnyValue\n";
+						$this->dimensions[$matches[1]] = true;
+					} elseif (preg_match($dimensionRequiredNoValue, $this->text, $matches)) {
+						echo "matched dimensionRequiredNoValue\n";
+						$this->dimensions[$matches[1]] = "";
+					} elseif (preg_match($dimensionRequiredWithGivenValue, $this->text, $matches)) {
+						echo "matched dimensionRequiredWithGivenValue\n";
+						$this->dimensions[$matches[1]] = $matches[2];
+					} elseif (preg_match($startToken, $this->text, $matches)) {
+						echo "matched startToken\n";
+						if ($this->start === true) {
+							throw $this->parseError("Token '".self::START."' is only expected once.");
+						}
+						$this->start = true;
+					} elseif (preg_match($readonlyToken, $this->text, $matches)) {
+						echo "matched readonlyToken\n";
+						if ($this->readonly === true) {
+							throw $this->parseError("Token '".self::READONLY."' is only expected once.");
+						}
+						$this->readonly = true;
+					} elseif (preg_match($detachToken, $this->text, $matches)) {
+						echo "matched detachToken\n";
+						if ($this->detach === true) {
+							throw $this->parseError("Token '".self::DETACH."' is only expected once.");
+						}
+						$this->detach = true;
+					} elseif (preg_match($joinToken, $this->text, $matches)) {
+						echo "matched joinToken\n";
+						if ($this->join === true) {
+							throw $this->parseError("Token '".self::JOIN."' is only expected once.");
+						}
+						$this->join = true;
+					} elseif (preg_match($nextToken, $this->text, $matches)) {
+						echo "matched nextToken\n";
+						if ($this->next !== null) {
+							throw $this->parseError("Only one next expression allowed.");
+						}
+						$this->next = [];
+						$nextref = &$this->next;
+						$states[] = $state;
+						$state = self::STATE_NEXT_EXP;
+					} elseif (preg_match($nextIfToken, $this->text, $matches)) {
+						echo "matched nextIfToken\n";
+						if ($this->next !== null) {
+							throw $this->parseError("Only one next expression allowed.");
+						}
+						$states[] = $state;
+						$state = self::STATE_EQUALS;
+						$this->returnValues = true;
+						$this->next = new stdClass;
+					} elseif (preg_match($endToken, $this->text, $matches)) {
+						echo "matched endToken\n";
+						if ($this->next !== null) {
+							throw $this->parseError("Only one next expression allowed.");
+						}
+						$this->next = false;
+					} else {
+						throw $this->parseError("Parse error");
 					}
-					$this->readonly = true;
-				} elseif (preg_match($joinrule, $this->text, $matches)) {
-					if ($this->join === true) {
-						throw $this->parseError("Token '".self::JOIN."' is only expected once.");
+					break;
+
+				case self::STATE_EQUALS: // equals expressions
+					if (preg_match($spaceToken, $this->text, $matches)) {
+						echo "matched spaceToken\n";
+						// nothing to do
+					} elseif (preg_match($equalsToken, $this->text, $matches)) {
+						echo "matched equalsToken\n";
+						$returnValue = $matches[1];
+						$this->next->$returnValue = [];
+						$nextref = &$this->next->$returnValue;
+						$states[] = $state;
+						$state = self::STATE_NEXT_EXP;
+					} else {
+						$state = array_pop($states);
+						continue 2;
 					}
-					$this->join = true;
-				} elseif (preg_match($equalsrule, $this->text, $matches)) {
-					$this->turnOnReturnValues();
-					$equalscapture($returnValue, $matches);
-				} elseif (preg_match($nextrule, $this->text, $matches)) {
-					$this->turnOffReturnValues();
-					$nextcapture($this->next, $matches);
-				} elseif (preg_match($forkrule, $this->text, $matches)) {
-					$this->turnOffReturnValues();
-					$forkcapture($this->next, $matches);
-				} elseif (preg_match($endrule, $this->text, $matches)) {
-					$this->turnOffReturnValues();
-					$endcapture($this->next, $matches);
-				} elseif (preg_match($dimensionrule1, $this->text, $matches)) {
-					$dimensioncapture1($this->dimensions, $matches);
-				} elseif (preg_match($dimensionrule2, $this->text, $matches)) {
-					$dimensioncapture2($this->dimensions, $matches);
-				} elseif (preg_match($dimensionrule3, $this->text, $matches)) {
-					$dimensioncapture3($this->dimensions, $matches);
-				} elseif (preg_match($namerule, $this->text, $matches)) {
-					if (strlen($this->done) !== 0) {
-						throw $this->parseError("Action name must be at the start of the text.");
+					break;
+
+				case self::STATE_NEXT_EXP: // next expression
+					if (preg_match($spaceToken, $this->text, $matches)) {
+						echo "matched spaceToken\n";
+						// nothing to do
+					} elseif (preg_match($endToken, $this->text, $matches)) {
+						echo "matched endToken\n";
+						$nextref = false;
+					} elseif (preg_match($splitToken, $this->text, $matches)) {
+						echo "matched splitToken\n";
+					} elseif (preg_match($branchActionToken, $this->text, $matches)) {
+						echo "matched branchActionToken\n";
+						$text = $matches[0];
+						$p = strpos($text, self::BRANCH_SEPARATOR);
+						$branch = substr($text, 0, $p);
+						$action = $this->parseNextAction(substr($text, $p + strlen(self::BRANCH_SEPARATOR)));
+						$nextref[$branch] = $action;
+					} elseif (preg_match($actionToken, $this->text, $matches)) {
+						echo "matched actionToken\n";
+						$nextref[] = $this->parseNextAction($matches[0]);
+					} else {
+						$state = array_pop($states);
+						continue 2;
 					}
-					$namecapture($this, $matches);
-					$this->constructKey();
-				} else {
-					throw $this->parseError("Parse error");
-				}
+					break;
 			}
 			$this->done.= $matches[0];
 			$this->text = substr($this->text, strlen($matches[0]));
 		}
-		// if there is no start and no next the rule is considered a single action
-		if ($this->start === false && $this->next === null) {
-			$this->start = true;
-			$this->next = false;
-		}
+		echo "done\n";
+		unset($nextref); // break next reference
+
 		if ($this->next === null) {
 			throw new \LogicException("No next action defined.");
 		}
@@ -636,6 +741,10 @@ final class Action
 					throw new \LogicException("When using boolean return values, only two next expressions are allowed.");
 				}
 			}
+		} else {
+			if (is_array($this->next) && count($this->next) === 1 && reset($this->next) && key($this->next) === 0) {
+				$this->next = $this->next[0];
+			}
 		}
 		$this->text = $this->done;
 		$this->done = null;
@@ -647,25 +756,6 @@ final class Action
 			$nextAction = $this->className.self::NAME_SEPARATOR.$nextAction;
 		}
 		return $nextAction;
-	}
-
-	private function turnOffReturnValues()
-	{
-		if ($this->returnValues !== null) {
-			throw $this->parseError("Next already defined.");
-		}
-		$this->returnValues = false;
-	}
-
-	private function turnOnReturnValues()
-	{
-		if ($this->returnValues === false) {
-			throw $this->parseError("Already have a token with a return value.");
-		}
-		$this->returnValues = true;
-		if ($this->next === null) {
-			$this->next = new stdClass;
-		}
 	}
 
 	private function parseError(string $msg)
@@ -701,18 +791,29 @@ final class Action
 				if ($next === false) {
 					$text.= self::END." ";
 				} elseif (is_array($next)) {
-					$text.= self::NEXT.implode(self::FORK, $next)." ";
+					$text.= self::NEXT." ".implode(" ".self::FORK." ", $next)." ";
 				} elseif (is_string($next)) {
-					$text.= self::NEXT.$next." ";
+					$text.= self::NEXT." ".$next." ";
 				}
 			}
 		} else {
 			if ($this->next === false) {
 				$text.= self::END." ";
 			} elseif (is_array($this->next)) {
-				$text.= self::NEXT.implode(self::FORK, $this->next)." ";
+				$text.= self::NEXT." ";
+				reset($this->next);
+				if (is_string(key($this->next))) {
+					$i = 0;
+					foreach ($this->next as $branch => $method) {
+						if ($i++) $text.= " ".self::FORK." ";
+						$text.= $branch.self::BRANCH_SEPARATOR.$method;
+					}
+				} else {
+					$text.= implode(" ".self::FORK." ", $this->next);
+				}
+				$text.= " ";
 			} elseif (is_string($this->next)) {
-				$text.= self::NEXT.$this->next." ";
+				$text.= self::NEXT." ".$this->next." ";
 			}
 		}
 		foreach ($this->dimensions as $key => $value) {

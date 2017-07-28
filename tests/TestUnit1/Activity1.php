@@ -14,7 +14,11 @@ class Activity1
 	}
 
 	/**
-	 * @Action("=1 >action3  =2 >action4  =3 >action6")
+	 * @Action("
+	 *    =1 >action3
+	 *    =2 >action4
+	 *    =3 >action6
+	 * ")
 	 */
 	public function action2()
 	{
