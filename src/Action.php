@@ -19,37 +19,6 @@ use stdClass;
  * @Attributes({
  *   @Attribute("value", type = "string"),
  * })
- *
- * ABNF:
- * <action> = [ <actionname> ] <options>
- * <actionname> = "[" <classname> "::" <name> "]"
- * <options> =  *( <s> / <start> / <readonly> / <next> / <dimension> )
- * <options> =/ *( <s> / <start> / <readonly> / <fork> / <dimension> )
- * <options> =/ *( <s> / <start> / <readonly> / <end> / <dimension> )
- * <options> =/ *( <s> / <start> / <readonly> / <retval> <s> ( <next> / <fork> / <end> ) / <dimension>  )
- * <options> =/ *( <s> / <join> / <readonly> / <next> / <dimension> )
- * <options> =/ *( <s> / <join> / <readonly> / <fork> / <dimension> )
- * <options> =/ *( <s> / <join> / <readonly> / <end> / <dimension> )
- * <options> =/ *( <s> / <join> / <readonly> / <retval> <s> ( <next> / <fork> / <end> ) / <dimension>  )
- * <readonly> = "readonly"
- * <start> = "start"
- * <end> = "end"
- * <join> = ">|"
- * <next> = ">" ( <method> / <end> )
- * <fork> = "|>" 1*( <s> <method> )
- * <retval> = "=" ( "true" / "false" / <int> )
- * <dimension> = "#" <name> [ "=" <value> ]
- * <method> = [ <classname> "::" ] <name>
- * <classname> = <startcchar> *<cchar>
- * <name> = <startnchar> *<nchar>
- * <startnchar> = %x41-5A / %x5F / %x61-7A ; name start character
- * <nchar> = %x30-39 / %x41-5A / %x5F / %x61-7A ; name character
- * <startcchar> = %x41-5A / %x5C / %x5F / %x61-7A ; class name start character
- * <cchar> = %x30-39 / %x41-5A / %x5C / %x5F / %x61-7A ; class name character
- * <int> =  %x30 ; 0
- * <int> =/ %x31-39 *(%x30-39) ; number not starting with zero
- * <s> = 1*(%x20) ; one or more spaces
- * <value> = 1*( %x21-7E )
  */
 final class Action
 {
@@ -203,6 +172,28 @@ final class Action
 	public function getReadonly(): bool
 	{
 		return $this->readonly;
+	}
+
+	/**
+	 * Set detach
+	 *
+	 * @param bool $detach
+	 * @return self
+	 */
+	public function setDetach(bool $detach): self
+	{
+		$this->detach = $detach;
+		return $this;
+	}
+
+	/**
+	 * Get detach
+	 *
+	 * @return bool
+	 */
+	public function getDetach(): bool
+	{
+		return $this->detach;
 	}
 
 	/**

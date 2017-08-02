@@ -180,6 +180,17 @@ class ActionTest extends TestCase
 		$this->assertEquals(["foo"=>"bar", "baz"=>null, "bas"=>true], $action->getDimensions());
 	}
 
+	public function testMultilineInDocBlock()
+	{
+		$action = new Action();
+		$action->setText("#foo=bar
+			*    #baz=
+			*    #bas
+			* ");
+		$action->parse();
+		$this->assertEquals(["foo"=>"bar", "baz"=>null, "bas"=>true], $action->getDimensions());
+	}
+
 	public function testToString()
 	{
 		$action = new Action();
