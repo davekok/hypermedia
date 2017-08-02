@@ -60,13 +60,8 @@ class ActionTest extends TestCase
 	public function testNextAlreadyDefined()
 	{
 		$action = new Action();
-<<<<<<< Updated upstream
-		$action->setClassName("Foo");
-		$action->setText("end >action1");
-=======
 		$action->setKey("Foo", "bar");
 		$action->setText("end > action1");
->>>>>>> Stashed changes
 		try {
 			$action->parse();
 			$this->fail();
@@ -78,13 +73,8 @@ class ActionTest extends TestCase
 	public function testNextAction()
 	{
 		$action = new Action();
-<<<<<<< Updated upstream
-		$action->setClassName("Foo");
-		$action->setText(">action");
-=======
 		$action->setKey("Foo", "bar");
 		$action->setText("> action");
->>>>>>> Stashed changes
 		$action->parse();
 		$this->assertEquals("Foo::action", $action->getNext());
 	}
@@ -92,24 +82,12 @@ class ActionTest extends TestCase
 	public function testNextFork()
 	{
 		$action = new Action();
-<<<<<<< Updated upstream
-		$action->setClassName("Foo");
-		$action->setText('>action1|Bar::action2|Foo\Bar::action3');
-=======
 		$action->setKey("Foo", "bar");
 		$action->setText('> action1 | Bar::action2 | Foo\Bar::action3');
->>>>>>> Stashed changes
 		$action->parse();
 		$this->assertEquals(["Foo::action1", "Bar::action2", "Foo\Bar::action3"], $action->getNext());
 	}
 
-<<<<<<< Updated upstream
-	public function testBooleanReturnValues()
-	{
-		$action = new Action();
-		$action->setClassName("Foo");
-		$action->setText("=true end  =false >action2");
-=======
 	public function testNextSplit1()
 	{
 		$action = new Action();
@@ -133,7 +111,6 @@ class ActionTest extends TestCase
 		$action = new Action();
 		$action->setKey("Foo", "bar");
 		$action->setText("+>end  ->action2");
->>>>>>> Stashed changes
 		$action->parse();
 		$this->assertEquals((object)["true"=>false, "false"=>"Foo::action2"], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
@@ -142,13 +119,8 @@ class ActionTest extends TestCase
 	public function testIntegerReturnValues()
 	{
 		$action = new Action();
-<<<<<<< Updated upstream
-		$action->setClassName("Foo");
-		$action->setText("=0 end  =1 >action2  =2 >action3  =3 >action4");
-=======
 		$action->setKey("Foo", "bar");
 		$action->setText("0> end  1> action2  2> branch1:action3 | branch2:action4  3> action5 | action6");
->>>>>>> Stashed changes
 		$action->parse();
 		$this->assertEquals((object)[0=>false, 1=>"Foo::action2", 2=>["branch1"=>"Foo::action3", "branch2"=>"Foo::action4"], 3=>["Foo::action5","Foo::action6"]], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
@@ -170,13 +142,8 @@ class ActionTest extends TestCase
 	public function testMixedReturnValues()
 	{
 		$action = new Action();
-<<<<<<< Updated upstream
-		$action->setClassName("Foo");
-		$action->setText("=0 end  =true >action2  =false >action3");
-=======
 		$action->setKey("Foo", "bar");
 		$action->setText("0> end +> action2");
->>>>>>> Stashed changes
 		try {
 			$action->parse();
 			$this->fail();
@@ -188,20 +155,13 @@ class ActionTest extends TestCase
 	public function testNextForkReturnValues()
 	{
 		$action = new Action();
-<<<<<<< Updated upstream
-		$action->setClassName("Foo");
-		$action->setText('=true >action1|Bar::action2|Foo\Bar::action3  =false end');
-=======
 		$action->setKey("Foo", "bar");
 		$action->setText('+> action1 | Bar::action2 | Foo\Bar::action3  -> end');
->>>>>>> Stashed changes
 		$action->parse();
 		$this->assertEquals((object)["true"=>["Foo::action1", "Bar::action2", "Foo\Bar::action3"], "false"=>false], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
 	}
 
-<<<<<<< Updated upstream
-=======
 	public function testNextSplitReturnValues()
 	{
 		$action = new Action();
@@ -212,7 +172,6 @@ class ActionTest extends TestCase
 		$this->assertTrue($action->hasReturnValues());
 	}
 
->>>>>>> Stashed changes
 	public function testDimensions()
 	{
 		$action = new Action();
@@ -223,15 +182,10 @@ class ActionTest extends TestCase
 
 	public function testToString()
 	{
-<<<<<<< Updated upstream
-		$action = Action::createFromText('[Foo::action1] >action2 #foo=bar #baz= #bas');
-		$this->assertEquals('[Foo::action1] >Foo::action2 #foo=bar #baz= #bas', "$action");
-=======
 		$action = new Action();
 		$action->setKey("Foo", "action1");
 		$action->setText('[Foo::action1] > action2 #foo=bar #baz= #bas');
 		$action->parse();
 		$this->assertEquals('[Foo::action1] > Foo::action2 #foo=bar #baz= #bas', "$action");
->>>>>>> Stashed changes
 	}
 }
