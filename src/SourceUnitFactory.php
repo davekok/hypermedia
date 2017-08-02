@@ -34,6 +34,7 @@ final class SourceUnitFactory
 	 */
 	public function createSourceUnit(string $unitName, string $dirs): SourceUnit
 	{
+		$parser = new ActionParser();
 		$unit = new SourceUnit($unitName);
 		foreach ($this->iterateDirectory($dirs, ["php"]) as $file) {
 			try {
@@ -52,10 +53,8 @@ final class SourceUnitFactory
 					foreach ($annotations as $annotation) {
 						if (!$annotation instanceof Action) continue;
 						$action = $annotation;
-						$action->setClassName($className);
-						$action->setName($method->getName());
-						$action->parse();
-						$unit->addAction($action);
+						$action->setKey($className, $method->getName());
+						$unit->addAction($parser->parse($action));
 					}
 				}
 			} catch (NoClassInSourceException $e) {

@@ -12,6 +12,7 @@ use stdClass;
  * Only class methods can be actions. A method may have one or more action annotations.
  * However if multiple action annotations are used the must use different dimensions.
  *
+<<<<<<< Updated upstream
  * The action annotation makes use of a simple syntax.
  *
  * Syntax:
@@ -74,6 +75,9 @@ use stdClass;
  * [class::action9]
  * [class::action10] >action11
  * [class::action11] >| end
+=======
+ * The action annotation makes use of a simple syntax as documented by ActionParser class.
+>>>>>>> Stashed changes
  *
  * @Annotation
  * @Target({"METHOD"})
@@ -114,6 +118,7 @@ use stdClass;
  */
 final class Action
 {
+<<<<<<< Updated upstream
 	const NAME_START = "[";
 	const NAME_SEPARATOR = "::";
 	const NAME_END = "]";
@@ -136,6 +141,8 @@ final class Action
 	 */
 	private $done;
 
+=======
+>>>>>>> Stashed changes
 	/**
 	 * @var string
 	 */
@@ -154,32 +161,40 @@ final class Action
 	/**
 	 * @var bool
 	 */
-	private $start;
+	private $start = false;
 
 	/**
 	 * @var bool
 	 */
-	private $readonly;
+	private $readonly = false;
 
 	/**
 	 * @var bool
 	 */
-	private $join;
+	private $join = false;
 
 	/**
+<<<<<<< Updated upstream
+=======
+	 * @var bool
+	 */
+	private $detach = false;
+
+	/**
+>>>>>>> Stashed changes
 	 * @var false|string|array
 	 */
 	private $next;
 
 	/**
-	 * @var bool
-	 */
-	private $returnValues;
-
-	/**
 	 * @var array
 	 */
-	private $dimensions;
+	private $dimensions = [];
+
+	/**
+	 * @var string
+	 */
+	private $text;
 
 	/**
 	 * Constructor
@@ -194,30 +209,29 @@ final class Action
 	}
 
 	/**
-	 * Create a new instance of action based on the given text.
-	 *
-	 * @param  string $text  the text describing the action
-	 * @return self  an instance of this class
+	 * Set the action key
 	 */
-	public static function createFromText(string $text): self
+	public function setKey(?string $className, string $name): self
 	{
-		$inst = new self;
-		$inst->text = $text;
-		$inst->parse();
-		return $inst;
+		$this->className = $className;
+		$this->name = $name;
+		if ($this->className && $this->name) {
+			$this->key = "{$this->className}::{$this->name}";
+		} elseif ($this->name) {
+			$this->key = $this->name;
+		} else {
+			$this->key = null;
+		}
+		return $this;
 	}
 
 	/**
-	 * Set class name
-	 *
-	 * @param string $className
-	 * @return self
+	 * Get the key of the action.
+	 * @return string  the key
 	 */
-	public function setClassName(string $className): self
+	public function getKey(): string
 	{
-		$this->className = $className;
-		$this->constructKey();
-		return $this;
+		return $this->key;
 	}
 
 	/**
@@ -231,19 +245,6 @@ final class Action
 	}
 
 	/**
-	 * Set name
-	 *
-	 * @param string $name
-	 * @return self
-	 */
-	public function setName(string $name): self
-	{
-		$this->name = $name;
-		$this->constructKey();
-		return $this;
-	}
-
-	/**
 	 * Get name
 	 *
 	 * @return string
@@ -251,29 +252,6 @@ final class Action
 	public function getName(): string
 	{
 		return $this->name;
-	}
-
-	/**
-	 * Construct key from class name and action name.
-	 */
-	private function constructKey(): void
-	{
-		if ($this->className && $this->name) {
-			$this->key = "{$this->className}::{$this->name}";
-		} elseif ($this->name) {
-			$this->key = $this->name;
-		} else {
-			$this->key = "";
-		}
-	}
-
-	/**
-	 * Get the key of the action.
-	 * @return string  the key
-	 */
-	public function getKey(): string
-	{
-		return $this->key;
 	}
 
 	/**
@@ -343,9 +321,9 @@ final class Action
 	}
 
 	/**
-	 * Get which action comes next.
+	 * Set which action comes next.
 	 *
-	 * @param $next  either false, a string or an array.
+	 * @param $next  either false, a string, a array or a object.
 	 */
 	public function setNext($next): self
 	{
@@ -356,23 +334,11 @@ final class Action
 	/**
 	 * Get which action comes next.
 	 *
-	 * @return either false, a string or an array.
+	 * @return either false, a string, a array or a object.
 	 */
 	public function getNext()
 	{
 		return $this->next;
-	}
-
-	/**
-	 * Set whether return values are used.
-	 *
-	 * @param bool $returnValues
-	 * @return self
-	 */
-	public function setReturnValues(bool $returnValues): self
-	{
-		$this->returnValues = $returnValues;
-		return $this;
 	}
 
 	/**
@@ -382,19 +348,28 @@ final class Action
 	 */
 	public function hasReturnValues(): bool
 	{
-		return $this->returnValues;
+		return is_object($this->next);
 	}
 
 	/**
-	 * Set dimensions
+	 * Set that the action is only valid if the given dimension is there.
 	 *
-	 * @param array $dimensions
-	 * @return self
+	 * @param string $dimension  the dimension
 	 */
-	public function setDimensions(array $dimensions): self
+	public function needsDimension(string $dimension)
 	{
-		$this->dimensions = $dimensions;
-		return $this;
+		$this->dimensions[$dimension] = true;
+	}
+
+	/**
+	 * Set that the action is only valid if the dimension matches the value.
+	 *
+	 * @param string $dimension  the dimension
+	 * @param ?string $value  the value
+	 */
+	public function matchDimensionValue(string $dimension, ?string $value)
+	{
+		$this->dimensions[$dimension] = $value;
 	}
 
 	/**
@@ -461,14 +436,15 @@ final class Action
 	 */
 	public function getText(): string
 	{
-		return $this->text??(string)$this;
+		return $this->text;
 	}
 
 	/**
-	 * Parse the text and set the properties accordingly.
+	 * Parse action text
 	 */
 	public function parse(): void
 	{
+<<<<<<< Updated upstream
 		$respecial = '[]|/\\(){}*+?';
 		$equals = addcslashes(self::EQUALS, $respecial);
 		$start = addcslashes(self::START, $respecial);
@@ -639,13 +615,20 @@ final class Action
 		}
 		$this->text = $this->done;
 		$this->done = null;
+=======
+		(new ActionParser)->parse($this);
+>>>>>>> Stashed changes
 	}
 
-	private function parseNextAction(string $nextAction)
+	/**
+	 * Validate action
+	 */
+	public function validate(): void
 	{
-		if (strpos($nextAction, self::NAME_SEPARATOR) === false) {
-			$nextAction = $this->className.self::NAME_SEPARATOR.$nextAction;
+		if ($this->next === null) {
+			throw new \LogicException("No next action defined.");
 		}
+<<<<<<< Updated upstream
 		return $nextAction;
 	}
 
@@ -671,6 +654,8 @@ final class Action
 	private function parseError(string $msg)
 	{
 		return new \LogicException("$msg\n{$this->done}{$this->text}\n".str_repeat(" ",strlen($this->done))."^\n");
+=======
+>>>>>>> Stashed changes
 	}
 
 	/**
@@ -682,46 +667,69 @@ final class Action
 	{
 		$text = "";
 		if ($this->className && $this->name) {
-			$text.= self::NAME_START.$this->className.self::NAME_SEPARATOR.$this->name.self::NAME_END." ";
+			$text.= ActionParser::NAME_START.$this->className.ActionParser::NAME_SEPARATOR.$this->name.ActionParser::NAME_END." ";
 		} elseif ($this->className === null && $this->name === "start") {
-			$text.= self::NAME_START.$this->name.self::NAME_END." ";
+			$text.= ActionParser::NAME_START.$this->name.ActionParser::NAME_END." ";
 		}
 		if ($this->start) {
-			$text.= self::START." ";
+			$text.= ActionParser::START." ";
 		}
 		if ($this->readonly) {
-			$text.= self::READONLY." ";
+			$text.= ActionParser::READONLY." ";
 		}
 		if ($this->join) {
-			$text.= self::JOIN." ";
+			$text.= ActionParser::JOIN." ";
 		}
-		if ($this->returnValues) {
+		if ($this->hasReturnValues()) {
 			foreach ($this->next as $returnValue => $next) {
-				$text.= self::EQUALS.$returnValue." ";
+				$text.= ActionParser::EQUALS.$returnValue." ";
 				if ($next === false) {
-					$text.= self::END." ";
+					$text.= ActionParser::END." ";
 				} elseif (is_array($next)) {
+<<<<<<< Updated upstream
 					$text.= self::NEXT.implode(self::FORK, $next)." ";
 				} elseif (is_string($next)) {
 					$text.= self::NEXT.$next." ";
+=======
+					$text.= ActionParser::NEXT." ".implode(" ".ActionParser::FORK." ", $next)." ";
+				} elseif (is_string($next)) {
+					$text.= ActionParser::NEXT." ".$next." ";
+>>>>>>> Stashed changes
 				}
 			}
 		} else {
 			if ($this->next === false) {
-				$text.= self::END." ";
+				$text.= ActionParser::END." ";
 			} elseif (is_array($this->next)) {
+<<<<<<< Updated upstream
 				$text.= self::NEXT.implode(self::FORK, $this->next)." ";
 			} elseif (is_string($this->next)) {
 				$text.= self::NEXT.$this->next." ";
+=======
+				$text.= ActionParser::NEXT." ";
+				reset($this->next);
+				if (is_string(key($this->next))) {
+					$i = 0;
+					foreach ($this->next as $branch => $method) {
+						if ($i++) $text.= " ".ActionParser::FORK." ";
+						$text.= $branch.ActionParser::BRANCH_SEPARATOR.$method;
+					}
+				} else {
+					$text.= implode(" ".ActionParser::FORK." ", $this->next);
+				}
+				$text.= " ";
+			} elseif (is_string($this->next)) {
+				$text.= ActionParser::NEXT." ".$this->next." ";
+>>>>>>> Stashed changes
 			}
 		}
 		foreach ($this->dimensions as $key => $value) {
-			$text.= self::TAG.$key;
+			$text.= ActionParser::TAG.$key;
 			if ($value === true) {
-			} elseif ($value === "") {
-				$text.= self::EQUALS;
+			} elseif ($value === null) {
+				$text.= ActionParser::EQUALS;
 			} else {
-				$text.= self::EQUALS.$value;
+				$text.= ActionParser::EQUALS.$value;
 			}
 			$text.= " ";
 		}
