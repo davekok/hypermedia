@@ -23,13 +23,6 @@ use Sturdy\Activity\ActionParserError as ParserError;
  * Marks the action as the end action of an activity, shortcut for '> end'
  *
  *
- *   readonly
- *
- * Marks the action as readonly, if all actions in an activity are readonly the activity is not journaled.
- * A readonly activity is not supposed to change any persisted state in any way. However it may read
- * persisted state. It is considered safe for readonly activity to be repeated or aborted.
- *
- *
  *   detach
  *
  * Detach the activity from the current activity starting a new journal.
@@ -150,7 +143,6 @@ final class ActionParser
 	const NAME_END = "]";
 	const START = "start";
 	const END = "end";
-	const READONLY = "readonly";
 	const DETACH = "detach";
 	const NEXT = ">";
 	const NEXT_IF_TRUE = "+>";
@@ -166,7 +158,6 @@ final class ActionParser
 	private $nameToken;
 	private $startToken;
 	private $endToken;
-	private $readonlyToken;
 	private $detachToken;
 	private $joinToken;
 	private $needsDimension;
@@ -191,7 +182,6 @@ final class ActionParser
 		$equals = addcslashes(self::EQUALS, self::REGEX_SPECIAL);
 		$start = addcslashes(self::START, self::REGEX_SPECIAL);
 		$end = addcslashes(self::END, self::REGEX_SPECIAL);
-		$readonly = addcslashes(self::READONLY, self::REGEX_SPECIAL);
 		$detach = addcslashes(self::DETACH, self::REGEX_SPECIAL);
 		$next = addcslashes(self::NEXT, self::REGEX_SPECIAL);
 		$nextIfTrue = addcslashes(self::NEXT_IF_TRUE, self::REGEX_SPECIAL);
@@ -214,7 +204,6 @@ final class ActionParser
 		$this->nameToken = "/^$nameStart($classname$nameSep$name|$start)$nameEnd/";
 		$this->startToken = "/^$start$e/";
 		$this->endToken = "/^$end$e/";
-		$this->readonlyToken = "/^$readonly$e/";
 		$this->detachToken = "/^$detach$e/";
 		$this->joinToken = "/^$join$e/";
 		$this->dimensionToken = "/^$tag($name)/";
@@ -284,18 +273,15 @@ final class ActionParser
 			if ($this->match('spaceToken')) {
 				// do nothing
 			} elseif ($this->match('nameToken', $name)) {
-				if (strpos($name, self::NAME_SEPARATOR) !== false) {
-					[$className, $name] = explode(self::NAME_SEPARATOR, $name);
-					if ($this->action->getClassName() !== $className || $this->action->getName() !== $name) {
-						throw new ParserError($this->parseError("Expected name token "
-							. self::NAME_START . $this->action->getClassName() . self::NAME_SEPARATOR
-							. $this->action->getName() . self::NAME_END	. " got " . $matches[0]));
+				if ($this->action->getKey() === null) {
+					if (strpos($name, self::NAME_SEPARATOR) !== false) {
+						[$className, $name] = explode(self::NAME_SEPARATOR, $name);
+						$this->action->setKey($className, $name);
+					} else {
+						$this->action->setKey(null, $name);
 					}
 				} else {
-					if ($this->action->getName() !== $name) {
-						throw new ParserError($this->parseError("Expected name token "
-							. self::NAME_START . $this->action->getName() . self::NAME_END));
-					}
+					throw new ParserError($this->parseError("Name token not allowed as action is already named."));
 				}
 				break;
 			} else {
@@ -323,9 +309,6 @@ final class ActionParser
 			} elseif ($this->isbitset($mask, 1) && $this->match('startToken')) {
 				$this->clearbit($mask, 1);
 				$this->action->setStart(true);
-			} elseif ($this->isbitset($mask, 2) && $this->match('readonlyToken')) {
-				$this->clearbit($mask, 2);
-				$this->action->setReadonly(true);
 			} elseif ($this->isbitset($mask, 3) && $this->match('detachToken')) {
 				$this->clearbit($mask, 3);
 				$this->action->setDetach(true);
@@ -344,20 +327,20 @@ final class ActionParser
 				$this->setbit($mask, 10);
 				$next = new stdClass;
 				$this->action->setNext($next);
-				$next->{"true"} = $this->parseNext();
+				$next->{"+"} = $this->parseNext();
 			} elseif ($this->isbitset($mask, 6) && $this->match('nextIfFalseToken')) {
 				$this->clearbit($mask, 10);
-				$next->{"false"} = $this->parseNext();
+				$next->{"-"} = $this->parseNext();
 			} elseif ($this->isbitset($mask, 5) && $this->match('nextIfFalseToken')) {
 				$this->clearbit($mask, 5);
 				$this->setbit($mask, 7);
 				$this->setbit($mask, 11);
 				$next = new stdClass;
 				$this->action->setNext($next);
-				$next->{"false"} = $this->parseNext();
+				$next->{"-"} = $this->parseNext();
 			} elseif ($this->isbitset($mask, 7) && $this->match('nextIfTrueToken')) {
 				$this->clearbit($mask, 11);
-				$next->{"true"} = $this->parseNext();
+				$next->{"+"} = $this->parseNext();
 			} elseif ($this->isbitset($mask, 5) && $this->match('nextIfIntToken', $key)) {
 				$this->clearbit($mask, 5);
 				$this->setbit($mask, 8);

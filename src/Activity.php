@@ -14,33 +14,37 @@ use stdClass;
  */
 final class Activity implements ActivityInterface
 {
+	const STOP   = 0; // when advancing stop the activity
+	const ACTION = 1; // when advancing go to the action
+	const FORK   = 2; // when advancing fork the activity
+	const SPLIT  = 3; // when advancing split the activity
+	const JOIN   = 4; // when advancing join the activity
+	const DETACH = 5; // when advanving detach the branch from the current activity
+
 	// dependencies
 	private $cache;
 	private $journalRepository;
-	private $stateFactory;
-	private $instanceFactory;
 
 	// state
 	private $unit;
 	private $dimensions;
-	private $readonly;
 	private $journal;
 	private $state;
+	private $instance;
 	private $actions;
+	private $branch;
+	private $branches;
+	private $decision;
 
 	/**
 	 * Constructor
 	 */
 	public function __construct(
 		ActivityCache $cache,
-		JournalRepository $journalRepository,
-		StateFactory $stateFactory,
-		InstanceFactory $instanceFactory)
+		JournalRepository $journalRepository)
 	{
 		$this->cache = $cache;
 		$this->journalRepository = $journalRepository;
-		$this->stateFactory = $stateFactory;
-		$this->instanceFactory = $instanceFactory;
 	}
 
 	/**
@@ -58,8 +62,7 @@ final class Activity implements ActivityInterface
 		}
 		$this->unit = $unit;
 		$this->dimensions = $dimensions;
-		$this->readonly = $activity["readonly"];
-		$this->actions = $activity["actions"];
+		$this->actions = $activity->actions;
 		return true;
 	}
 
@@ -70,102 +73,11 @@ final class Activity implements ActivityInterface
 	 */
 	public function createJournal(): self
 	{
-		if (!$this->readonly) {
-			$this->journal = $this->journalRepository->createJournal($this->unit, $this->dimensions);
-		} else {
-			// use a dummy journal in case of readonly activity
-			$this->journal = new class($this->unit, $this->dimensions) implements Journal {
-				private $unit;
-				private $dimensions;
-				private $states;
-				private $return;
-				private $errorMessages;
-				private $currentActions;
-				private $running;
-
-				public function __construct(string $unit, array $dimensions)
-				{
-					$this->unit = $unit;
-					$this->dimensions = $dimensions;
-					$this->currentActions = [];
-					$this->running = [];
-					$this->states = [];
-					$this->errorMessages = [];
-				}
-
-				public function getUnit(): ?string
-				{
-					return $this->unit;
-				}
-
-				public function getDimensions(): ?array
-				{
-					return $this->dimensions;
-				}
-
-				public function setState(int $branch, stdClass $state): Journal
-				{
-					$this->states[$branch] = $state;
-					return $this;
-				}
-
-				public function getState(int $branch): ?stdClass
-				{
-					return $this->states[$branch];
-				}
-
-				public function setReturn($return): Journal
-				{
-					$this->return = $return;
-					return $this;
-				}
-
-				public function getReturn()
-				{
-					return $this->return;
-				}
-
-				public function setErrorMessage(int $branch, ?string $errorMessage): Journal
-				{
-					$this->errorMessages[$branch] = $errorMessage;
-					return $this;
-				}
-
-				public function getErrorMessage(int $branch): ?string
-				{
-					return $this->errorMessages[$branch];
-				}
-
-				public function setCurrentAction(int $branch, string $currentAction): Journal
-				{
-					$this->currentActions[$branch] = $currentAction;
-					return $this;
-				}
-
-				public function getCurrentAction(int $branch): string
-				{
-					return $this->currentActions[$branch];
-				}
-
-				public function setRunning(int $branch, bool $running): Journal
-				{
-					$this->running[$branch] = $running;
-					return $this;
-				}
-
-				public function getRunning(int $branch): bool
-				{
-					return $this->running[$branch];
-				}
-			};
-		}
-
-		$this->journal->setCurrentAction(0, "start");
-		$this->journal->setRunning(0, false);
-
-		$this->state = $this->stateFactory->createState($this->unit, $this->dimensions);
-		$this->journal->setState(0, $this->state);
-
+		$this->journal = $this->journalRepository->createJournal($this->unit, $this->dimensions);
+		$this->branch = $this->journal->getMainBranch()
+			->setCurrentAction("start")
+			->setRunning(true);
+		$this->branches = new \Ds\Set();
 		return $this;
 	}
 
@@ -178,7 +90,6 @@ final class Activity implements ActivityInterface
 	public function loadJournal(int $journalId): self
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
-		$this->state = $this->journal->getState(0);
 
 		if ($this->activity === null) {
 			if (!$this->load($this->journal->getUnit(), $this->journal->getDimensions())) {
@@ -187,7 +98,27 @@ final class Activity implements ActivityInterface
 		} elseif ($this->unit !== $this->journal->getUnit() || $this->dimensions !== $this->journal->getDimensions()) {
 			throw new \Exception("The journal has been created for a different activity.");
 		}
+
+		$this->branch = $this->journal->getMainBranch();
+		$this->branches = new \Ds\Set;
+		$branches = $this->journal->getConcurrentBranches();
+		if ($branches) {
+			$this->branches->allocate(count($branches));
+			foreach ($branches as $branch) {
+				$this->branches->add($branch);
+			}
+		}
+
 		return $this;
+	}
+
+	/**
+	 * Get the journal id
+	 * @return int  the journal id
+	 */
+	public function getJournalId(): int
+	{
+		return $this->journal->getId();
 	}
 
 	/**
@@ -211,91 +142,64 @@ final class Activity implements ActivityInterface
 	}
 
 	/**
-	 * Set state variable
+	 * Get state
+	 *
+	 * @return object  a state instance
 	 */
-	public function set(string $name, $value): ActivityInterface
+	public function getState()/*: object*/
 	{
-		$this->state->$name = $value;
-
-		return $this;
-	}
-
-	/**
-	 * Get state variable
-	 */
-	public function get(string $name)
-	{
-		return $this->state->$name??null;
-	}
-
-	/**
-	 * Set return
-	 */
-	public function setReturn($return): ActivityInterface
-	{
-		$this->journal->setReturn($return);
-
-		return $this;
-	}
-
-	/**
-	 * Get return
-	 */
-	public function getReturn()
-	{
-		return $this->journal->getReturn();
-	}
-
-	/**
-	 * Is constant activity?
-	 */
-	public function isReadonly(): bool
-	{
-		return $this->readonly;
+		return $this->branch->getState();
 	}
 
 	/**
 	 * Is activity running?
 	 */
-	public function isRunning(int $branch): bool
+	public function isRunning(): bool
 	{
-		return $this->journal->getRunning($branch);
+		return $this->branch->getRunning();
 	}
 
 	/**
 	 * Pauses the activity until it is resumed.
 	 */
-	public function pause(int $branch): ActivityInterface
+	public function pause(): ActivityInterface
 	{
-		$this->journal->setRunning($branch, false);
-
+		$this->branch->setRunning(false);
 		return $this;
 	}
 
 	/**
 	 * Resume the activity.
 	 */
-	public function resume(int $branch): ActivityInterface
+	public function resume(): ActivityInterface
 	{
-		$this->journal->setRunning($branch, true);
-
+		$this->branch->setRunning(true);
 		return $this;
+	}
+
+	/**
+	 * Stop the activity.
+	 */
+	private function stop(): void
+	{
+		$this->branch->setCurrentAction("stop");
+		$this->branch->setRunning(false);
 	}
 
 	/**
 	 * Get the error message
 	 */
-	public function getErrorMessage(int $branch): ?string
+	public function getErrorMessage(): ?string
 	{
-		return $this->journal->getErrorMessage($branch);
+		return $this->branch->getErrorMessage();
 	}
 
 	/**
 	 * Get current action
 	 */
-	public function getCurrentAction(int $branch): string
+	public function getCurrentAction(): string
 	{
-		return $this->journal->getCurrentAction($branch);
+		return $this->branch->getCurrentAction();
 	}
 
 	/**
@@ -303,135 +207,249 @@ final class Activity implements ActivityInterface
 	 */
 	public function saveJournal(): void
 	{
-		if (!$this->readonly) {
-			$this->journal->setState(0, $this->state);
-			$this->journalRepository->saveJournal($this->journal);
-		}
+		$this->journalRepository->saveJournal($this->journal);
 	}
 
 	/**
-	 * Run the activity.
-	 *
-	 * This will only work if your actions are simple functions not generators.
-	 * If they are not you will have to use a worker.
+	 * @InheritDocs
 	 */
-	public function run()
+	public function decide($decision): ActivityInterface
 	{
-		$coroutine = $this->coroutine();
-		$coroutine->rewind();
-		if ($coroutine->valid()) {
-			throw new Exception("Activity has actions that are generators.");
+		if ($decision === true) {
+			$this->decision = "+";
+		} elseif ($decision === false) {
+			$this->decision = "-";
 		} else {
-			return $this->journal->getReturn();
+			$this->decision = $decision;
 		}
+		return $this;
 	}
 
 	/**
-	 * Coroutine to run the activity.
-	 *
-	 * Note that if actions in the activity are themselfs coroutines they will be yielded
-	 * instead of executed. Use a worker to execute them and send the return of the
-	 * coroutine back to this one.
-	 *
-	 * Pseudo example to get you started:
-	 *     $coroutine = $activity->coroutine();
-	 *     $worker = new Worker();
-	 *     $worker->add($coroutine, function($action)use($worker,$coroutine){ // $action is the value yielded by $coroutine
-	 *         $worker->pause($coroutine);
-	 *         $worker->add($action);
-	 *         $worker->whenFinished($action, function($return)use($worker,$coroutine){
-	 *             $coroutine->send($return);
-	 *             $worker->resume($coroutine);
-	 *         });
-	 *     });
-	 *     $worker->run();
+	 * @InheritDocs
 	 */
-	public function coroutine(): Generator
+	public function getBranches(): array
 	{
-		try {
-			$action = $this->journal->getCurrentAction(0);
-			switch ($action) {
-				case "start":
-					if (!array_key_exists($action, $this->actions)) {
-						throw new Exception("Start action does not exist.");
-					}
-					$action = $this->actions["start"];
-					$this->journal->setCurrentAction(0, $action);
-					$this->journal->setRunning(0, true);
+		return array_keys($this->journal->getSplit());
+	}
+
+	/**
+	 * @InheritDocs
+	 */
+	public function followBranch(string $branch): ActivityInterface
+	{
+		$split = $this->journal->getSplit();
+		if (array_key_exists($branch, $split)) {
+			$this->journal->setFollowBranch($branch);
+		} else {
+			throw new Exception("$branch does not exist for this split, use ".print_r(array_keys($split), true));
+		}
+		return $this;
+	}
+
+	/**
+	 * @InheritDocs
+	 */
+	public function actions(): Generator
+	{
+		$action = $this->branch->getCurrentAction();
+		switch ($action) {
+			case "start":
+				$this->advanceMainBranch($action); // move to first action
+				break;
+
+			case "split":
+				$branch = $this->journal->getFollowBranch();
+				if ($branch) {
+					$this->branch->setCurrentAction($this->journal->getSplit()[$branch]);
+					$this->journal->setFollowBranch(null);
+					$this->branch->setRunning(true);
 					break;
-				case "stop":
-				case "exception":
-					if ($this->journal->getRunning(0)) {
-						$this->journal->setRunning(0, false);
-						$this->saveJournal();
-					}
-					return;
-			}
-
-			while ($this->journal->getRunning(0)) {
-
-				if (!array_key_exists($action, $this->actions)) {
-					throw new Exception("Action '$action' does not exist.");
-				}
-				$p = strpos($action, "::");
-				if ($p === false) {
-					throw new Exception("Action '$action' is not valid.");
-				}
-				$class = substr($action, 0, $p);
-				$method = substr($action, $p+2);
-				if (!isset($instance) || !$instance instanceof $class) {
-					$instance = $this->instanceFactory->createInstance($this->getUnit(), $class);
-				}
-				if (!method_exists($instance, $method)) {
-					throw new Exception("Method '$method' missing in class '".get_class($instance)."'");
-				}
-
-				$ret = $instance->$method($this);
-				if ($ret instanceof Generator) {
-					$ret = yield $ret;
-				}
-
-				$nextValue = null;
-				if ($ret === null || is_bool($ret) || is_int($ret)) {
-					$nextValue = $ret;
-				} elseif (is_object($ret)) {
-					$nextValue = $ret->next ?? $ret->getNext();
 				} else {
-					throw new Exception("Unexpected return value for $action: ".var_export($ret,true));
-				}
-
-				$next = $this->actions[$action];
-				if ($next === false) {
-					if ($nextValue !== null) {
-						throw new Exception("Expected no next value.");
-					}
-					$this->journal->setCurrentAction(0, "stop");
-					$this->journal->setRunning(0, false);
-					$this->saveJournal();
 					return;
-				} elseif (is_string($next)) {
-					if ($nextValue !== null) {
-						throw new Exception("Expected no next value.");
-					}
-					$this->journal->setCurrentAction(0, $action = $next);
+				}
+		}
+		while ($this->branch->getRunning()) {
+			if ($this->branches->isEmpty()) {
+				// run main branch
+				try {
+					$action = $this->branch->getCurrentAction();
+					yield $this->getCallback($action);
+					$this->advanceMainBranch($action);
+				} catch (Throwable $e) {
+					$this->exception($e);
+				} finally {
 					$this->saveJournal();
-				} else if (is_array($next)) {
-					foreach ($next as $nv => $na) {
-						if (($nv === "true" && $ret === true) || ($nv === "false" && $ret === false) || (((int)$nv) === $ret)) {
-							$this->journal->setCurrentAction(0, $action = $na);
+				}
+			} else {
+				// run concurrent branches
+				while (!$this->branches->isEmpty()) { // set should be empty if all branches finish
+					foreach ($this->branches as $this->branch) {
+						try {
+							$action = $this->branch->getCurrentAction();
+							yield $this->getCallback($action);
+							$this->advanceConcurrentBranch($action);
+						} catch (Throwable $e) {
+							$this->exception($e);
+							$this->branches->remove($this->branch);
+						} finally {
 							$this->saveJournal();
-							continue 2;
 						}
 					}
-					throw new Exception("Unexpected next value ".var_export($ret,true)." for $action, expected one of ".implode(", ",array_keys($next)));
 				}
+				$this->journal->join(); // join branches
+				$this->branch = $this->journal->getMainBranch();
 			}
-		} catch (Throwable $e) {
-			$this->journal->setCurrentAction(0, "exception");
-			$this->journal->setErrorMessage(0, $e->getMessage());
-			$this->journal->setRunning(0, false);
-			$this->saveJournal();
-			throw $e;
 		}
+	}
+
+	/**
+	 * Advance main branch
+	 *
+	 * @param string  $action
+	 */
+	private function advanceMainBranch(string $action): void
+	{
+		[$type, $next] = $this->evalNextExpressionFor($action);
+		switch ($type) {
+			case self::STOP:
+				$this->stop();
+				break;
+
+			case self::ACTION:
+				$this->branch->setCurrentAction($next);
+				break;
+
+			case self::FORK:
+				foreach ($next as $action) {
+					$this->branches->add($this->journal->fork()->setCurrentAction($action));
+				}
+				break;
+
+			case self::SPLIT:
+				$this->branch->setCurrentAction("split");
+				$this->journal->setSplit($next);
+				$this->branch->setRunning(false);
+				break;
+
+			case self::JOIN:
+				$this->branch->setCurrentAction($this->actions[$next]); // resolve join indirection
+				break;
+
+			case self::DETACH:
+				// should the main branch be able to detach??
+				throw new Exception("Detaching is not yet implemented.");
+		}
+	}
+
+	/**
+	 * Advance concurrent branch
+	 *
+	 * @param string  $action
+	 */
+	private function advanceConcurrentBranch(string $action): void
+	{
+		[$type, $next] = $this->evalNextExpressionFor($action);
+		switch ($type) {
+			case self::STOP:
+				$this->stop();
+				$this->branches->remove($this->branch);
+				break;
+
+			case self::ACTION:
+				$this->branch->setCurrentAction($next);
+				break;
+
+			case self::FORK:
+				throw new Exception("A fork in a fork is not supported.");
+
+			case self::SPLIT:
+				throw new Exception("A split in a fork is not supported.");
+
+			case self::JOIN:
+				$this->journal->getMainBranch()->setCurrentAction($this->actions[$next]); // resolve join indirection
+				$this->branch->setCurrentAction("join");
+				$this->branch->setRunning(false);
+				$this->branches->remove($this->branch);
+				break;
+
+			case self::DETACH:
+				// TODO: clone activity, create new journal and move detaching branch to new
+				// journal, the actions should remain the same
+				throw new Exception("Detaching is not yet implemented.");
+		}
+	}
+
+	private function getCallback(string $action): callable
+	{
+		if (!array_key_exists($action, $this->actions)) {
+			throw new Exception("Action '$action' does not exist.");
+		}
+		$p = strpos($action, "::");
+		if ($p === false) {
+			throw new Exception("Action '$action' is not valid.");
+		}
+		$class = substr($action, 0, $p);
+		$method = substr($action, $p+2);
+		if (!isset($this->instance) || !$this->instance instanceof $class) {
+			$this->instance = $this->journal->getInstance($class);
+		}
+		if (!method_exists($this->instance, $method)) {
+			throw new Exception("Method '$method' missing in class '".get_class($this->instance)."'");
+		}
+		return [$this->instance, $method];
+	}
+
+	private function evalNextExpressionFor(string $currentAction)
+	{
+		$next = $this->actions[$currentAction];
+		switch (true) {
+			case false === $next: // should the activity end?
+				if ($this->decision === null) { // there should be no decision
+					return [self::STOP, null];
+				}
+				throw new Exception("Did not expect a decision.");
+
+			case is_int($next): // join action
+				return [self::JOIN, $next];
+
+			case is_string($next): // the next action
+			case is_array($next): // branching action
+				if ($this->decision === null) { // there should be no decision
+					break;
+				}
+				throw new Exception("Did not expect a decision.");
+
+			case is_object($next): // decision
+				foreach ($next as $nv => $subnext) {
+					if ($nv === $this->decision) {
+						$next = $subnext;
+						$this->decision = null; // clear decision
+						break 2;
+					}
+				}
+				throw new Exception("Unexpected decision ".var_export($this->decision,true)." for $currentAction, expected one of ".implode(", ",array_keys($next)));
+
+			default:
+				throw new Exception("Unknown next expression ".var_export($next,true));
+		}
+		if (is_string($next)) {
+			return [self::ACTION, $next]; // action
+		} elseif (is_array($next)) { // array when branching otherwise null
+			reset($next);
+			if (is_int(key($next))) {
+				return [self::FORK, $next];
+			} else {
+				return [self::SPLIT, $next];
+			}
+		}
+	}
+
+	private function exception(Throwable $e)
+	{
+		echo $e->getMessage()."\n".$e->getTraceAsString();
+		$this->branch->setErrorMessage($e->getMessage()."\n".$e->getTraceAsString());
+		$this->branch->setCurrentAction("exception");
+		$this->branch->setRunning(false);
 	}
 }

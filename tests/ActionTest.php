@@ -17,7 +17,6 @@ class ActionTest extends TestCase
 	public function testName()
 	{
 		$action = new Action();
-		$action->setKey("Foo", "action1");
 		$action->setText("[Foo::action1] end");
 		$action->parse();
 		$this->assertEquals("Foo", $action->getClassName());
@@ -31,14 +30,6 @@ class ActionTest extends TestCase
 		$action->setText("start end");
 		$action->parse();
 		$this->assertTrue($action->getStart());
-	}
-
-	public function testReadonly()
-	{
-		$action = new Action();
-		$action->setText("readonly end");
-		$action->parse();
-		$this->assertTrue($action->getReadonly());
 	}
 
 	public function testJoin()
@@ -112,7 +103,7 @@ class ActionTest extends TestCase
 		$action->setKey("Foo", "bar");
 		$action->setText("+>end  ->action2");
 		$action->parse();
-		$this->assertEquals((object)["true"=>false, "false"=>"Foo::action2"], $action->getNext());
+		$this->assertEquals((object)["+"=>false, "-"=>"Foo::action2"], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
 	}
 
@@ -158,7 +149,7 @@ class ActionTest extends TestCase
 		$action->setKey("Foo", "bar");
 		$action->setText('+> action1 | Bar::action2 | Foo\Bar::action3  -> end');
 		$action->parse();
-		$this->assertEquals((object)["true"=>["Foo::action1", "Bar::action2", "Foo\Bar::action3"], "false"=>false], $action->getNext());
+		$this->assertEquals((object)["+"=>["Foo::action1", "Bar::action2", "Foo\Bar::action3"], "-"=>false], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
 	}
 
@@ -168,7 +159,7 @@ class ActionTest extends TestCase
 		$action->setKey("Foo", "bar");
 		$action->setText('+> rel1:action1 | rel2:Bar::action2 | rel3:Foo\Bar::action3  -> end');
 		$action->parse();
-		$this->assertEquals((object)["true"=>["rel1"=>"Foo::action1", "rel2"=>"Bar::action2", "rel3"=>"Foo\Bar::action3"], "false"=>false], $action->getNext());
+		$this->assertEquals((object)["+"=>["rel1"=>"Foo::action1", "rel2"=>"Bar::action2", "rel3"=>"Foo\Bar::action3"], "-"=>false], $action->getNext());
 		$this->assertTrue($action->hasReturnValues());
 	}
 
@@ -193,10 +184,7 @@ class ActionTest extends TestCase
 
 	public function testToString()
 	{
-		$action = new Action();
-		$action->setKey("Foo", "action1");
-		$action->setText('[Foo::action1] > action2 #foo=bar #baz= #bas');
-		$action->parse();
+		$action = Action::createFromText('[Foo::action1] > action2 #foo=bar #baz= #bas');
 		$this->assertEquals('[Foo::action1] > Foo::action2 #foo=bar #baz= #bas', "$action");
 	}
 }

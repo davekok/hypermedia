@@ -169,4 +169,85 @@ stop
 UML
 		, $text);
 	}
+
+	public function testSplit1()
+	{
+		$actions = [
+			"start"=>"TestClass::action1",
+			"TestClass::action1"=>"TestClass::action2",
+			"TestClass::action2"=>[
+				"branch1"=>"TestClass::action3",
+				"branch2"=>"TestClass::action4",
+				"branch3"=>"TestClass::action5",
+			],
+			"TestClass::action3"=>"TestClass::action6",
+			"TestClass::action4"=>"TestClass::action7",
+			"TestClass::action5"=>"TestClass::action8",
+			"TestClass::action6"=>"TestClass::action8",
+			"TestClass::action7"=>"TestClass::action8",
+			"TestClass::action8"=>false,
+		];
+
+		$uml = new UML();
+		$uml->setClassColor('TestClass', '#CCCCDD');
+		$this->assertEquals(<<<UML
+@startuml
+start
+#CCCCDD:action1|
+#CCCCDD:action2|
+split
+	#CCCCDD:action3|
+	#CCCCDD:action6|
+split again
+	#CCCCDD:action4|
+	#CCCCDD:action7|
+split again
+	#CCCCDD:action5|
+end split
+#CCCCDD:action8|
+stop
+@enduml
+
+UML
+		, $uml->generate([], $actions));
+	}
+
+	public function testSplit2()
+	{
+		$actions = [
+			"start"=>"TestClass::action1",
+			"TestClass::action1"=>[
+				"branch1"=>"TestClass::action3",
+				"branch2"=>"TestClass::action4",
+				"branch3"=>"TestClass::action5",
+			],
+			"TestClass::action3"=>"TestClass::action6",
+			"TestClass::action4"=>"TestClass::action7",
+			"TestClass::action5"=>false,
+			"TestClass::action6"=>false,
+			"TestClass::action7"=>false,
+		];
+
+		$uml = new UML();
+		$uml->setClassColor('TestClass', '#CCCCDD');
+		$text = $uml->generate([], $actions);
+		$this->assertEquals(<<<UML
+@startuml
+start
+#CCCCDD:action1|
+split
+	#CCCCDD:action3|
+	#CCCCDD:action6|
+split again
+	#CCCCDD:action4|
+	#CCCCDD:action7|
+split again
+	#CCCCDD:action5|
+end split
+stop
+@enduml
+
+UML
+		, $text);
+	}
 }

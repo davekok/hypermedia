@@ -168,9 +168,8 @@ final class SourceUnit implements CacheSourceUnit
 
 		if ($action->getStart()) {
 			$start = new Action();
-			$start->setName("start");
+			$start->setKey(null, "start");
 			$start->setNext($action->getKey());
-			$start->setReadonly($action->getReadonly());
 			$start->setJoin(false);
 			$start->setDimensions($action->getDimensions());
 			$this->_addAction($start);

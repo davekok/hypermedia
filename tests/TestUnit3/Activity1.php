@@ -35,7 +35,7 @@ class Activity1
 	}
 
 	/**
-	 * @Action("readonly >action7")
+	 * @Action(">action7")
 	 */
 	public function action5()
 	{
@@ -63,7 +63,7 @@ class Activity1
 	}
 
 	/**
-	 * @Action("=true >action8  =false >action10")
+	 * @Action("+>action8  ->action10")
 	 */
 	public function action9()
 	{

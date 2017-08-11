@@ -3,7 +3,6 @@
 namespace Sturdy\Activity;
 
 use Exception;
-use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
  * A worker implementation

@@ -45,11 +45,6 @@ final class Action
 	/**
 	 * @var bool
 	 */
-	private $readonly = false;
-
-	/**
-	 * @var bool
-	 */
 	private $join = false;
 
 	/**
@@ -84,6 +79,15 @@ final class Action
 		}
 	}
 
+	public static function createFromText(string $text): self
+	{
+		$inst = new self;
+		$inst->setText($text);
+		$inst->parse();
+		$inst->validate();
+		return $inst;
+	}
+
 	/**
 	 * Set the action key
 	 */
@@ -105,7 +109,7 @@ final class Action
 	 * Get the key of the action.
 	 * @return string  the key
 	 */
-	public function getKey(): string
+	public function getKey(): ?string
 	{
 		return $this->key;
 	}
@@ -150,28 +154,6 @@ final class Action
 	public function getStart(): bool
 	{
 		return $this->start;
-	}
-
-	/**
-	 * Set read only
-	 *
-	 * @param bool $readonly
-	 * @return self
-	 */
-	public function setReadonly(bool $readonly): self
-	{
-		$this->readonly = $readonly;
-		return $this;
-	}
-
-	/**
-	 * Get read only action
-	 *
-	 * @return bool
-	 */
-	public function getReadonly(): bool
-	{
-		return $this->readonly;
 	}
 
 	/**
@@ -268,6 +250,18 @@ final class Action
 	public function matchDimensionValue(string $dimension, ?string $value)
 	{
 		$this->dimensions[$dimension] = $value;
+	}
+
+	/**
+	 * Set dimensions
+	 *
+	 * @param array $dimensions
+	 * @return self
+	 */
+	public function setDimensions(array $dimensions): self
+	{
+		$this->dimensions = $dimensions;
+		return $this;
 	}
 
 	/**
@@ -371,21 +365,34 @@ final class Action
 		if ($this->start) {
 			$text.= ActionParser::START." ";
 		}
-		if ($this->readonly) {
-			$text.= ActionParser::READONLY." ";
-		}
 		if ($this->join) {
 			$text.= ActionParser::JOIN." ";
 		}
 		if ($this->hasReturnValues()) {
 			foreach ($this->next as $returnValue => $next) {
-				$text.= ActionParser::EQUALS.$returnValue." ";
+				if ($returnValue === "true") {
+					$text.= ActionParser::NEXT_IF_TRUE." ";
+				} elseif ($returnValue === "false") {
+					$text.= ActionParser::NEXT_IF_FALSE." ";
+				} else {
+					$text.= $returnValue.ActionParser::NEXT." ";
+				}
 				if ($next === false) {
 					$text.= ActionParser::END." ";
 				} elseif (is_array($next)) {
-					$text.= ActionParser::NEXT." ".implode(" ".ActionParser::FORK." ", $next)." ";
+					reset($this->next);
+					if (is_string(key($this->next))) {
+						$i = 0;
+						foreach ($this->next as $branch => $method) {
+							if ($i++) $text.= " ".ActionParser::SPLIT." ";
+							$text.= $branch.ActionParser::BRANCH_SEPARATOR.$method;
+						}
+					} else {
+						$text.= implode(" ".ActionParser::SPLIT." ", $this->next);
+					}
+					$text.= " ";
 				} elseif (is_string($next)) {
-					$text.= ActionParser::NEXT." ".$next." ";
+					$text.= $next." ";
 				}
 			}
 		} else {
@@ -397,11 +404,11 @@ final class Action
 				if (is_string(key($this->next))) {
 					$i = 0;
 					foreach ($this->next as $branch => $method) {
-						if ($i++) $text.= " ".ActionParser::FORK." ";
+						if ($i++) $text.= " ".ActionParser::SPLIT." ";
 						$text.= $branch.ActionParser::BRANCH_SEPARATOR.$method;
 					}
 				} else {
-					$text.= implode(" ".ActionParser::FORK." ", $this->next);
+					$text.= implode(" ".ActionParser::SPLIT." ", $this->next);
 				}
 				$text.= " ";
 			} elseif (is_string($this->next)) {

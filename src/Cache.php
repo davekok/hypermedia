@@ -51,7 +51,7 @@ final class Cache implements ActivityCache
 		$order = $unit->getDimensions();
 		$wildcards = $unit->getWildCardDimensions();
 		$item = $this->cachePool->getItem($this->dimensionsKey($name));
-		$item->set(json_encode([$order, $wildcards]));
+		$item->set(serialize([$order, $wildcards]));
 		$this->cachePool->saveDeferred($item);
 
 		// save the activities for each dimension
@@ -59,7 +59,7 @@ final class Cache implements ActivityCache
 			$dimensions = $this->reorder($activity->dimensions, $order);
 			unset($activity->dimensions);
 			$item = $this->cachePool->getItem($this->activityKey($name, $dimensions));
-			$item->set(json_encode($activity));
+			$item->set(serialize($activity));
 			$activity->dimensions = $dimensions;
 			$this->cachePool->saveDeferred($item);
 		}
@@ -75,13 +75,13 @@ final class Cache implements ActivityCache
 	 * @param $dimensions  the dimensions to retrieve the activity for
 	 * @return the activity
 	 */
-	public function getActivity(string $unit, array $dimensions): ?array
+	public function getActivity(string $unit, array $dimensions): ?stdClass
 	{
 		$item = $this->cachePool->getItem($this->dimensionsKey($unit));
 		if (!$item->isHit()) {
 			return null;
 		}
-		[$order, $wildcards] = json_decode($item->get());
+		[$order, $wildcards] = unserialize($item->get());
 
 		$dimensions = $this->reorder($dimensions, $order);
 
@@ -114,7 +114,7 @@ final class Cache implements ActivityCache
 			return null;
 		}
 
-		$activity = json_decode($item->get(), true);
+		$activity = unserialize($item->get());
 		if (!$activity) {
 			return null;
 		}
@@ -187,7 +187,7 @@ final class Cache implements ActivityCache
 	 */
 	public function activityKey(string $unit, array $dimensions): string
 	{
-		return $this->unitKey($unit) . "|" . hash("sha256", json_encode($dimensions));
+		return $this->unitKey($unit) . "|" . hash("sha256", serialize($dimensions));
 	}
 
 	/**

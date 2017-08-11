@@ -7,14 +7,14 @@ use Sturdy\Activity\Action;
 class Activity2
 {
 	/**
-	 * @Action("start readonly >action2")
+	 * @Action("start >action2")
 	 */
 	public function action1()
 	{
 	}
 
 	/**
-	 * @Action("readonly")
+	 * @Action("end")
 	 */
 	public function action2()
 	{

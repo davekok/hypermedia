@@ -111,7 +111,12 @@ final class UML
 				$branch[] = $action;
 				end($branch); $pastActions[$action] = key($branch);
 				$line = new stdClass;
-				$line->type = "fork";
+				reset($next);
+				if (is_int(key($next))) {
+					$line->type = "fork";
+				} else {
+					$line->type = "split";
+				}
 				[$action, $line->branches] = $this->parallel($next, $actions);
 				$branch[] = $line;
 			} elseif (is_object($next)) {
@@ -270,6 +275,15 @@ final class UML
 						$again = " again";
 					}
 					$uml.= $indent."end fork\n";
+					break;
+				case "split":
+					$again = "";
+					foreach ($line->branches as $branch) {
+						$uml.= $indent."split$again\n";
+						$uml.= $this->writeBranch($branch, "$indent\t");
+						$again = " again";
+					}
+					$uml.= $indent."end split\n";
 					break;
 			}
 		}

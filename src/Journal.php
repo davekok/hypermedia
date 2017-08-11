@@ -2,8 +2,6 @@
 
 namespace Sturdy\Activity;
 
-use stdClass;
-
 /**
  * Interface to the journal to be implemented by the appliction.
  */
@@ -24,73 +22,71 @@ interface Journal
 	public function getDimensions(): ?array;
 
 	/**
-	 * Set the current state of this activity.
-	 */
-	public function setState(int $branch, stdClass $state): Journal;
-
-	/**
-	 * Get the current state for this activity.
-	 */
-	public function getState(int $branch): ?stdClass;
-
-	/**
-	 * Set return
-	 */
-	public function setReturn($return): Journal;
-
-	/**
-	 * Get return
-	 */
-	public function getReturn();
-
-	/**
-	 * Set error message.
-	 */
-	public function setErrorMessage(int $branch, ?string $errorMessage): Journal;
-
-	/**
-	 * Get error message.
-	 */
-	public function getErrorMessage(int $branch): ?string;
-
-	/**
-	 * Set current action.
+	 * Get an instance for the given class name.
 	 *
-	 * The predefined actions "start", "stop", "exception" are used to mark
-	 * when an activity has started, has stopped or when an exception has
-	 * occurred.
-	 *
-	 * An activity may fork into concurrent branches. The branch number 0 is the
-	 * default branch. The branch number indicates for which branch the action is
-	 * set.
-	 *
-	 * @param $branch  the branch number
-	 * @param $action  the action to execute
+	 * @param  string $className  the class name
+	 * @return object  instance of class name
 	 */
-	public function setCurrentAction(int $branch, string $action): Journal;
+	public function getInstance(string $className)/*: object*/;
 
 	/**
-	 * Get current action.
+	 * Get the main branch.
 	 *
-	 * @param $branch  the branch number
-	 * @return get current action
+	 * @return JournalBranch  the main branch
 	 */
-	public function getCurrentAction(int $branch): string;
+	public function getMainBranch(): JournalBranch;
 
 	/**
-	 * Set whether a concurrent branch is running.
+	 * Fork the current journal and return a new concurrent branch
+	 * based on the main branch. The main branch will not be used
+	 * until joined.
 	 *
-	 * @param int  $branch   the branch number
-	 * @param bool $running  true is running, false is not running
+	 * @return JournalBranch
+	 */
+	public function fork(): JournalBranch;
+
+	/**
+	 * Join the concurrent branches from this point the main
+	 * branch must be usable again and getConcurrentBranches
+	 * should return null.
+	 */
+	public function join(): void;
+
+	/**
+	 * Get the concurrent branches from the last fork or null
+	 * if no fork happened or a join has already occurred.
+	 *
+	 * @return iterable  iterator to iterate over the branches
+	 */
+	public function getConcurrentBranches(): ?iterable;
+
+	/**
+	 * A split has been reached. The $branches argument
+	 * contains which named branches can be followed.
+	 *
+	 * @return Journal
+	 */
+	public function setSplit(array $branches): Journal;
+
+	/**
+	 * Get the named branches from the last split.
+	 *
+	 * @return array  the named branches
+	 */
+	public function getSplit(): array;
+
+	/**
+	 * Set follow branch
+	 *
+	 * @param ?string $followBranch
 	 * @return self
 	 */
-	public function setRunning(int $branch, bool $running): Journal;
+	public function setFollowBranch(?string $followBranch): self;
 
 	/**
-	 * Whether the activity is running.
+	 * Get follow branch
 	 *
-	 * @param int  $branch   the branch number
-	 * @return bool
+	 * @return string
 	 */
-	public function getRunning(int $branch): bool;
+	public function getFollowBranch(): string;
 }

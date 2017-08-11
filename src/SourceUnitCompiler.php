@@ -15,7 +15,6 @@ final class SourceUnitCompiler
 	private $joins;
 	private $join;
 	private $found;
-	private $readonly;
 	private $actions;
 
 	/**
@@ -51,7 +50,6 @@ final class SourceUnitCompiler
 		$this->joins = [];
 		$this->join = 0;
 		$this->found = [];
-		$this->readonly = true;
 		$this->actions = [];
 
 		$key = "start"; // activities begin at the start action
@@ -59,7 +57,6 @@ final class SourceUnitCompiler
 		if (count($this->actions)) {
 			$activity = new stdClass;
 			$activity->dimensions = $dimensions;
-			$activity->readonly = $this->readonly;
 			$activity->actions = $this->actions;
 			return $activity;
 		} else {
@@ -70,7 +67,7 @@ final class SourceUnitCompiler
 	/**
 	 * Walk over the actions.
 	 *
-	 * @param  string &$key  the action key
+	 * @param string &$key  the action key
 	 */
 	private function walk(string &$key): void
 	{
@@ -78,10 +75,6 @@ final class SourceUnitCompiler
 		if ($action === null) {
 			$this->actions = []; // no end found
 			return;
-		}
-
-		if ($action->getReadonly() === false) {
-			$this->readonly = false;
 		}
 
 		$hash = spl_object_hash($action);
@@ -109,9 +102,9 @@ final class SourceUnitCompiler
 
 		$this->actions[$key] = $next;
 
-		// does the action have return values?
+		// does the action have a decision?
 		if (is_object($next)) {
-			foreach ($next as $returnValue => &$expr) {
+			foreach ($next as $decision => &$expr) {
 				if (is_string($expr)) { // expr is key of next action
 					$this->walk($expr);
 				} elseif (is_array($expr)) { // expr is array of keys, forking the activity

@@ -17,7 +17,7 @@ class CacheTest extends TestCase
 {
 	public function testBasics()
 	{
-		$expectedActions = ["action1"=>"action2","action2"=>"action3","action3"=>false];
+		$expectedActions = ["action1"=>"action2","action2"=>(object)["+"=>["action3","action4"],"-"=>false],"action3"=>false];
 
 		$prophet = new Prophet;
 
@@ -27,7 +27,7 @@ class CacheTest extends TestCase
 		$unit->getName()->willReturn('testunit');
 		$unit->getDimensions()->willReturn(["dim1", "dim2", "dim3"]);
 		$unit->getWildCardDimensions()->willReturn([]);
-		$unit->getActivities()->willReturn([(object)["readonly"=>false,"dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);
+		$unit->getActivities()->willReturn([(object)["dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);
 
 		$cachepool = new ArrayCachePool;
 		$cache = new Cache($cachepool);
@@ -35,15 +35,15 @@ class CacheTest extends TestCase
 
 		$order = $cachepool->getItem("sturdy-activity|testunit.dimensions");
 		$this->assertTrue($order->isHit(), "dimensions order is not stored");
-		$this->assertEquals([["dim1", "dim2", "dim3"],[]], json_decode($order->get()));
+		$this->assertEquals([["dim1", "dim2", "dim3"],[]], unserialize($order->get()));
 
-		$actions = $cachepool->getItem("sturdy-activity|testunit|".hash("sha256",json_encode(["dim1"=>1, "dim2"=>2, "dim3"=>3])));
+		$actions = $cachepool->getItem("sturdy-activity|testunit|".hash("sha256",serialize(["dim1"=>1, "dim2"=>2, "dim3"=>3])));
 		$this->assertTrue($actions->isHit(), "actions are not stored");
-		$this->assertEquals(["readonly"=>false, "actions"=>$expectedActions], json_decode($actions->get(), true));
+		$this->assertEquals((object)["actions"=>$expectedActions], unserialize($actions->get()));
 
 		$activity = $cache->getActivity("testunit", ["dim1"=>1, "dim2"=>2, "dim3"=>3]);
-		$this->assertTrue(is_array($activity));
-		$this->assertEquals($expectedActions, $activity["actions"]);
+		$this->assertTrue(is_object($activity));
+		$this->assertEquals($expectedActions, $activity->actions);
 	}
 
 	public function testWildCardDimensions()
@@ -55,7 +55,7 @@ class CacheTest extends TestCase
 		$unit->getName()->willReturn('testunit');
 		$unit->getDimensions()->willReturn(["dim1","dim2"]);
 		$unit->getWildCardDimensions()->willReturn(["dim2"]);
-		$unit->getActivities()->willReturn([(object)["readonly"=>false,"dimensions"=>["dim1"=>"1", "dim2"=>true],"actions"=>["action"=>false]]]);
+		$unit->getActivities()->willReturn([(object)["dimensions"=>["dim1"=>"1", "dim2"=>true],"actions"=>["action"=>false]]]);
 		$unit->isCompiled()->willReturn(true);
 
 		$cachepool = new ArrayCachePool;
@@ -66,9 +66,9 @@ class CacheTest extends TestCase
 		$this->assertNull($activity);
 
 		$activity = $cache->getActivity("testunit", ["dim1"=>"1", "dim2"=>true]);
-		$this->assertTrue(is_array($activity));
+		$this->assertTrue(is_object($activity));
 
 		$activity = $cache->getActivity("testunit", ["dim1"=>"1", "dim2"=>"2"]);
-		$this->assertTrue(is_array($activity));
+		$this->assertTrue(is_object($activity));
 	}
 }

@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity;
 
+use stdClass;
+
 /**
  * Interface for retrieving activities from cache.
  */
@@ -14,5 +16,5 @@ interface ActivityCache
 	 * @param $dimensions  the dimensions to retrieve the activity for
 	 * @return the activity
 	 */
-	public function getActivity(string $unit, array $dimensions): ?array;
+	public function getActivity(string $unit, array $dimensions): ?stdClass;
 }
