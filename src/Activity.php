@@ -19,18 +19,18 @@ final class Activity implements ActivityInterface
 	const FORK   = 2; // when advancing fork the activity
 	const SPLIT  = 3; // when advancing split the activity
 	const JOIN   = 4; // when advancing join the activity
-	const DETACH = 5; // when advanving detach the branch from the current activity
+	const DETACH = 5; // when advancing detach the branch from the current activity
 
-	// dependencies
+	// dependencies/configuration
 	private $cache;
 	private $journalRepository;
+	private $sourceUnit;
+	private $loop;
 
 	// state
-	private $unit;
-	private $dimensions;
+	private $class;
+	private $tags;
 	private $journal;
-	private $state;
-	private $instance;
 	private $actions;
 	private $branch;
 	private $branches;
@@ -39,30 +39,47 @@ final class Activity implements ActivityInterface
 	/**
 	 * Constructor
 	 */
-	public function __construct(
-		ActivityCache $cache,
-		JournalRepository $journalRepository)
+	public function __construct(Cache $cache, JournalRepository $journalRepository, string $sourceUnit, Loop $loop = null)
 	{
 		$this->cache = $cache;
 		$this->journalRepository = $journalRepository;
+		$this->sourceUnit = $sourceUnit;
+		$this->loop = $loop;
+	}
+
+	/**
+	 * Clear state making the object fresh again.
+	 *
+	 * @return $this
+	 */
+	public function clear(): ActivityInterface
+	{
+		$this->class    = null;
+		$this->tags     = null;
+		$this->journal  = null;
+		$this->object   = null;
+		$this->actions  = null;
+		$this->branch   = null;
+		$this->branches = null;
+		$this->decision = null;
+		return $this;
 	}
 
 	/**
 	 * Load activity.
 	 *
-	 * @param string $unit        the unit to load the activity from
-	 * @param array  $dimensions  the dimensions to load the activity for
+	 * @param array  $tags  the tags to load the activity for
 	 * @return true if activity is loaded, false otherwise
 	 */
-	public function load(string $unit, array $dimensions): bool
+	public function load(string $class, array $tags): bool
 	{
-		$activity = $this->cache->getActivity($unit, $dimensions);
+		$activity = $this->cache->getActivity($this->sourceUnit, $class, $tags);
 		if ($activity === null) {
 			return false;
 		}
-		$this->unit = $unit;
-		$this->dimensions = $dimensions;
-		$this->actions = $activity->actions;
+		$this->class = $activity->getClass();
+		$this->tags = $activity->getTags();
+		$this->actions = $activity->getActions();
 		return true;
 	}
 
@@ -73,8 +90,10 @@ final class Activity implements ActivityInterface
 	 */
 	public function createJournal(): self
 	{
-		$this->journal = $this->journalRepository->createJournal($this->unit, $this->dimensions);
+		$this->journal = $this->journalRepository->createJournal($this->sourceUnit, Journal::activity, $this->class, $this->tags);
+		$class = $this->class;
 		$this->branch = $this->journal->getMainBranch()
+			->setCurrentObject(new $class)
 			->setCurrentAction("start")
 			->setRunning(true);
 		$this->branches = new \Ds\Set();
@@ -92,11 +111,15 @@ final class Activity implements ActivityInterface
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
 
 		if ($this->activity === null) {
-			if (!$this->load($this->journal->getUnit(), $this->journal->getDimensions())) {
+			if (!$this->load($this->journal->getClass(), $this->journal->getTags())) {
 				throw new \Exception("Activity not found.");
 			}
-		} elseif ($this->unit !== $this->journal->getUnit() || $this->dimensions !== $this->journal->getDimensions()) {
-			throw new \Exception("The journal has been created for a different activity.");
+		} elseif (
+			$this->type !== $this->journal->getType()
+			&& $this->class !== $this->journal->getClass()
+			&& $this->tags !== $this->journal->getTags()
+		) {
+			throw new \Exception("The journal has been created for a different activity or resource.");
 		}
 
 		$this->branch = $this->journal->getMainBranch();
@@ -114,6 +137,7 @@ final class Activity implements ActivityInterface
 
 	/**
 	 * Get the journal id
+	 *
 	 * @return int  the journal id
 	 */
 	public function getJournalId(): int
@@ -122,33 +146,43 @@ final class Activity implements ActivityInterface
 	}
 
 	/**
-	 * Get unit
+	 * Get source unit
 	 *
 	 * @return string
 	 */
-	public function getUnit(): string
+	public function getSourceUnit(): string
 	{
-		return $this->unit;
+		return $this->sourceUnit;
 	}
 
 	/**
-	 * Get dimensions
+	 * Get class
+	 *
+	 * @return string
+	 */
+	public function getClass(): string
+	{
+		return $this->class;
+	}
+
+	/**
+	 * Get tags
 	 *
 	 * @return array
 	 */
-	public function getDimensions(): array
+	public function getTags(): array
 	{
-		return $this->dimensions;
+		return $this->tags;
 	}
 
 	/**
-	 * Get state
+	 * Get loop
 	 *
-	 * @return object  a state instance
+	 * @return Loop
 	 */
-	public function getState()/*: object*/
+	public function getLoop(): ?Loop
 	{
-		return $this->branch->getState();
+		return $this->loop;
 	}
 
 	/**
@@ -174,6 +208,7 @@ final class Activity implements ActivityInterface
 	public function resume(): ActivityInterface
 	{
 		$this->branch->setRunning(true);
+		if ($this->loop) $this->loop->addActivity($this);
 		return $this;
 	}
 
@@ -184,6 +219,7 @@ final class Activity implements ActivityInterface
 	{
 		$this->branch->setCurrentAction("stop");
 		$this->branch->setRunning(false);
+		if ($this->loop) $this->loop->remove($this);
 	}
 
 	/**
@@ -385,19 +421,11 @@ final class Activity implements ActivityInterface
 		if (!array_key_exists($action, $this->actions)) {
 			throw new Exception("Action '$action' does not exist.");
 		}
-		$p = strpos($action, "::");
-		if ($p === false) {
-			throw new Exception("Action '$action' is not valid.");
+		$object = $this->branch->getCurrentObject();
+		if (!method_exists($object, $action)) {
+			throw new Exception("Method '$action' missing in class '".get_class($object)."'");
 		}
-		$class = substr($action, 0, $p);
-		$method = substr($action, $p+2);
-		if (!isset($this->instance) || !$this->instance instanceof $class) {
-			$this->instance = $this->journal->getInstance($class);
-		}
-		if (!method_exists($this->instance, $method)) {
-			throw new Exception("Method '$method' missing in class '".get_class($this->instance)."'");
-		}
-		return [$this->instance, $method];
+		return [$object, $action];
 	}
 
 	private function evalNextExpressionFor(string $currentAction)

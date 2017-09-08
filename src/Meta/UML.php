@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Meta;
 
 use Exception;
 use Generator;
@@ -8,74 +8,26 @@ use stdClass;
 
 final class UML
 {
-	private $colors;
-
-	/**
-	 * Set class color
-	 *
-	 * @param string $class color
-	 * @return self
-	 */
-	public function setClassColor(string $class, string $color): self
-	{
-		$this->colors[$class] = $color;
-
-		return $this;
-	}
-
-	/**
-	 * Get class color
-	 *
-	 * @return string
-	 */
-	public function getClassColor(string $class): ?string
-	{
-		return $this->colors[$class]??null;
-	}
-
-	/**
-	 * Generate colors for classes.
-	 */
-	public function generateClassColors(array $classes): void
-	{
-		$this->colors = array_merge(array_flip($classes), $this->colors??[]);
-		foreach ($this->colors as &$color) {
-			if (is_string($color)) continue;
-			$i = 0;
-			do {
-				$r = dechex(random_int(7, 15)*16);
-				if (strlen($r) == 1) $r = "0$r";
-				$g = dechex(random_int(7, 15)*16);
-				if (strlen($g) == 1) $g = "0$g";
-				$b = dechex(random_int(7, 15)*16);
-				if (strlen($b) == 1) $b = "0$b";
-				$c = "#$r$g$b";
-				if ($i++ > 20) break; // don't get stuck here
-			} while (!in_array($c, $this->colors, true));
-			$color = $c;
-		}
-	}
-
 	/**
 	 * Generate the UML for the activity diagram.
 	 *
-	 * @param $dimensions  key=>value array of dimensions
-	 * @param $actions     the actions
+	 * @param $tags     key=>value array of tags
+	 * @param $actions  the actions
 	 */
-	public function generate(array $dimensions, array $actions): string
+	public function generate(array $tags, array $actions): string
 	{
 		$compiler = $this->compile($actions, "start");
 		foreach ($compiler as $action); // simply run the compiler
 		$branch = $compiler->getReturn();
 
 		$uml = "@startuml\n";
-		if (count($dimensions)) {
+		if (count($tags)) {
 			$uml.= "floating note left\n";
-			foreach ($dimensions as $dimension => $value) {
+			foreach ($tags as $tag => $value) {
 				if ($value === true) {
-					$uml.= "\t$dimension\n";
+					$uml.= "\t$tag\n";
 				} elseif ($value !== null) {
-					$uml.= "\t$dimension: $value\n";
+					$uml.= "\t$tag: $value\n";
 				}
 			}
 			$uml.= "end note\n";
@@ -298,20 +250,14 @@ final class UML
 	 */
 	private function formatAction(string $action): string
 	{
-		$p = strpos($action, "::");
-		if ($p !== false) {
-			$className = substr($action, 0, $p);
-			$methodName = substr($action, $p+2);
-			return $this->colors[$className].":$methodName|\n";
-		} else {
-			switch ($action) {
-				case "start":
-				case "stop":
-				case "end":
-					return "$action\n";
-				default:
-					return ":$action;\n";
-			}
+		switch ($action) {
+			case "start":
+			case "stop":
+			case "end":
+			case "exception":
+				return "$action\n";
+			default:
+				return ":$action|\n";
 		}
 	}
 }

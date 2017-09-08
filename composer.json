@@ -11,7 +11,8 @@
     },
     "require": {
         "php": ">=7.1.0",
-        "psr/cache": "^1.0"
+        "psr/cache": "^1.0",
+        "uri-template/uri-template": "^1.0"
     },
     "require-dev": {
         "cache/array-adapter": "^0.5.0",

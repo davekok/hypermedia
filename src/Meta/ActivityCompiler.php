@@ -1,67 +1,38 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Meta;
 
-use stdClass;
+use Exception;
 
 /**
- * Implementation of SourceUnitCompiler
+ * Compile a activity
  */
-final class SourceUnitCompiler
+class ActivityCompiler
 {
-	private $unit;
-	private $shouldHave;
-	private $mustNotHave;
+	private $activity;
+	private $matcher;
 	private $joins;
 	private $join;
 	private $found;
-	private $actions;
 
 	/**
-	 * Constructor
+	 * Compile activity
 	 *
-	 * @param SourceUnit $unit  the source unit to compile
+	 * @return CacheItem_Activity
 	 */
-	public function __construct(SourceUnit $unit)
+	public function compile(Activity $activity, TagMatcher $matcher): CacheItem_Activity
 	{
-		$this->unit = $unit;
-	}
-
-	/**
-	 * Create activity from the source unit for the specified dimensions
-	 *
-	 * @param array      $dimensions  dimensions to compile
-	 * @return stdClass  return the activity for the given dimensions
-	 */
-	public function createActivity(array $dimensions): ?stdClass
-	{
-		$this->shouldHave = [];
-		foreach ($this->unit->getDimensions() as $dim) {
-			if (isset($dimensions[$dim])) {
-				$this->shouldHave[$dim] = $dimensions[$dim];
-			}
-		}
-		$this->mustNotHave = [];
-		foreach ($this->unit->getDimensions() as $dim) {
-			if (!isset($dimensions[$dim])) {
-				$this->mustNotHave[] = $dim;
-			}
-		}
+		$this->activity = $activity;
+		$this->matcher = $matcher;
 		$this->joins = [];
 		$this->join = 0;
 		$this->found = [];
-		$this->actions = [];
-
+		$this->item = new CacheItem_Activity();
+		$this->item->setClass($this->activity->getClass());
+		$this->item->setTags($matcher->getTags());
 		$key = "start"; // activities begin at the start action
 		$this->walk($key);
-		if (count($this->actions)) {
-			$activity = new stdClass;
-			$activity->dimensions = $dimensions;
-			$activity->actions = $this->actions;
-			return $activity;
-		} else {
-			return null;
-		}
+		return $this->item;
 	}
 
 	/**
@@ -71,9 +42,9 @@ final class SourceUnitCompiler
 	 */
 	private function walk(string &$key): void
 	{
-		$action = $this->unit->findBestMatch($key, $this->shouldHave, $this->mustNotHave);
+		$action = $this->matcher->findBestMatch($this->activity->getActionsWithName($key));
 		if ($action === null) {
-			$this->actions = []; // no end found
+			$this->item->clear();
 			return;
 		}
 
@@ -86,7 +57,7 @@ final class SourceUnitCompiler
 			} else {
 				$joinNumber = $this->joins[$hash] = ++$this->join;
 			}
-			$this->actions[$joinNumber] = $key;
+			$this->item->setAction($joinNumber, $key);
 			$key = $joinNumber;
 		}
 
@@ -100,7 +71,7 @@ final class SourceUnitCompiler
 		// get the next action(s)
 		$next = $action->getNext();
 
-		$this->actions[$key] = $next;
+		$this->item->setAction($key, $next);
 
 		// does the action have a decision?
 		if (is_object($next)) {

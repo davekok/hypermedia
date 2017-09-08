@@ -1,8 +1,10 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Meta;
 
-class NoClassInSourceException extends \Exception
+use Exception;
+
+class NoClassInSourceException extends Exception
 {
 	public function __construct(string $message = null, int $code = 0)
 	{

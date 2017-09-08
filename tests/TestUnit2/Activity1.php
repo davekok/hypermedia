@@ -2,7 +2,7 @@
 
 namespace Tests\Sturdy\Activity\TestUnit2;
 
-use Sturdy\Activity\Action;
+use Sturdy\Activity\Meta\Action;
 
 class Activity1
 {

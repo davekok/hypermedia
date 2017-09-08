@@ -2,9 +2,10 @@
 
 namespace Tests\Sturdy\Activity;
 
-use Sturdy\Activity\{
+use Sturdy\Activity\Meta\{
 	Cache,
-	CacheSourceUnit
+	CacheSourceUnit,
+	CacheItem_Activity
 };
 use PHPUnit\Framework\TestCase;
 use Cache\Adapter\PHPArray\ArrayCachePool;
@@ -23,52 +24,58 @@ class CacheTest extends TestCase
 
 		$unit = $prophet->prophesize();
 		$unit->willImplement(CacheSourceUnit::class);
-		$unit->isCompiled()->willReturn(true);
-		$unit->getName()->willReturn('testunit');
-		$unit->getDimensions()->willReturn(["dim1", "dim2", "dim3"]);
-		$unit->getWildCardDimensions()->willReturn([]);
-		$unit->getActivities()->willReturn([(object)["dimensions"=>["dim1"=>1, "dim2"=>2, "dim3"=>3],"actions"=>$expectedActions]]);
+		$unit->getName()->willReturn("testunit");
+		$unit->getTagOrder()->willReturn(["dim1", "dim2", "dim3"]);
+		$unit->getWildCardTags()->willReturn([]);
+		$cacheItem = new CacheItem_Activity;
+		$cacheItem->setClass("Foo");
+		$cacheItem->setTags(["dim1"=>1, "dim2"=>2, "dim3"=>3]);
+		$cacheItem->setActions($expectedActions);
+		$unit->getCacheItems()->willReturn([$cacheItem]);
 
 		$cachepool = new ArrayCachePool;
 		$cache = new Cache($cachepool);
-		$cache->updateUnit($unit->reveal());
+		$cache->updateSourceUnit($unit->reveal());
 
-		$order = $cachepool->getItem("sturdy-activity|testunit.dimensions");
-		$this->assertTrue($order->isHit(), "dimensions order is not stored");
+		$order = $cachepool->getItem(hash("sha256","/sturdy-activity/testunit"));
+		$this->assertTrue($order->isHit(), "tags order is not stored");
 		$this->assertEquals([["dim1", "dim2", "dim3"],[]], unserialize($order->get()));
 
-		$actions = $cachepool->getItem("sturdy-activity|testunit|".hash("sha256",serialize(["dim1"=>1, "dim2"=>2, "dim3"=>3])));
-		$this->assertTrue($actions->isHit(), "actions are not stored");
-		$this->assertEquals((object)["actions"=>$expectedActions], unserialize($actions->get()));
+		$cachedItem = $cachepool->getItem(hash("sha256","/sturdy-activity/testunit/Activity/Foo/".serialize(["dim1"=>1, "dim2"=>2, "dim3"=>3])));
+		$this->assertTrue($cachedItem->isHit(), "cache item has not been stored");
+		$this->assertEquals($cacheItem, unserialize($cachedItem->get()));
 
-		$activity = $cache->getActivity("testunit", ["dim1"=>1, "dim2"=>2, "dim3"=>3]);
+		$activity = $cache->getActivity("testunit", "Foo", ["dim1"=>1, "dim2"=>2, "dim3"=>3]);
 		$this->assertTrue(is_object($activity));
-		$this->assertEquals($expectedActions, $activity->actions);
+		$this->assertEquals($expectedActions, $activity->getActions());
 	}
 
-	public function testWildCardDimensions()
+	public function testWildCardTags()
 	{
 		$prophet = new Prophet;
 
 		$unit = $prophet->prophesize();
 		$unit->willImplement(CacheSourceUnit::class);
-		$unit->getName()->willReturn('testunit');
-		$unit->getDimensions()->willReturn(["dim1","dim2"]);
-		$unit->getWildCardDimensions()->willReturn(["dim2"]);
-		$unit->getActivities()->willReturn([(object)["dimensions"=>["dim1"=>"1", "dim2"=>true],"actions"=>["action"=>false]]]);
-		$unit->isCompiled()->willReturn(true);
+		$unit->getName()->willReturn("testunit");
+		$unit->getTagOrder()->willReturn(["dim1","dim2"]);
+		$unit->getWildCardTags()->willReturn(["dim2"]);
+		$cacheItem = new CacheItem_Activity;
+		$cacheItem->setClass("Foo");
+		$cacheItem->setTags(["dim1"=>"1","dim2"=>true]);
+		$cacheItem->setActions(["action"=>false]);
+		$unit->getCacheItems()->willReturn([$cacheItem]);
 
 		$cachepool = new ArrayCachePool;
 		$cache = new Cache($cachepool);
-		$cache->updateUnit($unit->reveal());
+		$cache->updateSourceUnit($unit->reveal());
 
-		$activity = $cache->getActivity("testunit", ["dim1"=>"1"]);
+		$activity = $cache->getActivity("testunit", "Foo", ["dim1"=>"1"]);
 		$this->assertNull($activity);
 
-		$activity = $cache->getActivity("testunit", ["dim1"=>"1", "dim2"=>true]);
+		$activity = $cache->getActivity("testunit", "Foo", ["dim1"=>"1", "dim2"=>true]);
 		$this->assertTrue(is_object($activity));
 
-		$activity = $cache->getActivity("testunit", ["dim1"=>"1", "dim2"=>"2"]);
+		$activity = $cache->getActivity("testunit", "Foo", ["dim1"=>"1", "dim2"=>"2"]);
 		$this->assertTrue(is_object($activity));
 	}
 }

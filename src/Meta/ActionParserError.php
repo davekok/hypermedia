@@ -1,8 +1,10 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Meta;
 
-class ActionParserError extends \Exception
+use Exception;
+
+class ActionParserError extends Exception
 {
 	public function __construct(string $message)
 	{

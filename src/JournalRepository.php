@@ -19,11 +19,13 @@ interface JournalRepository
 	/**
 	 * Create a new journal.
 	 *
-	 * @param $unit        the unit
-	 * @param $dimensions  the dimensions
+	 * @param string $sourceUnit    the source unit
+	 * @param int    $type          Journal::activity or Journal::resource
+	 * @param string $class         the activity/resource class
+	 * @param array  $tags          the tags
 	 * @return a freshly created journal
 	 */
-	public function createJournal(string $unit, array $dimensions): Journal;
+	public function createJournal(string $sourceUnit, int $type, string $class, array $tags): Journal;
 
 	/**
 	 * Save the updated journal.

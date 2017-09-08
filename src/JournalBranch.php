@@ -8,13 +8,6 @@ namespace Sturdy\Activity;
 interface JournalBranch
 {
 	/**
-	 * Get the current state for this branch.
-	 *
-	 * @return object  a state instance
-	 */
-	public function getState()/*: object*/;
-
-	/**
 	 * Set error message.
 	 */
 	public function setErrorMessage(?string $errorMessage): JournalBranch;
@@ -25,15 +18,29 @@ interface JournalBranch
 	public function getErrorMessage(): ?string;
 
 	/**
+	 * Set current object
+	 *
+	 * @param object $object
+	 * @return self
+	 */
+	public function setCurrentObject(/*object*/ $object): self;
+
+	/**
+	 * Get current object
+	 *
+	 * @return object
+	 */
+	public function getCurrentObject()/*: object*/;
+
+	/**
 	 * Set current action.
 	 *
-	 * The predefined actions "start", "stop", "exception" are used to mark
-	 * when an activity has started, has stopped or when an exception has
-	 * occurred.
-	 *
-	 * An activity may fork into concurrent branches. The branch number 0 is the
-	 * default branch. The branch number indicates for which branch the action is
-	 * set.
+	 * Predefined actions:
+	 * - start      the begin state of the activity
+	 * - stop       the end state of the activity
+	 * - exception  activity is in a error state
+	 * - read       a read action, generate a view for the user
+	 * - write      a write action, input is expected from the user
 	 *
 	 * @param $action  the action to execute
 	 */

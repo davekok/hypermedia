@@ -7,27 +7,36 @@ namespace Sturdy\Activity;
  */
 interface Journal
 {
+	const activity = 1;
+	const resource = 2;
+
 	/**
-	 * Get unit
+	 * Get source unit
 	 *
 	 * @return string
 	 */
-	public function getUnit(): ?string;
+	public function getSourceUnit(): ?string;
 
 	/**
-	 * Get dimensions
+	 * Get type
+	 *
+	 * @return int
+	 */
+	public function getType(): ?int;
+
+	/**
+	 * Get class
+	 *
+	 * @return string
+	 */
+	public function getClass(): ?string;
+
+	/**
+	 * Get tags
 	 *
 	 * @return array
 	 */
-	public function getDimensions(): ?array;
-
-	/**
-	 * Get an instance for the given class name.
-	 *
-	 * @param  string $className  the class name
-	 * @return object  instance of class name
-	 */
-	public function getInstance(string $className)/*: object*/;
+	public function getTags(): ?array;
 
 	/**
 	 * Get the main branch.

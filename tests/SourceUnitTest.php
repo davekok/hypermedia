@@ -2,9 +2,12 @@
 
 namespace Tests\Sturdy\Activity;
 
-use Sturdy\Activity\{
+use Sturdy\Activity\Meta\{
 	Action,
-	SourceUnit
+	Activity,
+	CacheItem_Activity,
+	SourceUnit,
+	TagMatcher
 };
 use PHPUnit\Framework\TestCase;
 use Cache\Adapter\PHPArray\ArrayCachePool;
@@ -21,32 +24,34 @@ class SourceUnitTest extends TestCase
 	public function setUp()
 	{
 		$actions = [
-			"[Home::action1] start >action2 #route=/",
-			"[Home::action1u] start >action2 #route=/ #role=user",
-			"[Home::action1a] start >action2 #route=/ #role=admin",
-			"[Home::action2] >action3 #route=/",
-			"[Home::action3] end",
-			"[Home::action3] >action4 #role=user",
-			"[Home::action3] >action5 #role=admin",
-			"[Home::action3] >action6 #route=/ #role=admin",
-			"[Home::action3] >action7 #route=/",
-			"[Home::action3] >action8 #route=/bar",
-			"[Home::action3] >action9 #role=guest",
-			"[Home::action3] >action10 #route=/ #role=guest",
-			"[Home::action3] >action11 #route=/ #role=admin", // duplicate
-			"[Home::action4] end",
-			"[Home::action5] end",
-			"[Home::action6] end",
-			"[Home::action7] end",
-			"[Home::action8] end",
-			"[Home::action9] end",
-			"[Home::action10] end",
-			"[Home::action11] end",
+			"[action1] start >action2 #route=/",
+			"[action1u] start >action2 #route=/ #role=user",
+			"[action1a] start >action2 #route=/ #role=admin",
+			"[action2] >action3 #route=/",
+			"[action3] end",
+			"[action3] >action4 #role=user",
+			"[action3] >action5 #role=admin",
+			"[action3] >action6 #route=/ #role=admin",
+			"[action3] >action7 #route=/",
+			"[action3] >action8 #route=/bar",
+			"[action3] >action9 #role=guest",
+			"[action3] >action10 #route=/ #role=guest",
+			"[action3] >action11 #route=/ #role=admin", // duplicate
+			"[action4] end",
+			"[action5] end",
+			"[action6] end",
+			"[action7] end",
+			"[action8] end",
+			"[action9] end",
+			"[action10] end",
+			"[action11] end",
 		];
 		$this->unit = new SourceUnit("Foo");
+		$activity = new Activity("Home", "");
 		foreach ($actions as $action) {
-			$this->unit->addAction(Action::createFromText($action));
+			$activity->addAction(Action::createFromText($action));
 		}
+		$this->unit->addActivity($activity);
 	}
 
 	public function testClasses()
@@ -54,88 +59,83 @@ class SourceUnitTest extends TestCase
 		$this->assertEquals(["Home"], $this->unit->getClasses());
 	}
 
-	public function testDimensions()
+	public function testTagOrder()
 	{
-		$this->assertEquals(["route", "role"], $this->unit->getDimensions());
+		$this->assertEquals(["route", "role"], $this->unit->getTagOrder());
 	}
 
 	public function testAllActionsPresent()
 	{
-		$unitActions = $this->unit->getActions();
-		$this->assertTrue(isset($unitActions["start"]));
-		$this->assertTrue(isset($unitActions["Home::action1"]));
-		$this->assertTrue(isset($unitActions["Home::action1u"]));
-		$this->assertTrue(isset($unitActions["Home::action1a"]));
-		$this->assertTrue(isset($unitActions["Home::action2"]));
-		$this->assertTrue(isset($unitActions["Home::action3"]));
-		$this->assertTrue(isset($unitActions["Home::action4"]));
-		$this->assertTrue(isset($unitActions["Home::action5"]));
-		$this->assertTrue(isset($unitActions["Home::action6"]));
-		$this->assertTrue(isset($unitActions["Home::action7"]));
-		$this->assertTrue(isset($unitActions["Home::action8"]));
-		$this->assertTrue(isset($unitActions["Home::action9"]));
-		$this->assertTrue(isset($unitActions["Home::action10"]));
-		$this->assertTrue(isset($unitActions["Home::action11"]));
+		[$activity] = $this->unit->getActivities();
+		$this->assertTrue(!empty($activity->getActionsWithName("start")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action1")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action1u")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action1a")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action2")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action3")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action4")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action5")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action6")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action7")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action8")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action9")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action10")));
+		$this->assertTrue(!empty($activity->getActionsWithName("action11")));
 	}
 
 	public function testBestMatch()
 	{
-		$this->assertEquals("[start] > Home::action1 #route=/", (string)$this->unit->findBestMatch("start", ["route"=>"/"], ["role"]), "best match 1");
-		$this->assertEquals("[start] > Home::action1u #route=/ #role=user", (string)$this->unit->findBestMatch("start", ["route"=>"/","role"=>"user"], []), "best match 2");
-		$this->assertEquals("[start] > Home::action1a #route=/ #role=admin", (string)$this->unit->findBestMatch("start", ["route"=>"/","role"=>"admin"], []), "best match 3");
-		$this->assertEquals("[Home::action3] end", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/foo"], ["role"]), "best match 4");
-		$this->assertEquals("[Home::action3] > Home::action4 #role=user", (string)$this->unit->findBestMatch("Home::action3", ["role"=>"user"], ["route"]), "best match 5");
-		$this->assertEquals("[Home::action3] > Home::action7 #route=/", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/","role"=>"user"], []), "best match 6");
-		$this->assertEquals("[Home::action3] > Home::action7 #route=/", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/"], ["role"]), "best match 7");
-		$this->assertEquals("[Home::action3] > Home::action5 #role=admin", (string)$this->unit->findBestMatch("Home::action3", ["role"=>"admin"], ["route"]), "best match 8");
-		$this->assertEquals("[Home::action3] > Home::action6 #route=/ #role=admin", (string)$this->unit->findBestMatch("Home::action3", ["route"=>"/","role"=>"admin"], []), "best match 9");
+		[$activity] = $this->unit->getActivities();
+		$m = new TagMatcher([], ["route", "role"]);
+		$start = $activity->getActionsWithName("start");
+		$action3 = $activity->getActionsWithName("action3");
+		$this->assertEquals((string)$m->setTags(["route"=>"/"                ])->findBestMatch($start  ), "[start] > action1 #route=/",               "best match 1");
+		$this->assertEquals((string)$m->setTags(["route"=>"/","role"=>"user" ])->findBestMatch($start  ), "[start] > action1u #route=/ #role=user",   "best match 2");
+		$this->assertEquals((string)$m->setTags(["route"=>"/","role"=>"admin"])->findBestMatch($start  ), "[start] > action1a #route=/ #role=admin",  "best match 3");
+		$this->assertEquals((string)$m->setTags(["route"=>"/foo"             ])->findBestMatch($action3), "[action3] end",                            "best match 4");
+		$this->assertEquals((string)$m->setTags([             "role"=>"user" ])->findBestMatch($action3), "[action3] > action4 #role=user",           "best match 5");
+		$this->assertEquals((string)$m->setTags(["route"=>"/","role"=>"user" ])->findBestMatch($action3), "[action3] > action7 #route=/",             "best match 6");
+		$this->assertEquals((string)$m->setTags(["route"=>"/"                ])->findBestMatch($action3), "[action3] > action7 #route=/",             "best match 7");
+		$this->assertEquals((string)$m->setTags([             "role"=>"admin"])->findBestMatch($action3), "[action3] > action5 #role=admin",          "best match 8");
+		$this->assertEquals((string)$m->setTags(["route"=>"/","role"=>"admin"])->findBestMatch($action3), "[action3] > action6 #route=/ #role=admin", "best match 9");
 	}
 
 	public function testCompile()
 	{
-		$activities = $this->unit->compile();
-		$this->assertEquals(4, count($activities));
-		$this->assertEquals([
-			(object)[
-				"dimensions"=>["route"=>"/","role"=>null],
-				"actions" => [
-					"start" => "Home::action1",
-					"Home::action1" => "Home::action2",
-					"Home::action2" => "Home::action3",
-					"Home::action3" => "Home::action7",
-					"Home::action7" => false,
-				],
-			],
-			(object)[
-				"dimensions"=>["route"=>"/","role"=>"user"],
-				"actions" => [
-					"start" => "Home::action1u",
-					"Home::action1u" => "Home::action2",
-					"Home::action2" => "Home::action3",
-					"Home::action3" => "Home::action7",
-					"Home::action7" => false,
-				],
-			],
-			(object)[
-				"dimensions"=>["route"=>"/","role"=>"admin"],
-				"actions" => [
-					"start" => "Home::action1a",
-					"Home::action1a" => "Home::action2",
-					"Home::action2" => "Home::action3",
-					"Home::action3" => "Home::action6",
-					"Home::action6" => false,
-				],
-			],
-			(object)[
-				"dimensions"=>["route"=>"/","role"=>"guest"],
-				"actions" => [
-					"start" => "Home::action1",
-					"Home::action1" => "Home::action2",
-					"Home::action2" => "Home::action3",
-					"Home::action3" => "Home::action10",
-					"Home::action10" => false,
-				],
-			],
-		], $activities, "activities");
+		$items = iterator_to_array($this->unit->getCacheItems());
+		$this->assertEquals(4, count($items));
+		$a1 = new CacheItem_Activity();
+		$a1->setClass("Home");
+		$a1->setTags(["route"=>"/","role"=>null]);
+		$a1->setAction("start", "action1");
+		$a1->setAction("action1", "action2");
+		$a1->setAction("action2", "action3");
+		$a1->setAction("action3", "action7");
+		$a1->setAction("action7", false);
+		$a2 = new CacheItem_Activity();
+		$a2->setClass("Home");
+		$a2->setTags(["route"=>"/","role"=>"user"]);
+		$a2->setAction("start", "action1u");
+		$a2->setAction("action1u", "action2");
+		$a2->setAction("action2", "action3");
+		$a2->setAction("action3", "action7");
+		$a2->setAction("action7", false);
+		$a3 = new CacheItem_Activity();
+		$a3->setClass("Home");
+		$a3->setTags(["route"=>"/","role"=>"admin"]);
+		$a3->setAction("start", "action1a");
+		$a3->setAction("action1a", "action2");
+		$a3->setAction("action2", "action3");
+		$a3->setAction("action3", "action6");
+		$a3->setAction("action6", false);
+		$a4 = new CacheItem_Activity();
+		$a4->setClass("Home");
+		$a4->setTags(["route"=>"/","role"=>"guest"]);
+		$a4->setAction("start", "action1");
+		$a4->setAction("action1", "action2");
+		$a4->setAction("action2", "action3");
+		$a4->setAction("action3", "action10");
+		$a4->setAction("action10", false);
+		$this->assertEquals([$a1, $a2, $a3, $a4], $items, "items");
 	}
 }

@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Meta;
 
-use \Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
+use Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
 use stdClass;
 
 /**
@@ -10,7 +10,7 @@ use stdClass;
  *
  * Actions can reside in any class. An activity may span actions of one or more classes.
  * Only class methods can be actions. A method may have one or more action annotations.
- * However if multiple action annotations are used the must use different dimensions.
+ * However if multiple action annotations are used the must use different tags.
  *
  * The action annotation makes use of a simple syntax as documented by ActionParser class.
  *
@@ -20,22 +20,17 @@ use stdClass;
  *   @Attribute("value", type = "string"),
  * })
  */
-final class Action
+final class Action extends Taggable
 {
 	/**
 	 * @var string
 	 */
-	private $key;
-
-	/**
-	 * @var string
-	 */
-	private $className;
-
-	/**
-	 * @var string
-	 */
 	private $name;
+
+	/**
+	 * @var string
+	 */
+	private $description;
 
 	/**
 	 * @var bool
@@ -58,14 +53,9 @@ final class Action
 	private $next;
 
 	/**
-	 * @var array
-	 */
-	private $dimensions = [];
-
-	/**
 	 * @var string
 	 */
-	private $text;
+	private $text = "";
 
 	/**
 	 * Constructor
@@ -84,44 +74,19 @@ final class Action
 		$inst = new self;
 		$inst->setText($text);
 		$inst->parse();
-		$inst->validate();
 		return $inst;
 	}
 
 	/**
-	 * Set the action key
-	 */
-	public function setKey(?string $className, string $name): self
-	{
-		$this->className = $className;
-		$this->name = $name;
-		if ($this->className && $this->name) {
-			$this->key = "{$this->className}::{$this->name}";
-		} elseif ($this->name) {
-			$this->key = $this->name;
-		} else {
-			$this->key = null;
-		}
-		return $this;
-	}
-
-	/**
-	 * Get the key of the action.
-	 * @return string  the key
-	 */
-	public function getKey(): ?string
-	{
-		return $this->key;
-	}
-
-	/**
-	 * Get class name
+	 * Set name
 	 *
-	 * @return string
+	 * @param string $name
+	 * @return self
 	 */
-	public function getClassName(): string
+	public function setName(string $name): self
 	{
-		return $this->className;
+		$this->name = $name;
+		return $this;
 	}
 
 	/**
@@ -129,9 +94,31 @@ final class Action
 	 *
 	 * @return string
 	 */
-	public function getName(): string
+	public function getName(): ?string
 	{
 		return $this->name;
+	}
+
+	/**
+	 * Set description
+	 *
+	 * @param ?string $description
+	 * @return self
+	 */
+	public function setDescription(?string $description): self
+	{
+		$this->description = $description;
+		return $this;
+	}
+
+	/**
+	 * Get description
+	 *
+	 * @return ?string
+	 */
+	public function getDescription(): ?string
+	{
+		return $this->description;
 	}
 
 	/**
@@ -232,84 +219,6 @@ final class Action
 	}
 
 	/**
-	 * Set that the action is only valid if the given dimension is there.
-	 *
-	 * @param string $dimension  the dimension
-	 */
-	public function needsDimension(string $dimension)
-	{
-		$this->dimensions[$dimension] = true;
-	}
-
-	/**
-	 * Set that the action is only valid if the dimension matches the value.
-	 *
-	 * @param string $dimension  the dimension
-	 * @param ?string $value  the value
-	 */
-	public function matchDimensionValue(string $dimension, ?string $value)
-	{
-		$this->dimensions[$dimension] = $value;
-	}
-
-	/**
-	 * Set dimensions
-	 *
-	 * @param array $dimensions
-	 * @return self
-	 */
-	public function setDimensions(array $dimensions): self
-	{
-		$this->dimensions = $dimensions;
-		return $this;
-	}
-
-	/**
-	 * Get dimensions
-	 *
-	 * @return a array of dimensions
-	 */
-	public function getDimensions(): array
-	{
-		return $this->dimensions;
-	}
-
-	/**
-	 * Has dimension
-	 *
-	 * @param  string $key  the dimension key
-	 * @return bool
-	 */
-	public function hasDimension(string $key): bool
-	{
-		return isset($this->dimensions[$key]);
-	}
-
-	/**
-	 * Get dimension
-	 *
-	 * @param  string $key  the dimension key
-	 * @return string, null or true
-	 */
-	public function getDimension(string $key)
-	{
-		return $this->dimensions[$key]??null;
-	}
-
-	/**
-	 * Order the dimensions and null missing dimensions.
-	 *
-	 * @param array $order  the keys to order by
-	 */
-	public function orderDimensions(array $order)
-	{
-		foreach ($order as $key) {
-			$dimensions[$key] = $this->dimensions[$key]??null;
-		}
-		$this->dimensions = $dimensions;
-	}
-
-	/**
 	 * Set text
 	 *
 	 * @param string $text
@@ -340,16 +249,6 @@ final class Action
 	}
 
 	/**
-	 * Validate action
-	 */
-	public function validate(): void
-	{
-		if ($this->next === null) {
-			throw new \LogicException("No next action defined.");
-		}
-	}
-
-	/**
 	 * Convert to string.
 	 *
 	 * @return string textual representation of action
@@ -357,9 +256,7 @@ final class Action
 	public function __toString(): string
 	{
 		$text = "";
-		if ($this->className && $this->name) {
-			$text.= ActionParser::NAME_START.$this->className.ActionParser::NAME_SEPARATOR.$this->name.ActionParser::NAME_END." ";
-		} elseif ($this->className === null && $this->name === "start") {
+		if ($this->name) {
 			$text.= ActionParser::NAME_START.$this->name.ActionParser::NAME_END." ";
 		}
 		if ($this->start) {
@@ -415,16 +312,7 @@ final class Action
 				$text.= ActionParser::NEXT." ".$this->next." ";
 			}
 		}
-		foreach ($this->dimensions as $key => $value) {
-			$text.= ActionParser::TAG.$key;
-			if ($value === true) {
-			} elseif ($value === null) {
-				$text.= ActionParser::EQUALS;
-			} else {
-				$text.= ActionParser::EQUALS.$value;
-			}
-			$text.= " ";
-		}
+		$text.= parent::__toString();
 		return rtrim($text);
 	}
 }

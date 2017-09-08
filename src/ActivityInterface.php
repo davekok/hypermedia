@@ -79,25 +79,25 @@ interface ActivityInterface
 	public function getJournalId(): int;
 
 	/**
-	 * Get unit
+	 * Get source unit
 	 *
 	 * @return string
 	 */
-	public function getUnit(): string;
+	public function getSourceUnit(): string;
 
 	/**
-	 * Get dimensions
+	 * Get class
+	 *
+	 * @return string
+	 */
+	public function getClass(): string;
+
+	/**
+	 * Get tags
 	 *
 	 * @return array
 	 */
-	public function getDimensions(): array;
-
-	/**
-	 * Get state
-	 *
-	 * @return object  a state instance
-	 */
-	public function getState()/*: object*/;
+	public function getTags(): array;
 
 	/**
 	 * Is activity running?

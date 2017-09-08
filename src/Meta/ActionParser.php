@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Meta;
 
 use stdClass;
-use Sturdy\Activity\ActionParserError as ParserError;
+use Sturdy\Activity\Meta\ActionParserError as ParserError;
 
 /**
  * Parser for action annotations.
@@ -60,19 +60,19 @@ use Sturdy\Activity\ActionParserError as ParserError;
  * or detached the join action is executed. For every split/fork action there can only be one join action.
  *
  *
- *   #dimension
+ *   #tag
  *
- * The action is only valid when the dimension is set, with any value.
- *
- *
- *   #dimension=
- *
- * The action is only valid when the dimension is set and has no value.
+ * The action is only valid when the tag is set, with any value.
  *
  *
- *   #dimension=value
+ *   #tag=
  *
- * The action is only valid when the dimension is set and has the given value.
+ * The action is only valid when the tag is set and has no value.
+ *
+ *
+ *   #tag=value
+ *
+ * The action is only valid when the tag is set and has the given value.
  *
  *
  *
@@ -85,19 +85,9 @@ use Sturdy\Activity\ActionParserError as ParserError;
  * 'action' is a method of the current class which is the next action.
  *
  *
- *   class::action   regex: [A-Za-z\\_][A-Za-z0-9\\_]+::[A-Za-z_][A-Za-z0-9_]+
- *
- * Same as above but action is in a different class. An instance of the class is retrieved through the instance factory.
- *
- *
  *   branch:action   regex: [A-Za-z_][A-Za-z0-9_]+:[A-Za-z_][A-Za-z0-9_]+
  *
  * 'branch' is the name of the branch, 'action' is as above, the first action of this named branch.
- *
- *
- *   branch:class::action   regex: [A-Za-z\\_][A-Za-z0-9\\_]+::[A-Za-z_][A-Za-z0-9_]+
- *
- * Same as above but action is in a different class.
  *
  *
  *   |
@@ -139,7 +129,6 @@ use Sturdy\Activity\ActionParserError as ParserError;
 final class ActionParser
 {
 	const NAME_START = "[";
-	const NAME_SEPARATOR = "::";
 	const NAME_END = "]";
 	const START = "start";
 	const END = "end";
@@ -160,9 +149,9 @@ final class ActionParser
 	private $endToken;
 	private $detachToken;
 	private $joinToken;
-	private $needsDimension;
-	private $matchDimensionNoValue;
-	private $matchDimensionValue;
+	private $needsTag;
+	private $matchTagNoValue;
+	private $matchTagValue;
 	private $nextToken;
 	private $nextIfToken;
 	private $nextIfTrueToken;
@@ -173,7 +162,6 @@ final class ActionParser
 	private $actionToken;
 	private $branchActionToken;
 
-	private $className;
 	private $text;
 	private $done;
 
@@ -190,23 +178,21 @@ final class ActionParser
 		$join = addcslashes(self::JOIN, self::REGEX_SPECIAL);
 		$tag = addcslashes(self::TAG, self::REGEX_SPECIAL);
 		$nameStart = addcslashes(self::NAME_START, self::REGEX_SPECIAL);
-		$nameSep = addcslashes(self::NAME_SEPARATOR, self::REGEX_SPECIAL);
 		$nameEnd = addcslashes(self::NAME_END, self::REGEX_SPECIAL);
 		$branchSep = addcslashes(self::BRANCH_SEPARATOR, self::REGEX_SPECIAL);
 
 		$int = '0|[1-9][0-9]*';
-		$classname = '[A-Za-z\\\\_][A-Za-z0-9\\\\_]+';
 		$name = '[A-Za-z_][A-Za-z0-9_]+';
 		$e = '(?=\s|\*|$)'; // end of token
 		$val = '\S*';
 
 		$this->spaceToken = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
-		$this->nameToken = "/^$nameStart($classname$nameSep$name|$start)$nameEnd/";
+		$this->nameToken = "/^$nameStart($name)$nameEnd/";
 		$this->startToken = "/^$start$e/";
 		$this->endToken = "/^$end$e/";
 		$this->detachToken = "/^$detach$e/";
 		$this->joinToken = "/^$join$e/";
-		$this->dimensionToken = "/^$tag($name)/";
+		$this->tagToken = "/^$tag($name)/";
 		$this->equalsToken = "/^$equals/";
 		$this->valueToken = "/^($val)$e/";
 		$this->nextToken = "/^$next/";
@@ -215,8 +201,8 @@ final class ActionParser
 		$this->nextIfIntToken = "/^($int)$next/";
 		$this->nextIfNameToken = "/^($name)$next/";
 		$this->splitToken = "/^$split/";
-		$this->actionToken = "/^((?:$classname$nameSep)?$name)/";
-		$this->branchActionToken = "/^($name$branchSep(?:$classname$nameSep)?$name)/";
+		$this->actionToken = "/^($name)/";
+		$this->branchActionToken = "/^($name$branchSep$name)/";
 	}
 
 	private function valid(): bool
@@ -273,13 +259,8 @@ final class ActionParser
 			if ($this->match('spaceToken')) {
 				// do nothing
 			} elseif ($this->match('nameToken', $name)) {
-				if ($this->action->getKey() === null) {
-					if (strpos($name, self::NAME_SEPARATOR) !== false) {
-						[$className, $name] = explode(self::NAME_SEPARATOR, $name);
-						$this->action->setKey($className, $name);
-					} else {
-						$this->action->setKey(null, $name);
-					}
+				if ($this->action->getName() === null) {
+					$this->action->setName($name);
 				} else {
 					throw new ParserError($this->parseError("Name token not allowed as action is already named."));
 				}
@@ -304,8 +285,8 @@ final class ActionParser
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
-			} elseif ($this->match('dimensionToken', $dimension)) {
-				$this->parseDimension($dimension);
+			} elseif ($this->match('tagToken', $tag)) {
+				$this->parseTag($tag);
 			} elseif ($this->isbitset($mask, 1) && $this->match('startToken')) {
 				$this->clearbit($mask, 1);
 				$this->action->setStart(true);
@@ -376,7 +357,7 @@ final class ActionParser
 		}
 	}
 
-	private function parseDimension(string $dimension): void
+	private function parseTag(string $tag): void
 	{
 		$sequence = 0;
 		while ($this->valid()) {
@@ -390,13 +371,13 @@ final class ActionParser
 		}
 		switch ($sequence) {
 			case 0:
-				$this->action->needsDimension($dimension);
+				$this->action->needsTag($tag);
 				return;
 			case 1:
-				$this->action->matchDimensionValue($dimension, null);
+				$this->action->matchTagValue($tag, "");
 				return;
 			case 2:
-				$this->action->matchDimensionValue($dimension, $value);
+				$this->action->matchTagValue($tag, $value);
 				return;
 		}
 	}
@@ -413,7 +394,7 @@ final class ActionParser
 				$next = [$branch => $action];
 				return $this->parseBranches($next);
 			} elseif ($this->match('actionToken', $action)) {
-				$next = $this->parseFork([$this->parseAction($action)]);
+				$next = $this->parseFork([$action]);
 				if (count($next) === 1) {
 					return $next[0];
 				} else {
@@ -457,7 +438,7 @@ final class ActionParser
 			} elseif ($this->match('splitToken') && $sequence === 0) {
 				++$sequence;
 			} elseif ($this->match('actionToken', $action) && $sequence === 1) {
-				$fork[] = $this->parseAction($action);
+				$fork[] = $action;
 				$sequence = 0;
 			} else {
 				if ($sequence !== 0) {
@@ -469,19 +450,11 @@ final class ActionParser
 		return $fork;
 	}
 
-	private function parseAction(string $action): string
-	{
-		if (strpos($action, self::NAME_SEPARATOR) === false) {
-			$action = $this->action->getClassName().self::NAME_SEPARATOR.$action;
-		}
-		return $action;
-	}
-
 	private function parseBranchAction(string $text): array
 	{
 		$p = strpos($text, self::BRANCH_SEPARATOR);
 		$branch = substr($text, 0, $p);
-		$action = $this->parseAction(substr($text, $p + strlen(self::BRANCH_SEPARATOR)));
+		$action = substr($text, $p + strlen(self::BRANCH_SEPARATOR));
 		return [$branch, $action];
 	}
 
