@@ -4,8 +4,6 @@ namespace Sturdy\Activity;
 
 interface Response
 {
-
-
 	/**
 	 * Get the response status code
 	 *
@@ -19,6 +17,13 @@ interface Response
 	 * @return string  the status text
 	 */
 	public function getStatusText(): string;
+
+	/**
+	 * Set the fields of this response.
+	 *
+	 * @param array $fields
+	 */
+	public function setFields(array $fields): void;
 
 	/**
 	 * Convert response using response builder

@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity;
 
+use Sturdy\Activity\Meta\CacheItem_Resource;
+
 final class Accepted implements Response
 {
 	/**

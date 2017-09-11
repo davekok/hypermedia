@@ -16,16 +16,10 @@ final class HyperMedia
 {
 	// dependencies/configuration
 	private $cache;
+	private $journalRepository;
 	private $sourceUnit;
 	private $basePath;
 	private $di;
-
-	// state
-	private $tags;
-	private $response;
-	private $responses;
-	private $status;
-	private $content;
 
 	/**
 	 * Constructor
@@ -48,7 +42,7 @@ final class HyperMedia
 		$this->cache = $cache;
 		$this->journalRepository = $journalRepository;
 		$this->sourceUnit = $sourceUnit;
-		$this->basePath = $basePath;
+		$this->basePath = rtrim($basePath, "/");
 		$this->di = $di;
 	}
 
@@ -102,46 +96,25 @@ final class HyperMedia
 	 */
 	public function process(Request $request, array $tags): Response
 	{
-		$this->responses = new stdClass;
-		$this->responses->main = $this->response = new stdClass;
-		$this->tags = $tags;
-
 		try {
-
-			$verb = $request->getVerb();
+			$resource = new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di);
 			$path = substr($request->getPath(), strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				if ($verb !== "GET") {
-					throw new MethodNotAllowed("$verb not allowed.");
-				}
-				$resource = $this->cache->getRootResource($this->sourceUnit, $this->tags);
-				if ($resource === null) {
-					throw new FileNotFound("Root resource not found.");
-				}
-				$values = [];
+				return $resource
+					->createRootResource($request->getVerb());
+					->call($this->getValues($request));
 			} else { // if normal resource
-				switch ($verb) {
-					case "GET":
-					case "POST":
-						break;
-					default:
-						throw new MethodNotAllowed("$verb not allowed.");
+				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
+					$path = substr($path, strlen($matches[0]));
+					$this->journalId = (int)$matches[1];
+					$this->basePath.= "/".$this->journalId."/";
 				}
-				$class = strtr($path, "/", "\\");
-				$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
-				if ($resource === null) {
-					throw new FileNotFound("Resource $class not found.");
-				}
-				$values = $this->getValues($request);
+				return $resource
+					->createResource(strtr(trim($path, "/"), "/", "\\"), $request->getVerb())
+					->call($this->getValues($request));
 			}
-			unset($request, $class, $path);
-
-			// call resource
-			$this->call($resource, $verb, $values);
-
-			return $this->response;
-		} catch (Error $e) {
-			return $this->response;
+		} catch (Response $e) {
+			return $e;
 		} catch (Throwable $e) {
 			return (new InternalServerError("Uncaught exception", 0, $e));
 		}
@@ -171,180 +144,6 @@ final class HyperMedia
 			$values = $content;
 		}
 
-		if (isset($values['journalId'])) {
-			$this->journalId = (int)$values['journalId'];
-			unset($values['journalId']);
-		}
-
 		return $values;
-	}
-
-	private function build(HyperMedia_ResponseBuilder $responseBuilder, Response $status, $content)
-	{
-		$responseBuilder->setStatus($status->getStatusCode(), $status->getStatusText());
-		if ($status instanceof Created) {
-			$responseBuilder->setLocation($status->getLocation());
-		}
-		if ($content !== null) {
-			$responseBuilder->setContentType('application/json');
-			$responseBuilder->setContent(json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
-		}
-		return $responseBuilder->response();
-	}
-
-	private function buildError(HyperMedia_ResponseBuilder $responseBuilder, Throwable $e)
-	{
-		$error = ["message"=>$e->getMessage()];
-		$code = $e->getCode();
-		if ($code > 0) {
-			$error["code"] = $code;
-		}
-		if ($e instanceof Status) {
-			return $this->build($responseBuilder, $e, null, ["error"=>$error]);
-		} else {
-			return $this->build($responseBuilder, new InternalServerError, null, ["error"=>$error]);
-		}
-	}
-
-	/**
-	 * Call a request
-	 *
-	 * @param CacheItem_Resource $resource  resource
-	 * @param string             $verb      the HTTP verb
-	 * @param array              $values    the input fields, from both the URI and the body
-	 */
-	private function call(CacheItem_Resource $resource, string $verb, array $values): void
-	{
-		$class = $resource->getClass();
-		$fields = $resource->getFields();
-		[$method, $status, $location, $self] = $resource->getVerb($verb);
-		switch ($status) {
-			case Meta\Verb::OK:
-				if ($this->responses->main === $this->response) {
-					$this->status = new OK;
-				}
-				$capture = $self;
-				break;
-
-			case Meta\Verb::CREATED:
-				if ($this->responses->main !== $this->response) {
-					throw new InternalServerError("[$class::$method] Method has an invalid status code, $status.");
-				}
-				$this->status = new Created($location);
-				$capture = false;
-				break;
-
-			case Meta\Verb::ACCEPTED:
-				if ($this->responses->main !== $this->response) {
-					throw new InternalServerError("[$class::$method] Method has an invalid status code, $status.");
-				}
-				$this->status = new Accepted;
-				$capture = false;
-				break;
-
-			case Meta\Verb::NO_CONTENT:
-				if ($this->responses->main !== $this->response) {
-					throw new InternalServerError("[$class::$method] Method has an invalid status code, $status.");
-				}
-				$this->status = new NoContent;
-				$capture = false;
-				break;
-
-			default:
-				throw new InternalServerError("[$class::$method] Attached resources must return an OK status code, got $status.");
-		}
-
-		$obj = new $class;
-		foreach ($fields as $name => [$type, $default, $flags, $autocomplete, $validation, $link]) {
-			// type check
-			$type = new FieldType($type);
-			// flags check
-			$flags = new FieldFlags($flags);
-			if ($flags->isRequired() && !isset($values[$name])) {
-				throw new BadRequest("$name is required");
-			}
-			if ($flags->isReadonly() && isset($values[$name])) {
-				throw new BadRequest("$name is readonly");
-			}
-			if ($flags->isDisabled() && isset($values[$name])) {
-				throw new BadRequest("$name is disabled");
-			}
-			// validate
-			// check options against link
-			$obj->$name = $values[$name] ?? null;
-		}
-		$this->response->links = [];
-		$obj->$method($this, $this->di);
-		if ($capture) {
-			foreach ($fields as $name => [$type, $default, $flags, $autocomplete, $validation, $link]) {
-				$flags = new FieldFlags($flags);
-				if ($flags->isReadonly()) {
-				}
-			}
-
-			foreach ($fields as $name => [$type, $default, $flags, $autocomplete, $validation, $link]) {
-				$response->$name = $obj->$name;
-			}
-		}
-	}
-
-	/**
-	 * Link to another resource.
-	 *
-	 * @param string $name    the name of the link
-	 * @param string $class   the class of the resource
-	 * @param array  $values  the values in case the resource has uri fields
-	 * @param bool   $attach  also attach the resource in the responce
-	 *
-	 * Please note that $attach is ignored if link is called from a Resource
-	 * that itself is attached by another resource.
-	 */
-	public function link(string $name, string $class, array $values = [], bool $attach = false): void
-	{
-		$this->resource->links->$name = $this->createLink($class, $values);
-		if ($attach && $this->response === $this->responses->main) { // only attach if linking from first resource
-			$resource = $this->cache->getResource($this->sourceUnit, $this->tags, $class);
-			if ($resource === null) {
-				$this->responses->$name = ["error" => ["message" => "Resource $class not found."]];
-			} else {
-				$previous = $this->response;
-				$this->responses->$name = $this->response = new stdClass;
-				$this->call($resource, "GET", $values);
-				$this->response = $previous;
-			}
-		}
-	}
-
-	/**
-	 * Create a link to be used inside the data section.
-	 *
-	 * @param  string $class           the class of the resource
-	 * @param  array  $values          the values in case the resource has uri fields
-	 * @param  bool   $mayBeTemplated  whether the like may be a templated link
-	 * @return Link                    containing the href property and possibly the templated property
-	 */
-	public function createLink(string $class, array $values = [], bool $mayBeTemplated = true): Link
-	{
-		$href = $this->basePath . "/" . strtr($class, "\\", "/");
-		$i = 0;
-		foreach ($this->resource->fields as $name => $meta) {
-			if ($meta->uri && array_key_exists($name, $fields)) {
-				$href.= ($i++ ? "&" : "?") . $name . "=" . $fields[$name];
-			}
-		}
-		$j = 0;
-		if ($mayBeTemplated) {
-			foreach ($this->resource->fields as $name => $meta) {
-				if ($meta->uri && !array_key_exists($name, $fields)) {
-					$href.= ($j++ ? "," : ($i ? "{&" : "{?")) . $name;
-				}
-			}
-		}
-		if ($j) {
-			$href.= "}";
-			return new Link($href, true);
-		} else {
-			return new Link($href);
-		}
 	}
 }
