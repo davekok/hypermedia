@@ -1,17 +1,15 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
-
-use Symfony\Component\HttpFoundation\Request;
+namespace Sturdy\Activity\Request;
 
 /**
  * An adaptor for symfony requests.
  */
-final class SymfonyRequestAdaptor implements Request
+final class SymfonyAdaptor implements Request
 {
 	private $request;
 
-	public function __construct(Request $request)
+	public function __construct(\Symfony\Component\HttpFoundation\Request $request)
 	{
 		$this->request = $request;
 	}

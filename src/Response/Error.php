@@ -1,15 +1,28 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
 use Exception;
 
 abstract class Error extends Exception implements Response
 {
+	use DateTrait;
+	use NoLocationTrait;
+
+	/**
+	 * Get the content type
+	 *
+	 * @return string  content type
+	 */
+	public function getContentType(): ?string
+	{
+		return "application/json";
+	}
+
 	/**
 	 * Get content
 	 *
-	 * @return string
+	 * @return string  content
 	 */
 	public function getContent(): string
 	{
@@ -26,19 +39,5 @@ abstract class Error extends Exception implements Response
 			];
 		}
 		return json_encode(["error"=>$error], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-	}
-
-	/**
-	 * Convert response using response builder
-	 *
-	 * @param ResponseBuilder $rb  the response builder
-	 * @return mixed  the response
-	 */
-	public function convert(ResponseBuilder $rb)
-	{
-		$responseBuilder->setStatus($this->getStatusCode(), $this->getStatusText());
-		$responseBuilder->setContentType('application/json');
-		$responseBuilder->setContent($this->getContent());
-		return $responseBuilder->getResponse();
 	}
 }

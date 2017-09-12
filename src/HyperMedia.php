@@ -4,10 +4,7 @@ namespace Sturdy\Activity;
 
 use Throwable;
 use Exception;
-use Generator;
-use stdClass;
 use InvalidArgumentException;
-use Sturdy\Activity\Meta\FieldFlags;
 
 /**
  * A hyper media middle ware for your resources.
@@ -59,43 +56,64 @@ final class HyperMedia
 	}
 
 	/**
-	 * Process a request
+	 * Handle a request
 	 *
-	 * This function supports varies types for the request and response arguments.
-	 * For the request argument you can choose between:
+	 * The $request argument can be either an instance of
 	 * - \Psr\Http\Message\ServerRequestInterface
 	 * - \Symfony\Component\HttpFoundation\Request
-	 * - stdClass
-	 * - array
+	 * - \Sturdy\Activity\Request\Request
+	 * or be
+	 * - an array in the structure of $_SERVER
+	 * - null, in which case $_SERVER is used
 	 *
-	 * For the response argument you can choose between:
-	 * - \Psr\Http\Message\ResponseInterface
-	 * - \Symfony\Component\HttpFoundation\Response
-	 * - stdClass
-	 * - array
+	 * The $responseAdaptor argument can be eiter:
+	 * - "psr" returns a \Psr\Http\Message\ResponseInterface
+	 * - "symfony" returns a \Symfony\Component\HttpFoundation\Response
+	 * - "sturdy" returns a \Sturdy\Activity\Response\Response
+	 * - "array" returns [string[], string], first element is the headers, second the content
+	 * - "echo" returns void, echo's response to output instead using header and echo functions
+	 * - null, a matching response adaptor is choosen based on your request:
+	 *   * psr for \Psr\Http\Message\ServerRequestInterface
+	 *   * symfony for \Symfony\Component\HttpFoundation\Request
+	 *   * sturdy for \Sturdy\Activity\Request\Request
+	 *   * array
+	 *   * echo for array or null
 	 *
-	 * This should allow you to integrate this library with most frameworks.
-	 *
-	 * @param HyperMedia_Request         $request          the request object
-	 * @param HyperMedia_ResponseBuilder $responseBuilder  the response builder object
-	 * @param array                      $tags             the tags to use
-	 * @return mixed  $responseBuilder->getResponse()
-	 *
-	 * Expected properties for stdClass instance and array:
-	 * - method       the HTTP method/verb
-	 * - path         the path part of URI, as a string
-	 * - query        the query part of URI, as a string
-	 * - content      in case of POST, the body of the HTTP message
-	 * - contentType  the Content-Type header, must equal application/json
-	 *
-	 * Properties returned in the response in case of stdClass instance or arry:
-	 * - status       the HTTP status code
-	 * - location     the Location header, optional
-	 * - contentType  the Content-Type header, optional
-	 * - content      the content, optional
+	 * @param array    $tags             the tags to use
+	 * @param mixed    $request          the request object
+	 * @param ?string  $responseAdaptor  the response adaptor you would like to use
+	 * @return mixed  $response
 	 */
-	public function process(Request $request, array $tags): Response
+	public function handle(array $tags, $request, ?string $responseAdaptor = null)
 	{
+		switch (true) {
+			case $request instanceof \Psr\Http\Message\ServerRequestInterface:
+				$request = new Request\PsrAdaptor($request);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "psr";
+				}
+				break;
+			case $request instanceof \Symfony\Component\HttpFoundation\Request:
+				$request = new Request\SymfonyAdaptor($request);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "symfony";
+				}
+				break;
+			case $request instanceof Request\Request:
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "sturdy";
+				}
+				break;
+			case is_array($request):
+			case $request === null:
+				$request = new Request\ServerAdaptor($request);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "echo";
+				}
+				break;
+			default:
+				throw new InvalidArgumentException("\$request argument is of unsupported type");
+		}
 		try {
 			$resource = new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di);
 			$path = substr($request->getPath(), strlen($this->basePath));
@@ -109,18 +127,58 @@ final class HyperMedia
 					$this->journalId = (int)$matches[1];
 					$this->basePath.= "/".$this->journalId."/";
 				}
-				return $resource
+				$response = $resource
 					->createResource(strtr(trim($path, "/"), "/", "\\"), $request->getVerb())
 					->call($this->getValues($request));
 			}
 		} catch (Response $e) {
-			return $e;
+			$response = $e;
 		} catch (Throwable $e) {
-			return (new InternalServerError("Uncaught exception", 0, $e));
+			$response = (new InternalServerError("Uncaught exception", 0, $e));
+		}
+		switch ($responseAdaptor) {
+			case "psr":
+				return new Response\PsrAdaptor($response);
+			case "symfony":
+				return new Response\SymfonyAdaptor($response);
+			case "sturdy":
+				return $response;
+			case "array":
+				$headers = [];
+				$headers["Status"] = "HTTP/".$response->getProtocolVersion()." ".$response->getStatusCode()." ".$response->getStatusText();
+				$headers["Date"] = $response->getDate()->format("r");
+				if ($location = $response->getLocation()) {
+					$headers["Location"] = $location;
+				}
+				if ($contentType = $response->getContentType()) {
+					$headers["Content-Type"] = $contentType;
+				}
+				return [$headers, $response->getContent()];
+			case "echo":
+				header("HTTP/".$response->getProtocolVersion()." ".$response->getStatusCode()." ".$response->getStatusText());
+				header("Date: ".$response->getDate()->format("r"));
+				if ($location = $response->getLocation()) {
+					header("Location: ".$location);
+				}
+				if ($contentType = $response->getContentType()) {
+					header("Content-Type: ".$contentType);
+				}
+				if ($content = $response->getContent()) {
+					echo $content;
+				}
+				return;
+			default:
+				throw new InvalidArgumentException("Unsupported response adaptor $responseAdaptor.");
 		}
 	}
 
-	private function getValues(HyperMedia_Request $request): array
+	/**
+	 * Get values from request.
+	 *
+	 * @param  Request $request  the request
+	 * @return array  the values
+	 */
+	private function getValues(Request $request): array
 	{
 		if ($request->getVerb() === "POST") {
 			if ($request->getContentType() === "application/json") {
@@ -147,3 +205,6 @@ final class HyperMedia
 		return $values;
 	}
 }
+
+
+$hm->handle($tags);

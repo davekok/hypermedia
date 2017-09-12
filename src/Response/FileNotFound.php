@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
-final class BadRequest extends Error
+final class FileNotFound extends Error
 {
 	/**
 	 * Get the response status code
@@ -11,7 +11,7 @@ final class BadRequest extends Error
 	 */
 	public function getStatusCode(): int
 	{
-		return 400;
+		return 404;
 	}
 
 	/**
@@ -21,6 +21,6 @@ final class BadRequest extends Error
 	 */
 	public function getStatusText(): string
 	{
-		return "Bad Request";
+		return "File Not Found";
 	}
 }

@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
-final class UnsupportedMediaType extends Error
+class BadRequest extends Error
 {
 	/**
 	 * Get the response status code
@@ -11,7 +11,7 @@ final class UnsupportedMediaType extends Error
 	 */
 	public function getStatusCode(): int
 	{
-		return 415;
+		return 400;
 	}
 
 	/**
@@ -21,6 +21,6 @@ final class UnsupportedMediaType extends Error
 	 */
 	public function getStatusText(): string
 	{
-		return "Unsupported Media Type";
+		return "Bad Request";
 	}
 }

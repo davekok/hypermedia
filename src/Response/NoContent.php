@@ -1,9 +1,13 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
 final class NoContent implements Response
 {
+	use DateTrait;
+	use NoLocationTrait;
+	use NoContentTrait;
+
 	/**
 	 * Get the response status code
 	 *
@@ -22,17 +26,5 @@ final class NoContent implements Response
 	public function getStatusText(): string
 	{
 		return "No Content";
-	}
-
-	/**
-	 * Convert response using response builder
-	 *
-	 * @param ResponseBuilder $rb  the response builder
-	 * @return mixed  the response
-	 */
-	public function convert(ResponseBuilder $rb)
-	{
-		$responseBuilder->setStatus($this->getStatusCode(), $this->getStatusText());
-		return $responseBuilder->getResponse();
 	}
 }

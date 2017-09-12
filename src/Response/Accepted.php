@@ -1,9 +1,13 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
-final class FileNotFound extends Error
+final class Accepted implements Response
 {
+	use DateTrait;
+	use NoLocationTrait;
+	use NoContentTrait;
+
 	/**
 	 * Get the response status code
 	 *
@@ -11,7 +15,7 @@ final class FileNotFound extends Error
 	 */
 	public function getStatusCode(): int
 	{
-		return 404;
+		return 202;
 	}
 
 	/**
@@ -21,6 +25,6 @@ final class FileNotFound extends Error
 	 */
 	public function getStatusText(): string
 	{
-		return "File Not Found";
+		return "Accepted";
 	}
 }

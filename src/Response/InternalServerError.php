@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
 final class InternalServerError extends Error
 {

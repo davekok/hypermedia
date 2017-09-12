@@ -1,9 +1,12 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
 final class OK implements Response
 {
+	use DateTrait;
+	use NoLocationTrait;
+
 	private $resource;
 	private $parts;
 	private $part;
@@ -32,6 +35,16 @@ final class OK implements Response
 	public function getStatusText(): string
 	{
 		return "OK";
+	}
+
+	/**
+	 * Get content type
+	 *
+	 * @return string  the content type
+	 */
+	public function getContentType(): string
+	{
+		return "application/json";
 	}
 
 	/**
@@ -93,19 +106,5 @@ final class OK implements Response
 			$resource->call($values);
 			$this->part = $previous;
 		}
-	}
-
-	/**
-	 * Convert response using response builder
-	 *
-	 * @param  ResponseBuilder $rb  the response builder
-	 * @return mixed  the response
-	 */
-	public function convert(ResponseBuilder $rb)
-	{
-		$responseBuilder->setStatus($this->getStatusCode(), $this->getStatusText());
-		$responseBuilder->setContentType('application/json');
-		$responseBuilder->setContent($this->getContent());
-		return $responseBuilder->getResponse();
 	}
 }

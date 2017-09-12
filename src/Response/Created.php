@@ -1,9 +1,12 @@
 <?php declare(strict_types=1);
 
-namespace Sturdy\Activity;
+namespace Sturdy\Activity\Response;
 
 final class Created implements Response
 {
+	use DateTrait;
+	use NoContentTrait;
+
 	private $location;
 
 	public function __construct(string $location) {
@@ -38,18 +41,5 @@ final class Created implements Response
 	public function getLocation(): string
 	{
 		return $this->location;
-	}
-
-	/**
-	 * Convert response using response builder
-	 *
-	 * @param ResponseBuilder $rb  the response builder
-	 * @return mixed  the response
-	 */
-	public function convert(ResponseBuilder $rb)
-	{
-		$responseBuilder->setStatus($this->getStatusCode(), $this->getStatusText());
-		$responseBuilder->setLocation($this->getLocation());
-		return $responseBuilder->getResponse();
 	}
 }
