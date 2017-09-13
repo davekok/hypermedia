@@ -34,8 +34,8 @@ abstract class Error extends Exception implements Response
 		$previous = $this->getPrevious();
 		if ($previous) {
 			$error["previous"] = [
-				"message" => $previous->getMessage();
-				"trace" => explode("\n", $previous->getTraceAsString()];
+				"message" => $previous->getMessage(),
+				"trace" => explode("\n", $previous->getTraceAsString())
 			];
 		}
 		return json_encode(["error"=>$error], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);

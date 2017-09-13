@@ -89,6 +89,19 @@ final class Cache implements CacheInterface
 	}
 
 	/**
+	 * Get a cached root resource item
+	 *
+	 * @param string $unit   the unit to retrieve the resource meta data for
+	 * @param string $class  the name if the resource
+	 * @param array  $tags   the tags to retrieve the resource meta data for
+	 * @return the resource meta data
+	 */
+	public function getRootResource(string $unit, array $tags): ?CacheItem_RootResource
+	{
+		return $this->getItem($unit, 'RootResource', "", $tags);
+	}
+
+	/**
 	 * Get a cached item
 	 *
 	 * @param string $unit   the unit to item for

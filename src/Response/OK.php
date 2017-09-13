@@ -11,6 +11,11 @@ final class OK implements Response
 	private $parts;
 	private $part;
 
+	/**
+	 * Constructor
+	 *
+	 * @param Resource $resource  the resource
+	 */
 	public function __construct(Resource $resource)
 	{
 		$this->resource = $resource;

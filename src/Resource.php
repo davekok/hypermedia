@@ -2,6 +2,7 @@
 
 namespace Sturdy\Activity;
 
+use Sturdy\Activity\Meta\Field;
 use Sturdy\Activity\Meta\CacheItem_Resource;
 
 final class Resource
@@ -109,9 +110,7 @@ final class Resource
 
 	public function call(array $values): Response
 	{
-		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete, $validation, $link]) {
-			// type check
-			$type = new FieldType($type);
+		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
 			// flags check
 			$flags = new FieldFlags($flags);
 			if ($flags->isRequired() && !isset($values[$name])) {
@@ -123,16 +122,37 @@ final class Resource
 			if ($flags->isDisabled() && isset($values[$name])) {
 				throw new BadRequest("$name is disabled");
 			}
-			// validate
-			// check options against link
+			// type check
+			if (isset($values[$name])) {
+				$type = Field::createType($type);
+				if ($flags->isArray()) {
+					foreach ($values[$name] as $value) {
+						if (!$type->filter($value)) {
+							throw new BadRequest("$name does not have a valid value: {$value}");
+						}
+					}
+				} elseif ($flags->isMultiple()) {
+					foreach (explode(",", $values[$name]) as $value) {
+						$value = trim($value);
+						if (!$type->filter($value)) {
+							throw new BadRequest("$name does not have a valid value: {$value}");
+						}
+					}
+				} else {
+					if (!$type->filter($values[$name])) {
+						throw new BadRequest("$name does not have a valid value: {$values[$name]}");
+					}
+				}
+			}
 			$this->object->$name = $values[$name] ?? null;
 		}
-		$this->obj->{$this->method}($this->response, $this->di);
+		$this->object->{$this->method}($this->response, $this->di);
 		if ($this->self && $this->status === Meta\Verb::OK) {
 			$fields = [];
-			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete, $validation, $link]) {
+			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
 				$field = new stdClass;
-				$field->type = $type;
+				if (isset($this->object->$name)) $field->value = $this->object->$name;
+				Field::createType($type)->meta($field);
 				$field->defaultValue = $defaultValue;
 				$flags = new FieldFlags($flags);
 				if ($flags->isRequired()) $field->required = true;
@@ -142,11 +162,7 @@ final class Resource
 				if ($flags->isArray()) $field->{"array"} = true;
 				if ($flags->isMeta()) $field->meta = true;
 				if ($flags->isData()) $field->data = true;
-				$field->autocomplete = $autocomplete;
-				foreach ($validation as $key => $value) {
-					$field->$key = $value;
-				}
-				$field->link = $link;
+				if ($autocomplete) $field->autocomplete = $autocomplete;
 				$fields[$name] = $field;
 				$this->response->setFields($fields);
 			}

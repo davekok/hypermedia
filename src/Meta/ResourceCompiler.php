@@ -45,12 +45,10 @@ class ResourceCompiler
 			if ($field) {
 				$item->setField(
 					$key,
-					$field->getType(),
+					$field->getType()->getDescriptor(),
 					$field->getDefault(),
 					$field->getFlags()->toInt(),
-					$field->getAutocomplete(),
-					$field->getValidation(),
-					$field->getLink()
+					$field->getAutocomplete()
 				);
 			}
 		}

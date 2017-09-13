@@ -5,6 +5,11 @@ namespace Sturdy\Activity;
 use Throwable;
 use Exception;
 use InvalidArgumentException;
+use Sturdy\Activity\Response\{
+	BadRequest,
+	InternalServerError,
+	UnsupportedMediaType
+};
 
 /**
  * A hyper media middle ware for your resources.
@@ -64,20 +69,20 @@ final class HyperMedia
 	 * - \Sturdy\Activity\Request\Request
 	 * or be
 	 * - an array in the structure of $_SERVER
-	 * - null, in which case $_SERVER is used
+	 * - null, in which case $_SERVER should be used
 	 *
 	 * The $responseAdaptor argument can be eiter:
 	 * - "psr" returns a \Psr\Http\Message\ResponseInterface
 	 * - "symfony" returns a \Symfony\Component\HttpFoundation\Response
 	 * - "sturdy" returns a \Sturdy\Activity\Response\Response
-	 * - "array" returns [string[], string], first element is the headers, second the content
+	 * - "array" returns [string $protocolVersion, string $statusCode, string $statusText, string[] $headers, ?string $content]
 	 * - "echo" returns void, echo's response to output instead using header and echo functions
 	 * - null, a matching response adaptor is choosen based on your request:
-	 *   * psr for \Psr\Http\Message\ServerRequestInterface
-	 *   * symfony for \Symfony\Component\HttpFoundation\Request
-	 *   * sturdy for \Sturdy\Activity\Request\Request
-	 *   * array
-	 *   * echo for array or null
+	 *   + psr for \Psr\Http\Message\ServerRequestInterface
+	 *   + symfony for \Symfony\Component\HttpFoundation\Request
+	 *   + sturdy for \Sturdy\Activity\Request\Request
+	 *   + array for array
+	 *   + echo for null
 	 *
 	 * @param array    $tags             the tags to use
 	 * @param mixed    $request          the request object
@@ -86,6 +91,7 @@ final class HyperMedia
 	 */
 	public function handle(array $tags, $request, ?string $responseAdaptor = null)
 	{
+		// adaptors
 		switch (true) {
 			case $request instanceof \Psr\Http\Message\ServerRequestInterface:
 				$request = new Request\PsrAdaptor($request);
@@ -93,33 +99,45 @@ final class HyperMedia
 					$responseAdaptor = "psr";
 				}
 				break;
+
 			case $request instanceof \Symfony\Component\HttpFoundation\Request:
 				$request = new Request\SymfonyAdaptor($request);
 				if ($responseAdaptor === null) {
 					$responseAdaptor = "symfony";
 				}
 				break;
+
 			case $request instanceof Request\Request:
 				if ($responseAdaptor === null) {
 					$responseAdaptor = "sturdy";
 				}
 				break;
+
 			case is_array($request):
-			case $request === null:
 				$request = new Request\ServerAdaptor($request);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "array";
+				}
+				break;
+
+			case $request === null:
+				$request = new Request\ServerAdaptor($_SERVER);
 				if ($responseAdaptor === null) {
 					$responseAdaptor = "echo";
 				}
 				break;
+
 			default:
 				throw new InvalidArgumentException("\$request argument is of unsupported type");
 		}
+
+		// handle
 		try {
 			$resource = new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di);
 			$path = substr($request->getPath(), strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
 				return $resource
-					->createRootResource($request->getVerb());
+					->createRootResource($request->getVerb())
 					->call($this->getValues($request));
 			} else { // if normal resource
 				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
@@ -136,16 +154,20 @@ final class HyperMedia
 		} catch (Throwable $e) {
 			$response = (new InternalServerError("Uncaught exception", 0, $e));
 		}
+
+		// adaptors
 		switch ($responseAdaptor) {
 			case "psr":
 				return new Response\PsrAdaptor($response);
+
 			case "symfony":
 				return new Response\SymfonyAdaptor($response);
+
 			case "sturdy":
 				return $response;
+
 			case "array":
 				$headers = [];
-				$headers["Status"] = "HTTP/".$response->getProtocolVersion()." ".$response->getStatusCode()." ".$response->getStatusText();
 				$headers["Date"] = $response->getDate()->format("r");
 				if ($location = $response->getLocation()) {
 					$headers["Location"] = $location;
@@ -153,7 +175,8 @@ final class HyperMedia
 				if ($contentType = $response->getContentType()) {
 					$headers["Content-Type"] = $contentType;
 				}
-				return [$headers, $response->getContent()];
+				return [$response->getProtocolVersion(), $response->getStatusCode(), $response->getStatusText(), $headers, $response->getContent()];
+
 			case "echo":
 				header("HTTP/".$response->getProtocolVersion()." ".$response->getStatusCode()." ".$response->getStatusText());
 				header("Date: ".$response->getDate()->format("r"));
@@ -167,6 +190,7 @@ final class HyperMedia
 					echo $content;
 				}
 				return;
+
 			default:
 				throw new InvalidArgumentException("Unsupported response adaptor $responseAdaptor.");
 		}
@@ -205,6 +229,3 @@ final class HyperMedia
 		return $values;
 	}
 }
-
-
-$hm->handle($tags);

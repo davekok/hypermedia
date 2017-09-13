@@ -25,8 +25,6 @@ final class Field extends Taggable
 	private $default;      // the default value
 	private $flags;        // bitmask of the above constants
 	private $autocomplete; // autocomplete expression, see HTML 5 autofill documentation
-	private $validation;   // validation expression
-	private $link;         // in case of type=list, link is the resource to choice from
 
 	/**
 	 * Constructor
@@ -174,28 +172,6 @@ final class Field extends Taggable
 	}
 
 	/**
-	 * Set link
-	 *
-	 * @param string $link
-	 * @return self
-	 */
-	public function setLink(string $link): self
-	{
-		$this->link = $link;
-		return $this;
-	}
-
-	/**
-	 * Get link
-	 *
-	 * @return string
-	 */
-	public function getLink(): string
-	{
-		return $this->link;
-	}
-
-	/**
 	 * Parse the annotation text
 	 *
 	 * @param  string $text  the annotation text
@@ -209,36 +185,97 @@ final class Field extends Taggable
 
 				// basic types
 				case "string":
+					$this->type = new Type\StringType();
+					break;
+
 				case "integer":
-				case "long":
+					$this->type = new Type\IntType();
+					break;
+
 				case "float":
-				case "double":
-				case "boolean": // can be mapped to checkbox or radio 'yes', 'no'
-				case "set":     // can be mapped to multiple checkboxes or select multiple
-				case "enum":    // can be mapped to radio buttons or select
+					$this->type = new Type\FloatType();
+					break;
+
+				case "boolean":
+					$this->type = new Type\BooleanType();
+					break;
+
+				case "set":
+					$this->type = new Type\SetType();
+					break;
+
+				case "enum":
+					$this->type = new Type\EnumType();
+					break;
 
 				// calendar types
 				case "date":
+					$this->type = new Type\DateType();
+					break;
+
 				case "datetime":
+					$this->type = new Type\DateTimeType();
+					break;
+
 				case "time":
+					$this->type = new Type\TimeType();
+					break;
+
 				case "day":
+					$this->type = new Type\DayType();
+					break;
+
 				case "month":
+					$this->type = new Type\MonthType();
+					break;
+
 				case "year":
+					$this->type = new Type\YearType();
+					break;
+
 				case "week":
+					$this->type = new Type\WeekType();
+					break;
+
 				case "weekday":
+					$this->type = new Type\WeekDayType();
+					break;
 
 				// special types
 				case "uuid":
-				case "password":
-				case "color":
-				case "email":
-				case "url":
-				case "link": // a link pointing to a resource within this API
-				case "list": // like enum but resolve link and use data section for options
-				case "table": // an table containing data, requires Column annotations
-				case "html": // string containing HTML
+					$this->type = new Type\UUIDType();
+					break;
 
-					$this->type = $token;
+				case "password":
+					$this->type = new Type\PasswordType();
+					break;
+
+				case "color":
+					$this->type = new Type\ColorType();
+					break;
+
+				case "email":
+					$this->type = new Type\EmailType();
+					break;
+
+				case "url":
+					$this->type = new Type\URLType();
+					break;
+
+				case "link": // a link pointing to a resource within this API
+					$this->type = new Type\LinkType();
+					break;
+
+				case "list": // like enum but resolve link and use data section for options
+					$this->type = new Type\ListType();
+					break;
+
+				case "table": // an table containing data, requires Column annotations
+					$this->type = new Type\TableType();
+					break;
+
+				case "html": // string containing HTML
+					$this->type = new Type\HTMLType();
 					break;
 
 				case "meta":
@@ -270,31 +307,31 @@ final class Field extends Taggable
 					break;
 
 				case "min":
-					$this->validation["min"] = trim(strok(")"));
+					$this->type->setMinimumRange(trim(strok(")")));
 					break;
 
 				case "max":
-					$this->validation["max"] = trim(strok(")"));
+					$this->type->setMaximumRange(trim(strok(")")));
 					break;
 
 				case "step":
-					$this->validation["step"] = trim(strok(")"));
+					$this->type->setStep(trim(strok(")")));
 					break;
 
 				case "minlength":
-					$this->validation["minlength"] = trim(strok(")"));
+					$this->type->setMinimumLength(trim(strok(")")));
 					break;
 
 				case "maxlength":
-					$this->validation["maxlength"] = trim(strok(")"));
+					$this->type->setMaximumLength(trim(strok(")")));
 					break;
 
 				case "pattern":
-					$this->validation["pattern"] = trim(strok(")"));
+					$this->type->setPatternName(trim(strok(")")));
 					break;
 
 				case "link":
-					$this->setLink(trim(strok(")")));
+					$this->type->setLink(trim(strok(")")));
 					break;
 
 				default:
@@ -337,9 +374,26 @@ final class Field extends Taggable
 		if ($this->flags->isDisabled()) $text.= "disabled ";
 		if ($this->flags->isMultiple()) $text.= "multiple ";
 		if ($this->autocomplete) $text.= "autocomplete({$this->autocomplete}) ";
-		if ($this->link) $text.= "link({$this->link}) ";
-		foreach ($this->validation??[] as $key => $value) {
-			$text.= "$key($value) ";
+		if (method_exists($this->type, "getMinimumRange") && $min = $this->type->getMinimumRange()) {
+			$text.= " min($min)";
+		}
+		if (method_exists($this->type, "getMaximumRange") && $max = $this->type->getMaximumRange()) {
+			$text.= " max($max)";
+		}
+		if (method_exists($this->type, "getStep") && $step = $this->type->getStep()) {
+			$text.= " step($step)";
+		}
+		if (method_exists($this->type, "getMinimumLength") && $minlength = $this->type->getMinimumLength()) {
+			$text.= " minlength($minlength)";
+		}
+		if (method_exists($this->type, "getMaximumLength") && $maxlength = $this->type->getMaximumLength()) {
+			$text.= " maxlength($maxlength)";
+		}
+		if (method_exists($this->type, "getPatternName") && $patternName = $this->type->getPatternName()) {
+			$text.= " pattern($patternName)";
+		}
+		if (method_exists($this->type, "getLink") && $link = $this->type->getLink()) {
+			$text.= " link($link)";
 		}
 		$text.= parent::__toString();
 		return rtrim($text);

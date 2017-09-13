@@ -12,11 +12,11 @@ final class DefaultAdaptor implements Request
 	/**
 	 * Constructor
 	 *
-	 * @param array $server  the $_SERVER array
+	 * @param array $server  the $_SERVER array or similar
 	 */
-	public function __construct(array $server = null)
+	public function __construct(array $server)
 	{
-		$this->server = $server ?? $_SERVER;
+		$this->server = $server;
 	}
 
 	/**

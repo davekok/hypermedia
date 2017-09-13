@@ -14,10 +14,13 @@ class CacheItem_Resource extends CacheItem_UnitItem
 
 	/**
 	 * Set field
+	 *
+	 * @return $this
 	 */
-	public function setField(string $key, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $validation = null, ?string $link = null): void
+	public function setField(string $key, string $type, $default, int $flags = 0, ?string $autocomplete = null): self
 	{
-		$this->fields[$key] = [$type, $default, $flags, $autocomplete, $validation, $link];
+		$this->fields[$key] = [$type, $default, $flags, $autocomplete];
+		return $this;
 	}
 
 	/**
@@ -32,10 +35,13 @@ class CacheItem_Resource extends CacheItem_UnitItem
 
 	/**
 	 * Set verb
+	 *
+	 * @return $this
 	 */
-	public function setVerb(string $key, string $method, int $status = Verb::OK, ?string $location = null, bool $self = true): void
+	public function setVerb(string $key, string $method, int $status = Verb::OK, ?string $location = null, bool $self = true): self
 	{
 		$this->verbs[$key] = [$method, $status, $location, $self];
+		return $this;
 	}
 
 	/**
@@ -50,11 +56,14 @@ class CacheItem_Resource extends CacheItem_UnitItem
 
 	/**
 	 * Clear cache item
+	 *
+	 * @return $this
 	 */
-	public function clear(): void
+	public function clear(): self
 	{
 		$this->fields = null;
 		$this->verbs = null;
+		return $this;
 	}
 
 	/**
