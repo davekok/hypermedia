@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
+use stdClass;
+
 /**
  * Type
  */
@@ -20,24 +22,14 @@ abstract class Type
 	 *
 	 * @return string
 	 */
-	public function getDescriptor(): string
-	{
-		return $this->__toString().",".$this->getState();
-	}
+	public abstract function getDescriptor(): string;
 
 	/**
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
 	 */
-	public function meta(stdClass $meta): void;
-
-	/**
-	 * Get state
-	 *
-	 * @return string
-	 */
-	public function getState(): string;
+	public abstract function meta(stdClass $meta): void;
 
 	/**
 	 * Filter value
@@ -45,12 +37,5 @@ abstract class Type
 	 * @param  &$value  the value to filter
 	 * @return bool  whether the value is valid
 	 */
-	public function filter(&$value): bool;
-
-	/**
-	 * Get type
-	 *
-	 * @return string
-	 */
-	public function __toString(): string;
+	public abstract function filter(&$value): bool;
 }

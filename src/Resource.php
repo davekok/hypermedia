@@ -2,8 +2,25 @@
 
 namespace Sturdy\Activity;
 
-use Sturdy\Activity\Meta\Field;
-use Sturdy\Activity\Meta\CacheItem_Resource;
+use stdClass;
+use Sturdy\Activity\Meta\{
+	CacheItem_Resource,
+	Field,
+	FieldFlags
+};
+use Sturdy\Activity\Meta\Type\Type;
+use Sturdy\Activity\Response\{
+	Accepted,
+	BadRequest,
+	Created,
+	FileNotFound,
+	InternalServerError,
+	MethodNotAllowed,
+	NoContent,
+	OK,
+	Response,
+	UnsupportedMediaType
+};
 
 final class Resource
 {
@@ -51,7 +68,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($cache, $sourceUnit, $tags, $basePath, $di);
+		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -108,7 +125,7 @@ final class Resource
 		}
 	}
 
-	public function call(array $values): Response
+	public function call(JournalBranch $branch, array $values): Response
 	{
 		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
 			// flags check
@@ -124,7 +141,7 @@ final class Resource
 			}
 			// type check
 			if (isset($values[$name])) {
-				$type = Field::createType($type);
+				$type = Type::createType($type);
 				if ($flags->isArray()) {
 					foreach ($values[$name] as $value) {
 						if (!$type->filter($value)) {
@@ -147,12 +164,13 @@ final class Resource
 			$this->object->$name = $values[$name] ?? null;
 		}
 		$this->object->{$this->method}($this->response, $this->di);
+		$branch->addEntry($this->object, $this->method, $this->response->getStatusCode(), $this->response->getStatusText());
 		if ($this->self && $this->status === Meta\Verb::OK) {
 			$fields = [];
 			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
 				$field = new stdClass;
 				if (isset($this->object->$name)) $field->value = $this->object->$name;
-				Field::createType($type)->meta($field);
+				Type::createType($type)->meta($field);
 				$field->defaultValue = $defaultValue;
 				$flags = new FieldFlags($flags);
 				if ($flags->isRequired()) $field->required = true;

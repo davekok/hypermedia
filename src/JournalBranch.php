@@ -3,71 +3,38 @@
 namespace Sturdy\Activity;
 
 /**
- * Interface to the journal to be implemented by the appliction.
+ * Interface to the journal to be implemented by the application.
  */
 interface JournalBranch
 {
 	/**
-	 * Set error message.
+	 * Create a new entry from arguments and add it to the branch, making this entry the new last entry.
+	 *
+	 * @param object  $object         the object
+	 * @param ?string $action         the action
+	 * @param int     $statusCode     some code representing the current status
+	 * @param ?string $statusText     a possible status text
+	 * @return $this
+	 *
+	 * Predefined actions are:
+	 * - start  start the activity
+	 * - stop   stop the activity
+	 * - join   branches are joined
+	 * - split  main branch is split
 	 */
-	public function setErrorMessage(?string $errorMessage): JournalBranch;
+	public function addEntry(/*object*/ $object, ?string $action, int $statusCode, ?string $statusText = null): JournalBranch;
 
 	/**
-	 * Get error message.
+	 * Get the last branch entry.
+	 *
+	 * @return JournalBranchEntry  the last entry
 	 */
-	public function getErrorMessage(): ?string;
+	public function getLastEntry(): JournalBranchEntry;
 
 	/**
-	 * Set current object
+	 * Get all branch entries
 	 *
-	 * @param object $object
-	 * @return self
+	 * @return JournalBranchEntry[]  the branch entries
 	 */
-	public function setCurrentObject(/*object*/ $object): self;
-
-	/**
-	 * Get current object
-	 *
-	 * @return object
-	 */
-	public function getCurrentObject()/*: object*/;
-
-	/**
-	 * Set current action.
-	 *
-	 * Predefined actions:
-	 * - start      the begin state of the activity
-	 * - stop       the end state of the activity
-	 * - exception  activity is in a error state
-	 * - read       a read action, generate a view for the user
-	 * - write      a write action, input is expected from the user
-	 *
-	 * @param $action  the action to execute
-	 */
-	public function setCurrentAction(string $action): JournalBranch;
-
-	/**
-	 * Get current action.
-	 *
-	 * @param $branch  the branch number
-	 * @return get current action
-	 */
-	public function getCurrentAction(): string;
-
-	/**
-	 * Set whether a concurrent branch is running.
-	 *
-	 * @param int  $branch   the branch number
-	 * @param bool $running  true is running, false is not running
-	 * @return self
-	 */
-	public function setRunning(bool $running): JournalBranch;
-
-	/**
-	 * Whether the activity is running.
-	 *
-	 * @param int  $branch   the branch number
-	 * @return bool
-	 */
-	public function getRunning(): bool;
+	public function getEntries(): array;
 }

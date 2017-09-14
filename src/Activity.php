@@ -25,7 +25,6 @@ final class Activity implements ActivityInterface
 	private $cache;
 	private $journalRepository;
 	private $sourceUnit;
-	private $loop;
 
 	// state
 	private $class;
@@ -39,12 +38,11 @@ final class Activity implements ActivityInterface
 	/**
 	 * Constructor
 	 */
-	public function __construct(Cache $cache, JournalRepository $journalRepository, string $sourceUnit, Loop $loop = null)
+	public function __construct(Cache $cache, JournalRepository $journalRepository, string $sourceUnit)
 	{
 		$this->cache = $cache;
 		$this->journalRepository = $journalRepository;
 		$this->sourceUnit = $sourceUnit;
-		$this->loop = $loop;
 	}
 
 	/**
@@ -57,7 +55,6 @@ final class Activity implements ActivityInterface
 		$this->class    = null;
 		$this->tags     = null;
 		$this->journal  = null;
-		$this->object   = null;
 		$this->actions  = null;
 		$this->branch   = null;
 		$this->branches = null;
@@ -90,12 +87,8 @@ final class Activity implements ActivityInterface
 	 */
 	public function createJournal(): self
 	{
-		$this->journal = $this->journalRepository->createJournal($this->sourceUnit, Journal::activity, $this->class, $this->tags);
-		$class = $this->class;
-		$this->branch = $this->journal->getMainBranch()
-			->setCurrentObject(new $class)
-			->setCurrentAction("start")
-			->setRunning(true);
+		$this->journal = $this->journalRepository->createJournal($this->sourceUnit, Journal::activity, $this->tags);
+		$this->branch = $this->journal->getMainBranch()->addEntry(new $this->class, "start", 1);
 		$this->branches = new \Ds\Set();
 		return $this;
 	}
@@ -109,18 +102,20 @@ final class Activity implements ActivityInterface
 	public function loadJournal(int $journalId): self
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
+		$class = get_class($this->journal->getMainBranch()->getLastEntry()->getObject());
 
 		if ($this->activity === null) {
-			if (!$this->load($this->journal->getClass(), $this->journal->getTags())) {
+			if (!$this->load($class, $this->journal->getTags())) {
 				throw new \Exception("Activity not found.");
 			}
 		} elseif (
 			$this->type !== $this->journal->getType()
-			&& $this->class !== $this->journal->getClass()
+			&& $this->class !== $class
 			&& $this->tags !== $this->journal->getTags()
 		) {
 			throw new \Exception("The journal has been created for a different activity or resource.");
 		}
+		$this->class = $class;
 
 		$this->branch = $this->journal->getMainBranch();
 		$this->branches = new \Ds\Set;
@@ -176,58 +171,27 @@ final class Activity implements ActivityInterface
 	}
 
 	/**
-	 * Get loop
-	 *
-	 * @return Loop
+	 * Get the status code
 	 */
-	public function getLoop(): ?Loop
+	public function getStatusCode(): int
 	{
-		return $this->loop;
+		return $this->branch->getLastEntry()->getStatusCode();
 	}
 
 	/**
-	 * Is activity running?
+	 * Get the status text
 	 */
-	public function isRunning(): bool
+	public function getStatusText(): ?string
 	{
-		return $this->branch->getRunning();
+		return $this->branch->getLastEntry()->getStatusText();
 	}
 
 	/**
-	 * Pauses the activity until it is resumed.
+	 * Get current object
 	 */
-	public function pause(): ActivityInterface
+	public function getCurrentObject()/*: object */
 	{
-		$this->branch->setRunning(false);
-		return $this;
-	}
-
-	/**
-	 * Resume the activity.
-	 */
-	public function resume(): ActivityInterface
-	{
-		$this->branch->setRunning(true);
-		if ($this->loop) $this->loop->addActivity($this);
-		return $this;
-	}
-
-	/**
-	 * Stop the activity.
-	 */
-	private function stop(): void
-	{
-		$this->branch->setCurrentAction("stop");
-		$this->branch->setRunning(false);
-		if ($this->loop) $this->loop->remove($this);
-	}
-
-	/**
-	 * Get the error message
-	 */
-	public function getErrorMessage(): ?string
-	{
-		return $this->branch->getErrorMessage();
+		return $this->branch->getLastEntry()->getObject();
 	}
 
 	/**
@@ -235,7 +199,7 @@ final class Activity implements ActivityInterface
 	 */
 	public function getCurrentAction(): string
 	{
-		return $this->branch->getCurrentAction();
+		return $this->branch->getLastEntry()->getAction();
 	}
 
 	/**
@@ -288,32 +252,34 @@ final class Activity implements ActivityInterface
 	 */
 	public function actions(): Generator
 	{
-		$action = $this->branch->getCurrentAction();
+		$entry = $this->branch->getLastEntry();
+		$object = $entry->getObject();
+		$action = $entry->getAction();
 		switch ($action) {
 			case "start":
-				$this->advanceMainBranch($action); // move to first action
+				$this->advanceMainBranch($object, $action); // move to first action
 				break;
 
 			case "split":
 				$branch = $this->journal->getFollowBranch();
 				if ($branch) {
-					$this->branch->setCurrentAction($this->journal->getSplit()[$branch]);
+					$this->branch->addEntry($object, $this->journal->getSplit()[$branch], 1);
 					$this->journal->setFollowBranch(null);
-					$this->branch->setRunning(true);
 					break;
 				} else {
 					return;
 				}
 		}
-		while ($this->branch->getRunning()) {
+		while (($entry = $this->branch->getLastEntry())->getStatusCode() === 1) {
 			if ($this->branches->isEmpty()) {
 				// run main branch
 				try {
-					$action = $this->branch->getCurrentAction();
-					yield $this->getCallback($action);
-					$this->advanceMainBranch($action);
+					$object = $entry->getObject();
+					$action = $entry->getAction();
+					yield $this->getCallback($object, $action);
+					$this->advanceMainBranch($object, $action);
 				} catch (Throwable $e) {
-					$this->exception($e);
+					$this->branch->addEntry($object, $action, 0, $e->getMessage()."\n".$e->getTraceAsString());
 				} finally {
 					$this->saveJournal();
 				}
@@ -322,11 +288,13 @@ final class Activity implements ActivityInterface
 				while (!$this->branches->isEmpty()) { // set should be empty if all branches finish
 					foreach ($this->branches as $this->branch) {
 						try {
-							$action = $this->branch->getCurrentAction();
-							yield $this->getCallback($action);
-							$this->advanceConcurrentBranch($action);
+							$entry = $this->branch->getLastEntry();
+							$object = $entry->getObject();
+							$action = $entry->getAction();
+							yield $this->getCallback($object, $action);
+							$this->advanceConcurrentBranch($object, $action);
 						} catch (Throwable $e) {
-							$this->exception($e);
+							$this->branch->addEntry($object, $action, 0, $e->getMessage()."\n".$e->getTraceAsString());
 							$this->branches->remove($this->branch);
 						} finally {
 							$this->saveJournal();
@@ -344,32 +312,31 @@ final class Activity implements ActivityInterface
 	 *
 	 * @param string  $action
 	 */
-	private function advanceMainBranch(string $action): void
+	private function advanceMainBranch(/*object*/ $object, string $action): void
 	{
 		[$type, $next] = $this->evalNextExpressionFor($action);
 		switch ($type) {
 			case self::STOP:
-				$this->stop();
+				$this->branch->addEntry($object, "stop", 0);
 				break;
 
 			case self::ACTION:
-				$this->branch->setCurrentAction($next);
+				$this->branch->addEntry($object, $next, 1);
 				break;
 
 			case self::FORK:
 				foreach ($next as $action) {
-					$this->branches->add($this->journal->fork()->setCurrentAction($action));
+					$this->branches->add($this->journal->fork()->addEntry($object, $action, 1));
 				}
 				break;
 
 			case self::SPLIT:
-				$this->branch->setCurrentAction("split");
+				$this->branch->addEntry($object, "split", 0);
 				$this->journal->setSplit($next);
-				$this->branch->setRunning(false);
 				break;
 
 			case self::JOIN:
-				$this->branch->setCurrentAction($this->actions[$next]); // resolve join indirection
+				$this->branch->addEntry($object, $this->actions[$next], 1); // resolve join indirection
 				break;
 
 			case self::DETACH:
@@ -383,17 +350,17 @@ final class Activity implements ActivityInterface
 	 *
 	 * @param string  $action
 	 */
-	private function advanceConcurrentBranch(string $action): void
+	private function advanceConcurrentBranch(/*object*/ $object, string $action): void
 	{
 		[$type, $next] = $this->evalNextExpressionFor($action);
 		switch ($type) {
 			case self::STOP:
-				$this->stop();
+				$this->branch->addEntry($object, "stop", 0);
 				$this->branches->remove($this->branch);
 				break;
 
 			case self::ACTION:
-				$this->branch->setCurrentAction($next);
+				$this->branch->addEntry($object, $next, 1);
 				break;
 
 			case self::FORK:
@@ -403,9 +370,8 @@ final class Activity implements ActivityInterface
 				throw new Exception("A split in a fork is not supported.");
 
 			case self::JOIN:
-				$this->journal->getMainBranch()->setCurrentAction($this->actions[$next]); // resolve join indirection
-				$this->branch->setCurrentAction("join");
-				$this->branch->setRunning(false);
+				$this->journal->getMainBranch()->addEntry($object, $this->actions[$next], 1); // resolve join indirection
+				$this->branch->addEntry($object, "join", 0);
 				$this->branches->remove($this->branch);
 				break;
 
@@ -416,12 +382,11 @@ final class Activity implements ActivityInterface
 		}
 	}
 
-	private function getCallback(string $action): callable
+	private function getCallback(/*object*/ $object, string $action): callable
 	{
 		if (!array_key_exists($action, $this->actions)) {
 			throw new Exception("Action '$action' does not exist.");
 		}
-		$object = $this->branch->getCurrentObject();
 		if (!method_exists($object, $action)) {
 			throw new Exception("Method '$action' missing in class '".get_class($object)."'");
 		}
@@ -471,13 +436,5 @@ final class Activity implements ActivityInterface
 				return [self::SPLIT, $next];
 			}
 		}
-	}
-
-	private function exception(Throwable $e)
-	{
-		echo $e->getMessage()."\n".$e->getTraceAsString();
-		$this->branch->setErrorMessage($e->getMessage()."\n".$e->getTraceAsString());
-		$this->branch->setCurrentAction("exception");
-		$this->branch->setRunning(false);
 	}
 }

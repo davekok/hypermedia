@@ -133,27 +133,35 @@ final class HyperMedia
 
 		// handle
 		try {
-			$resource = new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di);
 			$path = substr($request->getPath(), strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				return $resource
+				$journal = $this->journalRepository->createJournal();
+				$this->basePath.= "/".$journal->getId()."/";
+				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
 					->createRootResource($request->getVerb())
-					->call($this->getValues($request));
+					->call($journal->getMainBranch(), $this->getValues($request));
 			} else { // if normal resource
 				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
 					$path = substr($path, strlen($matches[0]));
-					$this->journalId = (int)$matches[1];
-					$this->basePath.= "/".$this->journalId."/";
+					$journalId = (int)$matches[1];
+					$this->basePath.= "/$journalId/";
+					$journal = $this->journalRepository->findOneJournalById($journalId);
+				} else {
+					$journal = $this->journalRepository->createJournal($this->sourceUnit, Journal::resource, $tags);
 				}
-				$response = $resource
+				$class = strtr(trim($path, "/"), "/", "\\");
+				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
 					->createResource(strtr(trim($path, "/"), "/", "\\"), $request->getVerb())
-					->call($this->getValues($request));
+					->call($journal->getMainBranch(), $this->getValues($request));
 			}
 		} catch (Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
 			$response = (new InternalServerError("Uncaught exception", 0, $e));
 		}
+
+		$response->setProtocolVersion($request->getProtocolVersion());
+		$this->journalRepository->saveJournal($journal);
 
 		// adaptors
 		switch ($responseAdaptor) {
@@ -202,12 +210,13 @@ final class HyperMedia
 	 * @param  Request $request  the request
 	 * @return array  the values
 	 */
-	private function getValues(Request $request): array
+	private function getValues(Request\Request $request): array
 	{
+		$values = [];
 		if ($request->getVerb() === "POST") {
 			if ($request->getContentType() === "application/json") {
-				$content = json_decode($request->getContent() ?? "", true);
-				if (!is_array($content)) {
+				$values = json_decode($request->getContent() ?? "", true);
+				if (!is_array($values)) {
 					throw new BadRequest("The content is not valid JSON.");
 				}
 			} else {
@@ -217,15 +226,9 @@ final class HyperMedia
 		$query = $request->getQuery();
 		if ($query[0] === "?") $query = substr($query, 1);
 		if (!empty($query)) {
-			$values = [];
-			parse_str($query, $values);
-			if ($content) {
-				$values = array_merge($values, $content);
-			}
-		} else {
-			$values = $content;
+			parse_str($query, $query);
+			$values = array_merge($query, $values);
 		}
-
 		return $values;
 	}
 }

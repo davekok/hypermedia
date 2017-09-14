@@ -51,7 +51,7 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 */
 	public function getVerb(string $key): array
 	{
-		return $this->verb[$key];
+		return $this->verbs[$key];
 	}
 
 	/**

@@ -7,6 +7,7 @@ use Sturdy\Activity\{
 	Cache,
 	Journal,
 	JournalBranch,
+	JournalBranchEntry,
 	JournalRepository
 };
 use Sturdy\Activity\Meta\CacheItem_Activity;
@@ -65,20 +66,20 @@ class ActivityTest extends TestCase
 
 		$mainBranch = $prophet->prophesize();
 		$mainBranch->willImplement(JournalBranch::class);
-		$mainBranch->getErrorMessage()->willReturn(null);
-		$mainBranch->setErrorMessage(Argument::type('string'))
-			->will(function($args, $self)use($mainBranch,&$errorMessage) {
-				[$errorMessage] = $args;
-				$mainBranch->getErrorMessage()->willReturn($errorMessage);
-				return $self;
-			});
-		$mainBranch->getRunning()->willReturn(false);
-		$mainBranch->setRunning(Argument::type('bool'))
-			->will(function($args, $self)use($mainBranch) {
-				[$running] = $args;
-				$mainBranch->getRunning()->willReturn($running);
-				return $self;
-			});
+		// $mainBranch->getErrorMessage()->willReturn(null);
+		// $mainBranch->setErrorMessage(Argument::type('string'))
+		// 	->will(function($args, $self)use($mainBranch,&$errorMessage) {
+		// 		[$errorMessage] = $args;
+		// 		$mainBranch->getErrorMessage()->willReturn($errorMessage);
+		// 		return $self;
+		// 	});
+		// $mainBranch->getRunning()->willReturn(false);
+		// $mainBranch->setRunning(Argument::type('bool'))
+		// 	->will(function($args, $self)use($mainBranch) {
+		// 		[$running] = $args;
+		// 		$mainBranch->getRunning()->willReturn($running);
+		// 		return $self;
+		// 	});
 
 		$actions = [
 			"start",
@@ -107,19 +108,25 @@ class ActivityTest extends TestCase
 			"stop",
 		];
 		$actionCursor = 0;
-		$mainBranch->getCurrentAction()->willReturn(null);
-		$mainBranch->setCurrentAction(Argument::type("string"))
+		$mainBranch->getLastEntry()->willReturn(null);
+		$mainBranch->addEntry(Argument::type("object"), Argument::type("string"), Argument::type("int"))
 			->shouldBeCalledTimes(count($actions))
-			->will(function($args, $self)use($mainBranch,$actions,&$actionCursor,&$errorMessage) {
-				[$action] = $args;
+			->will(function($args, $self)use($prophet,$mainBranch,$actions,&$actionCursor,&$errorMessage,&$object) {
+				[$obj, $action, $code] = $args;
+				if (!($object instanceof $obj)) {
+					throw new \Exception("wrong object");
+				}
 				$nextAction = $actions[$actionCursor++];
 				if ($action !== $nextAction) {
-					if ($action === "exception") {
-						throw new \Exception($errorMessage);
-					}
 					throw new \Exception("expected action $nextAction got action $action");
 				}
-				$mainBranch->getCurrentAction()->willReturn($action);
+				$entry = $prophet->prophesize();
+				$entry->willImplement(JournalBranchEntry::class);
+				$entry->getObject()->willReturn($object);
+				$entry->getAction()->willReturn($action);
+				$entry->getStatusCode()->willReturn($code);
+				$entry->getStatusText()->shouldNotBeCalled()->willReturn(null);
+				$mainBranch->getLastEntry()->willReturn($entry->reveal());
 				return $self;
 			});
 
@@ -155,14 +162,10 @@ class ActivityTest extends TestCase
 		$object->action25(Argument::type(Activity::class))->willReturn(null);
 		$object = $object->reveal();
 
-		$mainBranch->getCurrentObject()->willReturn($object);
-		$mainBranch->setCurrentObject(Argument::type(TestUnit1\Activity1::class))->will(function($args, $self){return $self;});
-
 		$journal = $prophet->prophesize();
 		$journal->willImplement(Journal::class);
 		$journal->getSourceUnit()->willReturn(null);
 		$journal->getType()->willReturn(null);
-		$journal->getClass()->willReturn(null);
 		$journal->getTags()->willReturn(null);
 		$journal->getMainBranch()->willReturn($mainBranch->reveal());
 		$journal->getSplit()->willReturn(null);
@@ -197,21 +200,7 @@ class ActivityTest extends TestCase
 			->will(function()use($prophet,$journal,&$branches,&$actionCursors,&$branchCursor,$object){
 				$branch = $prophet->prophesize();
 				$branch->willImplement(JournalBranch::class);
-				$branch->getCurrentObject()->willReturn($object);
-				$branch->getErrorMessage()->willReturn(null);
-				$branch->setErrorMessage(Argument::type('string'))
-					->will(function($args, $self)use($branch,&$errorMessage) {
-						[$errorMessage] = $args;
-						$branch->getErrorMessage()->willReturn($errorMessage);
-						return $self;
-					});
-				$branch->getRunning()->willReturn(true);
-				$branch->setRunning(Argument::type('bool'))
-					->will(function($args, $self)use($branch) {
-						[$running] = $args;
-						$branch->getRunning()->willReturn($running);
-						return $self;
-					});
+				$branch->getLastEntry()->willReturn(null);
 
 				$allactions = [
 					[
@@ -232,19 +221,25 @@ class ActivityTest extends TestCase
 				];
 				$actionCursor = &$actionCursors[$branchCursor];
 				$actions = $allactions[$branchCursor++];
-				$branch->getCurrentAction()->willReturn(null);
-				$branch->setCurrentAction(Argument::type("string"))
-					->shouldBeCalledTimes(count($actions))
-					->will(function($args, $self)use($branch,$actions,&$actionCursor,&$errorMessage) {
-						[$action] = $args;
+
+				$branch->addEntry(Argument::type("object"), Argument::type("string"), Argument::type("int"))
+					->shouldBeCalledTimes(3)
+					->will(function($args, $self)use($prophet,$branch,$actions,&$actionCursor,$object) {
+						[$obj, $action, $code] = $args;
+						if (!($object instanceof $obj)) {
+							throw new \Exception("wrong object");
+						}
 						$nextAction = $actions[$actionCursor++];
 						if ($action !== $nextAction) {
-							if ($action === "exception") {
-								throw new \Exception($errorMessage);
-							}
 							throw new \Exception("expected action $nextAction got action $action");
 						}
-						$branch->getCurrentAction()->willReturn($action);
+						$entry = $prophet->prophesize();
+						$entry->willImplement(JournalBranchEntry::class);
+						$entry->getObject()->willReturn($object);
+						$entry->getAction()->willReturn($action);
+						$entry->getStatusCode()->willReturn($code);
+						$entry->getStatusText()->shouldNotBeCalled()->willReturn(null);
+						$branch->getLastEntry()->willReturn($entry->reveal());
 						return $self;
 					});
 
@@ -261,13 +256,12 @@ class ActivityTest extends TestCase
 
 		$journalRepository = $prophet->prophesize();
 		$journalRepository->willImplement(JournalRepository::class);
-		$journalRepository->createJournal("TestUnit1", Journal::activity, TestUnit1\Activity1::class, [])
+		$journalRepository->createJournal("TestUnit1", Journal::activity, [])
 			->shouldBeCalledTimes(1)
 			->will(function($args)use($journal){
-				[$sourceUnit, $type, $class, $tags] = $args;
+				[$sourceUnit, $type, $tags] = $args;
 				$journal->getSourceUnit()->willReturn($sourceUnit);
 				$journal->getType()->willReturn($type);
-				$journal->getClass()->willReturn($class);
 				$journal->getTags()->willReturn($tags);
 				return $journal->reveal();
 			});
@@ -300,11 +294,11 @@ class ActivityTest extends TestCase
 			}
 		}
 		$prophet->checkPredictions();
-		$this->assertEquals('TestUnit1', $activity->getSourceUnit());
-		$this->assertEquals(TestUnit1\Activity1::class, $activity->getClass());
-		$this->assertEquals([], $activity->getTags());
-		$this->assertFalse($activity->isRunning());
-		$this->assertNull($activity->getErrorMessage());
-		$this->assertEquals("stop", $activity->getCurrentAction());
+		$this->assertEquals('TestUnit1', $activity->getSourceUnit(), "source unit");
+		$this->assertEquals(TestUnit1\Activity1::class, $activity->getClass(), "class");
+		$this->assertEquals([], $activity->getTags(), "tags");
+		$this->assertEquals(0, $activity->getStatusCode(), "status code");
+		$this->assertNull($activity->getStatusText(), "status text");
+		$this->assertEquals("stop", $activity->getCurrentAction(), "current action");
 	}
 }

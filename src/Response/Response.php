@@ -7,6 +7,13 @@ use DateTime;
 interface Response
 {
 	/**
+	 * Get the protocol version
+	 *
+	 * @return string  the protocol version
+	 */
+	public function getProtocolVersion(): string;
+
+	/**
 	 * Get the response status code
 	 *
 	 * @return int  the status code

@@ -4,6 +4,7 @@ namespace Sturdy\Activity\Response;
 
 final class Created implements Response
 {
+	use ProtocolVersionTrait;
 	use DateTrait;
 	use NoContentTrait;
 

@@ -11,6 +11,13 @@ interface Journal
 	const resource = 2;
 
 	/**
+	 * Get the journal id.
+	 *
+	 * @return int  the journal id.
+	 */
+	public function getId(): int;
+
+	/**
 	 * Get source unit
 	 *
 	 * @return string
@@ -23,13 +30,6 @@ interface Journal
 	 * @return int
 	 */
 	public function getType(): ?int;
-
-	/**
-	 * Get class
-	 *
-	 * @return string
-	 */
-	public function getClass(): ?string;
 
 	/**
 	 * Get tags

@@ -2,8 +2,12 @@
 
 namespace Sturdy\Activity\Response;
 
+use stdClass;
+use Sturdy\Activity\Resource;
+
 final class OK implements Response
 {
+	use ProtocolVersionTrait;
 	use DateTrait;
 	use NoLocationTrait;
 
@@ -20,6 +24,8 @@ final class OK implements Response
 	{
 		$this->resource = $resource;
 		$this->parts = new stdClass;
+		$this->parts->main = new stdClass;
+		$this->part = $this->parts->main;
 	}
 
 	/**
@@ -72,9 +78,9 @@ final class OK implements Response
 	{
 		$this->part->fields = new stdClass;
 		foreach ($fields as $name => $field) {
-			if ($field->meta) {
+			if ($field->meta??false) {
 				$this->part->fields->$name = $field;
-			} elseif ($field->data) {
+			} elseif ($field->data??false) {
 				$this->part->fields->$name = $field;
 				$this->part->data = $field->value;
 				unset($field->value);

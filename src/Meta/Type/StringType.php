@@ -2,10 +2,12 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
+use stdClass;
+
 /**
  * String type
  */
-final class StringType
+final class StringType extends Type
 {
 	private $minimumLength;
 	private $maximumLength;
@@ -17,10 +19,10 @@ final class StringType
 	 *
 	 * @param string|null $state  the objects state
 	 */
-	public function __construct(string $state = null)
+	public function __construct(array $state = null)
 	{
 		if ($state !== null) {
-			[$min, $max, $patternName] = explode(",", $state);
+			[$min, $max, $patternName] = $state;
 			if (strlen($min) > 0) $this->minimumLength = (int)$min;
 			if (strlen($max) > 0) $this->maximumLength = (int)$max;
 			if (strlen($patternName) > 0) {
@@ -37,7 +39,7 @@ final class StringType
 	 */
 	public function meta(stdClass $meta): void
 	{
-		$meta->type = "integer";
+		$meta->type = "string";
 		if (isset($this->minimumLength)) {
 			$meta->minlength = $this->minimumLength;
 		}
@@ -50,13 +52,13 @@ final class StringType
 	}
 
 	/**
-	 * Get state
+	 * Get descriptor
 	 *
 	 * @return string
 	 */
-	public function getState(): string
+	public function getDescriptor(): string
 	{
-		return $this->minimumLength.",".$this->maximumLength.",".$this->patternName;
+		return "string,".$this->minimumLength.",".$this->maximumLength.",".$this->patternName;
 	}
 
 	/**
@@ -162,15 +164,5 @@ final class StringType
 			return preg_match($this->pattern, $value);
 		}
 		return true;
-	}
-
-	/**
-	 * Get type
-	 *
-	 * @return string
-	 */
-	public function __toString(): string
-	{
-		return "string";
 	}
 }

@@ -6,6 +6,7 @@ use Exception;
 
 abstract class Error extends Exception implements Response
 {
+	use ProtocolVersionTrait;
 	use DateTrait;
 	use NoLocationTrait;
 

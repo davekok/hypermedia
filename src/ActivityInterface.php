@@ -100,24 +100,19 @@ interface ActivityInterface
 	public function getTags(): array;
 
 	/**
-	 * Is activity running?
+	 * Get the status code
 	 */
-	public function isRunning(): bool;
+	public function getStatusCode(): int;
 
 	/**
-	 * Pauses the activity until it is resumed.
+	 * Get the status text
 	 */
-	public function pause(): ActivityInterface;
+	public function getStatusText(): ?string;
 
 	/**
-	 * Resume the activity.
+	 * Get the current object
 	 */
-	public function resume(): ActivityInterface;
-
-	/**
-	 * Get the error message
-	 */
-	public function getErrorMessage(): ?string;
+	public function getCurrentObject()/*: object*/;
 
 	/**
 	 * Get the current action

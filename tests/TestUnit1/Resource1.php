@@ -2,7 +2,8 @@
 
 namespace Tests\Sturdy\Activity\TestUnit1;
 
-use Sturdy\Activity\HyperMedia;
+use Sturdy\Activity\Response\OK;
+use Sturdy\Activity\Response\NoContent;
 use Sturdy\Activity\Meta\Field;
 use Sturdy\Activity\Meta\Get;
 use Sturdy\Activity\Meta\Post;
@@ -17,14 +18,14 @@ class Resource1
 	/**
 	 * @Get
 	 */
-	public function foo(HyperMedia $hm, $di): void
+	public function foo(OK $response, $di): void
 	{
 	}
 
 	/**
 	 * @Post("no-content")
 	 */
-	public function bar(HyperMedia $hm, $di): void
+	public function bar(NoContent $response, $di): void
 	{
 	}
 }

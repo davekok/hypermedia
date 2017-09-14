@@ -4,6 +4,7 @@ namespace Sturdy\Activity\Response;
 
 final class NoContent implements Response
 {
+	use ProtocolVersionTrait;
 	use DateTrait;
 	use NoLocationTrait;
 	use NoContentTrait;

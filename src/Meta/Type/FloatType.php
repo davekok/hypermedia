@@ -2,10 +2,12 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
+use stdClass;
+
 /**
  * Float type
  */
-final class FloatType
+final class FloatType extends Type
 {
 	private $minimumRange;
 	private $maximumRange;
@@ -46,13 +48,13 @@ final class FloatType
 	}
 
 	/**
-	 * Get state
+	 * Get descriptor
 	 *
 	 * @return string
 	 */
-	public function getState(): string
+	public function getDescriptor(): string
 	{
-		return $this->minimumRange.",".$this->maximumRange.",".$this->step;
+		return "float,".$this->minimumRange.",".$this->maximumRange.",".$this->step;
 	}
 
 	/**
@@ -150,15 +152,5 @@ final class FloatType
 			}
 		}
 		return true;
-	}
-
-	/**
-	 * Get type
-	 *
-	 * @return string
-	 */
-	public function __toString(): string
-	{
-		$r = "integer";
 	}
 }

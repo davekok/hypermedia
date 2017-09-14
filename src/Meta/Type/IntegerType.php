@@ -2,10 +2,12 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
+use stdClass;
+
 /**
  * Integer type
  */
-final class IntegerType
+final class IntegerType extends Type
 {
 	private $minimumRange;
 	private $maximumRange;
@@ -16,10 +18,10 @@ final class IntegerType
 	 *
 	 * @param string|null $state  the objects state
 	 */
-	public function __construct(string $state = null)
+	public function __construct(array $state = null)
 	{
 		if ($state !== null) {
-			[$min, $max, $step] = explode(",", $state);
+			[$min, $max, $step] = $state;
 			$this->minimumRange = strlen($min) ? (int)$min : null;
 			$this->maximumRange = strlen($max) ? (int)$max : null;
 			$this->step = strlen($step) ? (int)$step : null;
@@ -46,13 +48,13 @@ final class IntegerType
 	}
 
 	/**
-	 * Get state
+	 * Get descriptor
 	 *
 	 * @return string
 	 */
-	public function getState(): string
+	public function getDescriptor(): string
 	{
-		return $this->minimumRange.",".$this->maximumRange.",".$this->step;
+		return "integer,".$this->minimumRange.",".$this->maximumRange.",".$this->step;
 	}
 
 	/**
@@ -143,15 +145,5 @@ final class IntegerType
 			return false;
 		}
 		return true;
-	}
-
-	/**
-	 * Get type
-	 *
-	 * @return string
-	 */
-	public function __toString(): string
-	{
-		return "integer";
 	}
 }
