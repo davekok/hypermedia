@@ -16,7 +16,7 @@ final class IntegerType extends Type
 	/**
 	 * Constructor
 	 *
-	 * @param string|null $state  the objects state
+	 * @param array|null $state  the objects state
 	 */
 	public function __construct(array $state = null)
 	{
@@ -141,7 +141,7 @@ final class IntegerType extends Type
 		if (isset($this->maximumRange) && $value > $this->maximumRange) {
 			return false;
 		}
-		if (isset($this->step) && 0 !== (($value-($this->minimumRange??0)) % $this->step)) {
+		if (isset($this->step) && 0 !== (($value - ($this->minimumRange ?? 0)) % $this->step)) {
 			return false;
 		}
 		return true;

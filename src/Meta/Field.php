@@ -189,7 +189,7 @@ final class Field extends Taggable
 					break;
 
 				case "integer":
-					$this->type = new Type\IntType();
+					$this->type = new Type\IntegerType();
 					break;
 
 				case "float":
@@ -328,6 +328,10 @@ final class Field extends Taggable
 
 				case "pattern":
 					$this->type->setPatternName(trim(strok(")")));
+					break;
+					
+				case "options":
+					$this->type->setOptions(explode(',',trim(strok(")"))));
 					break;
 
 				case "link":

@@ -16,7 +16,7 @@ final class FloatType extends Type
 	/**
 	 * Constructor
 	 *
-	 * @param string|null $state  the objects state
+	 * @param array|null $state  the objects state
 	 */
 	public function __construct(array $state = null)
 	{
