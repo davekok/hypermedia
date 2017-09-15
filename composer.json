@@ -17,6 +17,8 @@
     "require-dev": {
         "cache/array-adapter": "^0.5.0",
         "doctrine/annotations": ">=1.4.0",
+        "fzaninotto/faker": "^1.7",
+        "php-ds/php-ds": "^1.2",
         "phpspec/prophecy": "~1.0"
     },
     "config": {
