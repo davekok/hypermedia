@@ -9,6 +9,7 @@ use stdClass;
  */
 final class StringType extends Type
 {
+	const type = "string";
 	private $minimumLength;
 	private $maximumLength;
 	private $patternName;
@@ -39,7 +40,7 @@ final class StringType extends Type
 	 */
 	public function meta(stdClass $meta): void
 	{
-		$meta->type = "string";
+		$meta->type = self::type;
 		if (isset($this->minimumLength)) {
 			$meta->minlength = $this->minimumLength;
 		}
@@ -58,7 +59,7 @@ final class StringType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return "string,".$this->minimumLength.",".$this->maximumLength.",".$this->patternName;
+		return self::type.",".$this->minimumLength.",".$this->maximumLength.",".$this->patternName;
 	}
 
 	/**

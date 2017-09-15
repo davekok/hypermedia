@@ -9,6 +9,7 @@ use stdClass;
  */
 final class IntegerType extends Type
 {
+	const type = "integer";
 	private $minimumRange;
 	private $maximumRange;
 	private $step;
@@ -35,7 +36,7 @@ final class IntegerType extends Type
 	 */
 	public function meta(stdClass $meta): void
 	{
-		$meta->type = "integer";
+		$meta->type = self::type;
 		if (isset($this->minimumRange)) {
 			$meta->min = $this->minimumRange;
 		}
@@ -54,7 +55,7 @@ final class IntegerType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return "integer,".$this->minimumRange.",".$this->maximumRange.",".$this->step;
+		return self::type.",".$this->minimumRange.",".$this->maximumRange.",".$this->step;
 	}
 
 	/**

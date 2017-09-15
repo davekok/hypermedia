@@ -161,7 +161,9 @@ final class HyperMedia
 		}
 
 		$response->setProtocolVersion($request->getProtocolVersion());
-		$this->journalRepository->saveJournal($journal);
+		if (isset($journal)) {
+			$this->journalRepository->saveJournal($journal);
+		}
 
 		// adaptors
 		switch ($responseAdaptor) {
@@ -224,8 +226,8 @@ final class HyperMedia
 			}
 		}
 		$query = $request->getQuery();
-		if ($query[0] === "?") $query = substr($query, 1);
-		if (!empty($query)) {
+		if ($query !== "") {
+			if ($query[0] === "?") $query = substr($query, 1);
 			parse_str($query, $query);
 			$values = array_merge($query, $values);
 		}

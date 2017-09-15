@@ -10,9 +10,9 @@ use Doctrine\Common\Annotations\Annotation\IgnoreAnnotation;
  */
 final class SetType
 {
-	
+	const type = "set";
 	private $options;
-	
+
 	/**
 	 * Constructor
 	 *
@@ -25,7 +25,7 @@ final class SetType
 			if (strlen($options)) $this->options = explode(";", $options);
 		}
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -34,9 +34,9 @@ final class SetType
 	public function getDescriptor(): string
 	{
 		$options = implode(";",$this->options);
-		return "set,$options";
+		return self::type.",".$options;
 	}
-	
+
 	/**
 	 * Get set options
 	 *
@@ -46,7 +46,7 @@ final class SetType
 	{
 		return $this->options;
 	}
-	
+
 	/**
 	 * Set set options
 	 *
@@ -58,7 +58,7 @@ final class SetType
 		$this->options = $options;
 		return $this;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -66,12 +66,12 @@ final class SetType
 	 */
 	public function meta(stdClass $meta): void
 	{
-		$meta->type = "set";
+		$meta->type = self::type;
 		if(isset($this->options)) {
 			$meta->options = $this->options;
 		}
 	}
-	
+
 	/**
 	 * Filter value
 	 *

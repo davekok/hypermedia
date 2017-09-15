@@ -96,7 +96,7 @@ final class Resource
 	private function initResource(CacheItem_Resource $resource, string $verb): void
 	{
 		$class = $resource->getClass();
-		$this->fields = $resource->getFields();
+		$this->fields = $resource->getFields()??[];
 		$this->object = new $class;
 		[$this->method, $this->status, $this->location, $this->self] = $resource->getVerb($verb);
 	}
@@ -171,7 +171,7 @@ final class Resource
 				$field = new stdClass;
 				if (isset($this->object->$name)) $field->value = $this->object->$name;
 				Type::createType($type)->meta($field);
-				$field->defaultValue = $defaultValue;
+				if ($defaultValue !== null) $field->defaultValue = $defaultValue;
 				$flags = new FieldFlags($flags);
 				if ($flags->isRequired()) $field->required = true;
 				if ($flags->isReadonly()) $field->readonly = true;
@@ -202,7 +202,7 @@ final class Resource
 		if ($resource === null) {
 			return null;
 		}
-		$fields = $resource->getFields();
+		$fields = $resource->getFields()??[];
 		$href = $this->basePath . "/" . strtr($class, "\\", "/");
 		$known = "";
 		$unknown = "";

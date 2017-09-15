@@ -66,20 +66,6 @@ class ActivityTest extends TestCase
 
 		$mainBranch = $prophet->prophesize();
 		$mainBranch->willImplement(JournalBranch::class);
-		// $mainBranch->getErrorMessage()->willReturn(null);
-		// $mainBranch->setErrorMessage(Argument::type('string'))
-		// 	->will(function($args, $self)use($mainBranch,&$errorMessage) {
-		// 		[$errorMessage] = $args;
-		// 		$mainBranch->getErrorMessage()->willReturn($errorMessage);
-		// 		return $self;
-		// 	});
-		// $mainBranch->getRunning()->willReturn(false);
-		// $mainBranch->setRunning(Argument::type('bool'))
-		// 	->will(function($args, $self)use($mainBranch) {
-		// 		[$running] = $args;
-		// 		$mainBranch->getRunning()->willReturn($running);
-		// 		return $self;
-		// 	});
 
 		$actions = [
 			"start",
@@ -126,7 +112,8 @@ class ActivityTest extends TestCase
 				$entry->getAction()->willReturn($action);
 				$entry->getStatusCode()->willReturn($code);
 				$entry->getStatusText()->shouldNotBeCalled()->willReturn(null);
-				$mainBranch->getLastEntry()->willReturn($entry->reveal());
+				$entry = $entry->reveal();
+				$mainBranch->getLastEntry()->willReturn($entry);
 				return $self;
 			});
 
@@ -239,7 +226,8 @@ class ActivityTest extends TestCase
 						$entry->getAction()->willReturn($action);
 						$entry->getStatusCode()->willReturn($code);
 						$entry->getStatusText()->shouldNotBeCalled()->willReturn(null);
-						$branch->getLastEntry()->willReturn($entry->reveal());
+						$entry = $entry->reveal();
+						$branch->getLastEntry()->willReturn($entry);
 						return $self;
 					});
 

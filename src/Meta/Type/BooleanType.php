@@ -8,7 +8,8 @@ namespace Sturdy\Activity\Meta\Type;
  */
 final class BooleanType
 {
-	
+	const type = "boolean";
+
 	/**
 	 * Constructor
 	 *
@@ -16,9 +17,9 @@ final class BooleanType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -26,9 +27,9 @@ final class BooleanType
 	 */
 	public function getDescriptor(): string
 	{
-		return "boolean";
+		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -36,9 +37,9 @@ final class BooleanType
 	 */
 	public function meta(stdClass $meta): void
 	{
-		$meta->type = "boolean";
+		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *

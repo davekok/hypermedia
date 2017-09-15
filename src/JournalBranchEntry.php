@@ -39,16 +39,16 @@ interface JournalBranchEntry
 	/**
 	 * Get object
 	 *
-	 * @return ?object  the object
+	 * @return object  the object
 	 */
-	public function getObject()/*: ?object*/;
+	public function getObject()/*: object*/;
 
 	/**
 	 * Get action
 	 *
-	 * @return ?string  the action
+	 * @return string  the action
 	 */
-	public function getAction(): ?string;
+	public function getAction(): string;
 
 	/**
 	 * Get the status code

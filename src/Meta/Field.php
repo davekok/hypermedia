@@ -329,7 +329,7 @@ final class Field extends Taggable
 				case "pattern":
 					$this->type->setPatternName(trim(strok(")")));
 					break;
-					
+
 				case "options":
 					$this->type->setOptions(explode(',',trim(strok(")"))));
 					break;
@@ -370,7 +370,7 @@ final class Field extends Taggable
 		$text = "";
 		if ($this->flags->isMeta()) $text.= "meta ";
 		if ($this->flags->isData()) $text.= "data ";
-		$text.= $this->type;
+		$text.= $this->type::type;
 		if ($this->flags->isArray()) $text.= "[]";
 		$text.= " ";
 		if ($this->flags->isRequired()) $text.= "required ";
