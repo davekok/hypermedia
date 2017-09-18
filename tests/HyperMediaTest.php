@@ -116,7 +116,7 @@ class HyperMediaTest extends TestCase
 		$this->sourceUnit = "TestUnit1";
 		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
 		$this->class = TestUnit1\Resource1::class;
-		$this->method = "foo";
+		$this->method = "bar";
 		$this->tags = [];
 
 		// request
@@ -140,7 +140,7 @@ class HyperMediaTest extends TestCase
 		$this->requestContentType = "application/json";
 		$this->requestContent = [];
 		foreach ($this->fields as $name => $field) {
-			if ($field["meta"]??false) {
+			if (!($field["meta"]??false)) {
 				$this->requestContent[$name] = $field['value'];
 			}
 		}
@@ -148,28 +148,10 @@ class HyperMediaTest extends TestCase
 
 		// response
 		$this->statusCode = 204;
-		$this->statusText = "NoContent";
+		$this->statusText = "No Content";
 		$this->location = null;
 		$this->contentType = null;
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = new stdClass;
-			foreach ($this->fields as $name => $field) {
-				$content->main->fields->$name = new stdClass;
-				$content->main->fields->$name->type = $field["type"];
-				if ($field["meta"]??false) {
-					$content->main->fields->$name->meta = true;
-				}
-				if ($field["required"]??false) {
-					$content->main->fields->$name->required = true;
-				}
-				if (isset($field["value"])) {
-					$content->main->fields->$name->value = $field["value"];
-				}
-			}
-		}
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = null;
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -280,8 +262,16 @@ class HyperMediaTest extends TestCase
 		}
 		if ($query) $query = substr($query,1);
 		$request->getQuery()->shouldBeCalled()->willReturn($query);
-		$request->getContentType()->shouldNotBeCalled()->willReturn($this->requestContentType);
-		$request->getContent()->shouldNotBeCalled()->willReturn($this->requestContent);
+		if ($this->requestContentType === null) {
+			$request->getContentType()->shouldNotBeCalled()->willReturn($this->requestContentType);
+		} else {
+			$request->getContentType()->shouldBeCalled()->willReturn($this->requestContentType);
+		}
+		if ($this->requestContent === null) {
+			$request->getContent()->shouldNotBeCalled()->willReturn($this->requestContent);
+		} else {
+			$request->getContent()->shouldBeCalled()->willReturn($this->requestContent);
+		}
 		return $request->reveal();
 	}
 
@@ -300,8 +290,20 @@ class HyperMediaTest extends TestCase
 		$this->assertEquals($this->protocolVersion, $response->getProtocolVersion(), "protocol version");
 		$this->assertEquals($this->statusCode, $response->getStatusCode(), "status code");
 		$this->assertEquals($this->statusText, $response->getStatusText(), "status text");
-		$this->assertEquals($this->location, $response->getLocation(), "location");
-		$this->assertEquals($this->contentType, $response->getContentType(), "content type");
-		$this->assertJsonStringEqualsJsonString($this->content, $response->getContent(), "content");
+		if ($this->location !== null) {
+			$this->assertEquals($this->location, $response->getLocation(), "location");
+		} else {
+			$this->assertNull($response->getLocation(), "location");
+		}
+		if ($this->contentType !== null) {
+			$this->assertEquals($this->contentType, $response->getContentType(), "content type");
+		} else {
+			$this->assertNull($response->getContentType(), "content type");
+		}
+		if ($this->content !== null) {
+			$this->assertJsonStringEqualsJsonString($this->content, $response->getContent(), "content");
+		} else {
+			$this->assertNull($response->getContent(), "content");
+		}
 	}
 }
