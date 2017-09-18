@@ -5,15 +5,11 @@ namespace Sturdy\Activity\Meta\Type;
 use Ds\Set;
 use stdClass;
 
-/**
- * Class SetType
- * @package Sturdy\Activity\Meta\Type
- */
-final class SetType
+final class EnumType
 {
-	const type = "set";
+	const type = "enum";
 	private $options;
-
+	
 	/**
 	 * Constructor
 	 *
@@ -26,7 +22,7 @@ final class SetType
 			if (strlen($options)) $this->options = new Set(...explode(";", $options));
 		}
 	}
-
+	
 	/**
 	 * Get descriptor
 	 *
@@ -34,12 +30,11 @@ final class SetType
 	 */
 	public function getDescriptor(): string
 	{
-		$options = implode(";",$this->options);
-		return self::type.",".$options;
+		return self::type."," .  $this->options->join(';');
 	}
-
+	
 	/**
-	 * Get set options
+	 * Get all possible options
 	 *
 	 * @return Set
 	 */
@@ -47,19 +42,19 @@ final class SetType
 	{
 		return $this->options;
 	}
-
+	
 	/**
-	 * Set set options
+	 * Set possible options
 	 *
 	 * @param mixed $options
-	 * @return SetType
+	 * @return EnumType
 	 */
 	public function setOptions(array $options): self
 	{
 		$this->options = $options;
 		return $this;
 	}
-
+	
 	/**
 	 * Set meta properties on object
 	 *
@@ -68,21 +63,22 @@ final class SetType
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		if(isset($this->options)) {
-			$meta->options = $this->options;
+		if($this->options->count()) {
+			$meta->options = $this->options->toArray();
 		}
 	}
-
+	
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value  the value to filter
 	 * @return bool  whether the value is valid
 	 */
-	public function filter(&$values): bool
+	public function filter(&$value): bool
 	{
-		if($this->options->contains(...explode(',',$values))) return false;
+		if(!$this->options->contains($value)) return false;
 		
 		return true;
 	}
 }
+
