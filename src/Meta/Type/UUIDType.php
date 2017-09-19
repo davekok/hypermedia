@@ -1,12 +1,12 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class YearType
+class UUIDType
 {
-	const type = "year";
+	const type = "uuid";
 	
 	/**
 	 * Constructor
@@ -41,12 +41,12 @@ class YearType
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param &$value string the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		if (!preg_match("/^(1[6-9][0-9]{2}|2[0-9]{3})$/", $value)) return false;
+		if(!preg_match("/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/",$value)) return false;
 		
 		return true;
 	}

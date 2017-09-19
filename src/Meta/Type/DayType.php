@@ -7,7 +7,6 @@ use stdClass;
 class DayType
 {
 	const type = "day";
-	private $day;
 	
 	/**
 	 * Constructor
@@ -16,10 +15,6 @@ class DayType
 	 */
 	public function __construct(array $state = null)
 	{
-		if ($state !== null) {
-			[$day] = $state;
-			if (strlen($day)) $this->time = new \DateTime($day."-01-Y");
-		}
 	}
 	
 	/**
@@ -33,23 +28,6 @@ class DayType
 	}
 	
 	/**
-	 * @return mixed
-	 */
-	public function getDay()
-	{
-		return $this->day;
-	}
-	
-	/**
-	 * @param mixed $day
-	 */
-	public function setDay($day) : self
-	{
-		$this->day = $day;
-		return $this;
-	}
-	
-	/**
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
@@ -57,9 +35,6 @@ class DayType
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		if ($this->day) {
-			$meta->day = $this->time->format("d");
-		}
 	}
 	
 	/**

@@ -1,12 +1,12 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class YearType
+class HTMLType
 {
-	const type = "year";
+	const type = "html";
 	
 	/**
 	 * Constructor
@@ -46,7 +46,7 @@ class YearType
 	 */
 	public function filter(&$value): bool
 	{
-		if (!preg_match("/^(1[6-9][0-9]{2}|2[0-9]{3})$/", $value)) return false;
+		if(!preg_match("/^#?[0-9a-zA-Z]{6}$/",$value)) return false;
 		
 		return true;
 	}

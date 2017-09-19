@@ -7,7 +7,6 @@ use DateTime,stdClass;
 class TimeType
 {
 	const type = "time";
-	private $time;
 	
 	/**
 	 * Constructor
@@ -16,10 +15,7 @@ class TimeType
 	 */
 	public function __construct(array $state = null)
 	{
-		if ($state !== null) {
-			[$time] = $state;
-			if (strlen($time)) $this->time = new \DateTime($time);
-		}
+	
 	}
 	
 	/**
@@ -33,24 +29,6 @@ class TimeType
 	}
 	
 	/**
-	 * @return \DateTime
-	 */
-	public function getDate(): DateTime
-	{
-		return $this->time;
-	}
-	
-	/**
-	 * @param string $time
-	 * @return self
-	 */
-	public function setDate(string $time): self
-	{
-		$this->time = new DateTime($time);
-		return $this;
-	}
-	
-	/**
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
@@ -58,9 +36,6 @@ class TimeType
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		if ($this->time) {
-			$meta->time = $this->time->format("\TH:i:s");
-		}
 	}
 	
 	/**

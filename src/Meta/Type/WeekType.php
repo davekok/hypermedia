@@ -1,12 +1,12 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class YearType
+class WeekType
 {
-	const type = "year";
+	const type = "week";
 	
 	/**
 	 * Constructor
@@ -46,7 +46,8 @@ class YearType
 	 */
 	public function filter(&$value): bool
 	{
-		if (!preg_match("/^(1[6-9][0-9]{2}|2[0-9]{3})$/", $value)) return false;
+		if (is_numeric($value)) return false;
+		if ($value < 1 || $value > 53) return false;
 		
 		return true;
 	}

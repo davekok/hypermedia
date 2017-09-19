@@ -1,12 +1,14 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class YearType
+class PasswordType
 {
-	const type = "year";
+	const type = "password";
+	private $minlength;
+	private $maxlength;
 	
 	/**
 	 * Constructor
@@ -46,7 +48,7 @@ class YearType
 	 */
 	public function filter(&$value): bool
 	{
-		if (!preg_match("/^(1[6-9][0-9]{2}|2[0-9]{3})$/", $value)) return false;
+		if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&])[A-Za-z\d$@$!%*?&]{8,10}/$",$value)) return false;
 		
 		return true;
 	}
