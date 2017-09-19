@@ -7,7 +7,7 @@ use Sturdy\Activity\{
 	Cache,
 	Journal,
 	JournalBranch,
-	JournalBranchEntry,
+	JournalEntry,
 	JournalRepository
 };
 use Sturdy\Activity\Meta\CacheItem_Activity;
@@ -107,7 +107,7 @@ class ActivityTest extends TestCase
 					throw new \Exception("expected action $nextAction got action $action");
 				}
 				$entry = $prophet->prophesize();
-				$entry->willImplement(JournalBranchEntry::class);
+				$entry->willImplement(JournalEntry::class);
 				$entry->getObject()->willReturn($object);
 				$entry->getAction()->willReturn($action);
 				$entry->getStatusCode()->willReturn($code);
@@ -221,7 +221,7 @@ class ActivityTest extends TestCase
 							throw new \Exception("expected action $nextAction got action $action");
 						}
 						$entry = $prophet->prophesize();
-						$entry->willImplement(JournalBranchEntry::class);
+						$entry->willImplement(JournalEntry::class);
 						$entry->getObject()->willReturn($object);
 						$entry->getAction()->willReturn($action);
 						$entry->getStatusCode()->willReturn($code);

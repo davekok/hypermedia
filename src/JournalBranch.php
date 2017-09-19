@@ -27,14 +27,14 @@ interface JournalBranch
 	/**
 	 * Get the last branch entry.
 	 *
-	 * @return JournalBranchEntry  the last entry
+	 * @return JournalEntry  the last entry
 	 */
-	public function getLastEntry(): JournalBranchEntry;
+	public function getLastEntry(): JournalEntry;
 
 	/**
 	 * Get all branch entries
 	 *
-	 * @return JournalBranchEntry[]  the branch entries
+	 * @return JournalEntry[]  the branch entries
 	 */
 	public function getEntries(): array;
 }
