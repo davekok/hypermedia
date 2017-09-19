@@ -7,7 +7,7 @@ use DateTime;
 /**
  * Interface to the journal to be implemented by the application.
  */
-interface JournalBranchEntry
+interface JournalEntry
 {
 	/**
 	 * Get the date/time on which the entry has been created.
@@ -17,17 +17,16 @@ interface JournalBranchEntry
 	public function getDateTime(): DateTime;
 
 	/**
-	 * Set whether the entry has been redacted.
+	 * Redact this entry.
 	 *
 	 * Redacted entries are no longer valid but where once valid.
 	 * For instance when a recovery has been done after an error,
 	 * the entry containing the error will have been redacted,
 	 * followed by a new entry giving the correct results.
 	 *
-	 * @param bool $redacted
 	 * @return $this
 	 */
-	public function setRedacted(bool $redacted): JournalBranchEntry;
+	public function redact(): JournalEntry;
 
 	/**
 	 * Get whether the entry has been redacted.

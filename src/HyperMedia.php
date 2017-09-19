@@ -48,15 +48,22 @@ final class HyperMedia
 		$this->di = $di;
 	}
 
+	public function getBasePath(): string
+	{
+		return $this->basePath;
+	}
+
 	/**
 	 * Create an activity
 	 *
 	 * @param  string $class  the activity class
+	 * @param  array  $tags   the tags
 	 */
-	public function createActivity(string $class): Activity
+	public function createActivity(string $class, array $tags): Activity
 	{
 		$activity = new Activity($this->cache, $this->journalRepository, $this->sourceUnit);
-		$activity->load($tags);
+		$activity->load($class, $tags);
+		$activity->createJournal();
 		return $activity;
 	}
 

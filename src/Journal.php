@@ -73,29 +73,37 @@ interface Journal
 	 * A split has been reached. The $branches argument
 	 * contains which named branches can be followed.
 	 *
+	 * @param array $branches  the named branches
 	 * @return Journal
 	 */
-	public function setSplit(array $branches): Journal;
+	public function setSplit(?array $branches): Journal;
 
 	/**
 	 * Get the named branches from the last split.
 	 *
-	 * @return array  the named branches
+	 * @return ?array  the named branches
 	 */
-	public function getSplit(): array;
+	public function getSplit(): ?array;
 
 	/**
 	 * Set follow branch
 	 *
 	 * @param ?string $followBranch
-	 * @return self
+	 * @return Journal
 	 */
-	public function setFollowBranch(?string $followBranch): self;
+	public function setFollowBranch(?string $followBranch): Journal;
 
 	/**
 	 * Get follow branch
 	 *
-	 * @return string
+	 * @return ?string
 	 */
-	public function getFollowBranch(): string;
+	public function getFollowBranch(): ?string;
+
+	/**
+	 * Get the all branches
+	 *
+	 * @return iterable  iterator to iterate over the branches
+	 */
+	public function getAllBranches(): ?iterable;
 }
