@@ -2,7 +2,7 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
-use stdClass;
+use stdClass, DOMDocument;
 
 class HTMLType
 {
@@ -46,7 +46,9 @@ class HTMLType
 	 */
 	public function filter(&$value): bool
 	{
-		if(!preg_match("/^#?[0-9a-zA-Z]{6}$/",$value)) return false;
+		$dom = new DOMDocument();
+		$dom->loadHTML($value);
+		if(!$dom->validate()) return false;
 		
 		return true;
 	}

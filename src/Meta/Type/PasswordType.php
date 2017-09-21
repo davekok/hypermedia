@@ -7,8 +7,8 @@ use stdClass;
 class PasswordType
 {
 	const type = "password";
-	private $minlength;
-	private $maxlength;
+	private $minimumLength;
+	private $maximumLength;
 	
 	/**
 	 * Constructor
@@ -17,7 +17,11 @@ class PasswordType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+		if ($state !== null) {
+			[$min, $max] = $state;
+			if (strlen($min) > 0) $this->minimumLength = (int)$min;
+			if (strlen($max) > 0) $this->maximumLength = (int)$max;
+		}
 	}
 	
 	/**
@@ -48,7 +52,8 @@ class PasswordType
 	 */
 	public function filter(&$value): bool
 	{
-		if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&])[A-Za-z\d$@$!%*?&]{8,10}/$",$value)) return false;
+		// Min length of <minimumLength>, max length of <maximumlength>, only allow $@$!%*?&, a-z and A-Z
+		if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&])[A-Za-z\d$@$!%*?&]{". $this->minimumLength .",". $this->maximumLength ."}/$",$value)) return false;
 		
 		return true;
 	}

@@ -2,7 +2,7 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
-use DateTime,stdClass;
+use stdClass;
 
 class TimeType
 {
