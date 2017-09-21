@@ -2,13 +2,13 @@
 
 namespace Tests\Sturdy\Activity\TestUnit1;
 
+use Sturdy\Activity\Response\Created;
 use Sturdy\Activity\Response\OK;
-use Sturdy\Activity\Response\NoContent;
 use Sturdy\Activity\Meta\Field;
 use Sturdy\Activity\Meta\Get;
 use Sturdy\Activity\Meta\Post;
 
-class Resource1
+class ResourceCreated
 {
 	/**
 	 * @Field("string required")
@@ -23,9 +23,10 @@ class Resource1
 	}
 
 	/**
-	 * @Post("no-content")
+	 * @Post("created")
 	 */
-	public function bar(NoContent $response, $di): void
+	public function bar(Created $response, $di): void
 	{
+	
 	}
 }

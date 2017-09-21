@@ -7,7 +7,7 @@ use Sturdy\Activity\{
 	HyperMedia,
 	Journal,
 	JournalBranch,
-	JournalBranchEntry,
+	JournalEntry,
 	JournalRepository
 };
 use Sturdy\Activity\Request\Request;
@@ -44,6 +44,7 @@ class HyperMediaTest extends TestCase
 	private $root;
 	private $journalId;
 	private $fields;
+	private $requestContent;
 
 	// response
 	private $statusCode;
@@ -58,12 +59,12 @@ class HyperMediaTest extends TestCase
 		$this->faker = Faker\Factory::create();
 	}
 
-	public function testGetResource()
+	public function testGetOKResource()
 	{
 		// resource
 		$this->sourceUnit = "TestUnit1";
 		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
-		$this->class = TestUnit1\Resource1::class;
+		$this->class = TestUnit1\ResourceNoContent::class;
 		$this->method = "foo";
 		$this->tags = [];
 
@@ -110,12 +111,12 @@ class HyperMediaTest extends TestCase
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
 
-	public function testPostResource()
+	public function testPostNoContentResource()
 	{
 		// resource
 		$this->sourceUnit = "TestUnit1";
 		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
-		$this->class = TestUnit1\Resource1::class;
+		$this->class = TestUnit1\ResourceNoContent::class;
 		$this->method = "bar";
 		$this->tags = [];
 
@@ -155,6 +156,98 @@ class HyperMediaTest extends TestCase
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
+	
+	public function testPostAcceptedResource()
+	{
+		// resource
+		$this->sourceUnit = "TestUnit1";
+		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
+		$this->class = TestUnit1\ResourceAccepted::class;
+		$this->method = "bar";
+		$this->tags = [];
+		
+		// request
+		$this->protocolVersion = "1.1";
+		$this->verb = "POST";
+		$this->root = false;
+		$this->journalId = $this->faker->boolean ? null : rand();
+		$this->fields = [];
+		if ($this->faker->boolean) {
+			$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>$this->faker->boolean];
+		}
+		$this->requestContentType = "application/json";
+		$this->requestContent = [];
+		foreach ($this->fields as $name => $field) {
+			if (!($field["meta"]??false)) {
+				$this->requestContent[$name] = $field['value'];
+			}
+		}
+		$this->requestContent = json_encode($this->requestContent, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		
+		// response
+		$this->statusCode = 202;
+		$this->statusText = "Accepted";
+		$this->location = null;
+		$this->contentType = null;
+		$this->content = null;
+		
+		$this->handle($this->createHyperMedia(), $this->createRequest());
+	}
+	
+	public function testPostCreatedResource()
+	{
+		// resource
+		$this->sourceUnit = "TestUnit1";
+		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
+		$this->class = TestUnit1\ResourceCreated::class;
+		$this->method = "bar";
+		$this->tags = [];
+		
+		// request
+		$this->protocolVersion = "1.1";
+		$this->verb = "POST";
+		$this->root = false;
+		$this->journalId = $this->faker->boolean ? null : rand();
+		$this->fields = [];
+		if ($this->faker->boolean) {
+			$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>$this->faker->boolean];
+		}
+		$this->requestContentType = "application/json";
+		$this->requestContent = [];
+		foreach ($this->fields as $name => $field) {
+			if (!($field["meta"]??false)) {
+				$this->requestContent[$name] = $field['value'];
+			}
+		}
+		$this->requestContent = json_encode($this->requestContent, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		
+		// response
+		$this->statusCode = 201;
+		$this->statusText = "Created";
+		$this->location = null;
+		$this->contentType = null;
+		$this->content = null;
+		
+		$this->handle($this->createHyperMedia(), $this->createRequest());
+	}
 
 	private function createCache(): Cache
 	{
@@ -162,11 +255,17 @@ class HyperMediaTest extends TestCase
 			->setClass($this->class)
 			->setTags([]);
 		switch ($this->statusCode) {
-			case 200:
+			case Verb::OK:
 				$resource->setVerb($this->verb, $this->method, Verb::OK);
 				break;
-			case 204:
+			case Verb::NO_CONTENT:
 				$resource->setVerb($this->verb, $this->method, Verb::NO_CONTENT);
+				break;
+			case Verb::ACCEPTED:
+				$resource->setVerb($this->verb, $this->method, Verb::ACCEPTED);
+				break;
+			case Verb::CREATED:
+				$resource->setVerb($this->verb, $this->method, Verb::CREATED);
 				break;
 		}
 

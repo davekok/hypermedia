@@ -15,7 +15,7 @@ class SourceUnitFactoryTest extends TestCase
 	{
 		$unit = (new SourceUnitFactory(new AnnotationReader))->createSourceUnit('TestUnit1', __DIR__.'/TestUnit1/');
 		$this->assertEquals("TestUnit1", $unit->getName(), "unit name");
-		$this->assertEquals([TestUnit1\Resource1::class,TestUnit1\Activity1::class], $unit->getClasses(), "classes");
+		$this->assertEquals([TestUnit1\ResourceNoContent::class,TestUnit1\Activity1::class], $unit->getClasses(), "classes");
 		$this->assertEquals([], $unit->getTagOrder(), "tags");
 		$actions = [];
 		[$activity] = $unit->getActivities();
