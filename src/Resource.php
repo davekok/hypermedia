@@ -205,15 +205,15 @@ final class Resource
 			return null;
 		}
 		$fields = $resource->getFields()??[];
-		$href = $this->basePath . "/" . strtr($class, "\\", "/");
+		$href = rtrim($this->basePath, "/") . "/" . trim(strtr($class, "\\", "/"), "/");
 		$known = "";
 		$unknown = "";
-		foreach ($fields as $name => $field) {
-			if ($field->meta) {
-				$flags = new Flags($field->flags);
+		foreach ($fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
+			$flags = new FieldFlags($flags);
+			if ($flags->isMeta()) {
 				if ($flags->isReadonly() || $flags->isDisabled()) continue;
 				if (array_key_exists($name, $values)) {
-					$known.= "&" . $name . "=" . $values[$name];
+					$known.= "&" . $name . "=" . urlencode($values[$name]);
 				} elseif ($mayBeTemplated) {
 					$unknown.= "," . $name;
 				} elseif ($flags->isRequired()) {

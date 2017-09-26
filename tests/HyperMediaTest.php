@@ -34,6 +34,9 @@ class HyperMediaTest extends TestCase
 	private $sourceUnit;
 	private $basePath;
 	private $class;
+	private $classes;
+	private $attachmentFields;
+	
 	private $method;
 	private $tags;
 
@@ -52,8 +55,9 @@ class HyperMediaTest extends TestCase
 	private $contentType;
 	private $content;
 
-	public function setUp()
+	public function __construct($name = null, array $data = [], $dataName = '')
 	{
+		parent::__construct($name, $data, $dataName);
 		$this->prophet = new Prophet;
 		$this->faker = Faker\Factory::create();
 	}
@@ -222,16 +226,14 @@ CLASS
 		$this->method = "bar";
 		$this->tags = [];
 		
-		if(!class_exists($this->class)){
-			eval(<<<CLASS
+		eval(<<<CLASS
 final class $this->class
 {
 	public function bar(Sturdy\Activity\Response\Created \$response, \$di) {
 	}
 }
 CLASS
-			);
-		}
+		);
 		
 		// request
 		$this->protocolVersion = "1.1";
@@ -270,7 +272,7 @@ CLASS
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
 	
-	public function testGetOKResourceWithAttachement()
+	public function testGetOKResourceWithAttachment()
 	{
 		// resource
 		$this->sourceUnit = "TestUnit1";
@@ -278,8 +280,7 @@ CLASS
 		$this->class = ucfirst($this->faker->unique()->word);
 		$this->classes = [ucfirst($this->faker->unique()->word)];
 		
-		if(!class_exists($this->class)) {
-			eval(<<<CLASS
+		eval(<<<CLASS
 final class {$this->class}
 {
 	public function foo(Sturdy\Activity\Response\OK \$response, \$di) {
@@ -287,11 +288,9 @@ final class {$this->class}
 	}
 }
 CLASS
-			);
-		}
+		);
 		
-		if(!class_exists($this->classes[0])) {
-			eval(<<<EOD
+		eval(<<<EOD
 final class {$this->classes[0]}
 {
 	public function foo(Sturdy\Activity\Response\OK \$response, \$di): void
@@ -299,8 +298,7 @@ final class {$this->classes[0]}
 	}
 }
 EOD
-			);
-		}
+		);
 		
 		$this->method = "foo";
 		$this->tags = [];
@@ -343,6 +341,100 @@ EOD
 				}
 			}
 		}
+		$content->main->links = new stdClass;
+		$content->main->links->aside = new stdClass;
+		$content->main->links->aside->href = $this->basePath . ($this->journalId ? $this->journalId . '/' : '') . $this->classes[0];
+		$content->aside = new stdClass;
+		
+		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		
+		$this->handle($this->createHyperMedia(), $this->createRequest());
+	}
+	
+	public function testGetOKResourceWithAttachmentWithFields()
+	{
+		// resource
+		$this->sourceUnit = "TestUnit1";
+		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
+		$this->class = ucfirst($this->faker->unique()->word);
+		$this->classes = [ucfirst($this->faker->unique()->word)];
+		
+		eval(<<<CLASS
+final class {$this->class}
+{
+	public function foo(Sturdy\Activity\Response\OK \$response, \$di) {
+		\$response->link("aside", "{$this->classes[0]}", ["name"=>"Foo","streetName"=>"bar"], true);
+	}
+}
+CLASS
+		);
+		
+		eval(<<<EOD
+final class {$this->classes[0]}
+{
+	public function foo(Sturdy\Activity\Response\OK \$response, \$di): void
+	{
+	}
+}
+EOD
+		);
+		
+		$this->method = "foo";
+		$this->tags = [];
+		
+		// request
+		$this->protocolVersion = "1.1";
+		$this->verb = "GET";
+		$this->root = false;
+		$this->journalId = $this->faker->boolean ? null : rand();
+		$this->fields = [];
+		if ($this->faker->boolean) {
+			$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+		}
+		
+		foreach ($this->classes as $class) {
+			$this->attachmentFields[$class]["name"] = ["type"=>"string","value"=>"Foo","required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+			$this->attachmentFields[$class]["streetName"] = ["type"=>"string","value"=>"bar","required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+		}
+		
+		$this->requestContentType = null;
+		$this->requestContent = null;
+		
+		// response
+		$this->statusCode = 200;
+		$this->statusText = "OK";
+		$this->location = null;
+		$this->contentType = "application/json";
+		$content = new stdClass;
+		$content->main = new stdClass;
+		if (count($this->fields)) {
+			$content->main->fields = new stdClass;
+			foreach ($this->fields as $name => $field) {
+				$content->main->fields->$name = new stdClass;
+				$content->main->fields->$name->type = $field["type"];
+				if ($field["meta"]??false) {
+					$content->main->fields->$name->meta = true;
+				}
+				if ($field["required"]??false) {
+					$content->main->fields->$name->required = true;
+				}
+				if (isset($field["value"])) {
+					$content->main->fields->$name->value = $field["value"];
+				}
+			}
+		}
+		$content->main->links = new stdClass;
+		$content->main->links->aside = new stdClass;
+		$content->main->links->aside->href = $this->basePath . ($this->journalId ? $this->journalId . '/' : '') . $this->classes[0];
+		$content->aside = new stdClass;
+		$content->aside->fields = new stdClass;
+		$content->aside->fields->name = $this->attachmentFields[$this->classes[0]]["name"];
+		$content->aside->fields->streetName = $this->attachmentFields[$this->classes[0]]["streetName"];
+		
+		
 		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 		
 		$this->handle($this->createHyperMedia(), $this->createRequest());
@@ -387,8 +479,16 @@ EOD
 				$resource = (new CacheItem_Resource())->setClass($class)->setTags($this->tags);
 				$resource->setVerb('GET', 'foo', Verb::OK);
 				$cache->getResource($this->sourceUnit, $class, $this->tags)
-					->shouldBeCalledTimes(1)
+					->shouldBeCalledTimes(2)
 					->willReturn($resource);
+				
+				foreach ($this->attachmentFields[$class]??[] as $name => $descriptor) {
+					$type = $descriptor["type"] . ",,,";
+					$flags = 0;
+					if ($descriptor["required"] ?? false) $flags |= FieldFlags::required;
+					if ($descriptor["meta"] ?? false) $flags |= FieldFlags::meta;
+					$resource->setField($name, $type, $descriptor["defaultValue"] ?? null, $flags);
+				}
 			}
 		}
 		
@@ -410,7 +510,7 @@ EOD
 		$branch->getLastEntry()->willReturn(null);
 		$self = $this;
 		$entries = [];
-		$branch->addEntry(Argument::type($this->class), $this->method, $this->statusCode, $this->statusText)
+		$branch->addEntry(Argument::type('object'), $this->method, $this->statusCode, $this->statusText)
 			->will(function($args, $branch)use($self,&$entries){
 				$entries[] = $entry = $self->createJournalBranch();
 				$branch->getLastEntry()->willReturn($entry);
@@ -511,7 +611,7 @@ EOD
 			$this->assertNull($response->getContentType(), "content type");
 		}
 		if ($this->content !== null) {
-			$this->assertJsonStringEqualsJsonString($this->content, $response->getContent(), "content");
+			$this->assertJsonStringEqualsJsonString($response->getContent(), $this->content, "content");
 		} else {
 			$this->assertNull($response->getContent(), "content");
 		}

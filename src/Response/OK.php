@@ -112,7 +112,7 @@ final class OK implements Response
 		if (!isset($this->part->links)) {
 			$this->part->links = new stdClass();
 		}
-		$this->part->links->$name = $link->toJson();
+		$this->part->links->$name = $link->toArray();
 		if ($attach && $this->part === $this->parts->main) { // only attach if linking from first resource
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;

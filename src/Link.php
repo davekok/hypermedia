@@ -26,12 +26,12 @@ final class Link
 		return $this->templated;
 	}
 
-	public function toJson(): string
+	public function toArray(): array
 	{
 		if ($this->templated) {
-			return json_encode(["href"=>$this->href,"templated"=>$this->templated], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+			return ["href"=>$this->href,"templated"=>$this->templated];
 		} else {
-			return json_encode(["href"=>$this->href], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+			return ["href"=>$this->href];
 		}
 	}
 }
