@@ -144,9 +144,9 @@ final class HyperMedia
 			if ($path === "" || $path === "/") { // if root resource
 				$journal = $this->journalRepository->createJournal();
 				$this->basePath.= "/".$journal->getId()."/";
-				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
+				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath,$journal->getMainBranch(), $this->di))
 					->createRootResource($request->getVerb())
-					->call($journal->getMainBranch(), $this->getValues($request));
+					->call($this->getValues($request));
 			} else { // if normal resource
 				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
 					$path = substr($path, strlen($matches[0]));
@@ -157,9 +157,9 @@ final class HyperMedia
 					$journal = $this->journalRepository->createJournal($this->sourceUnit, Journal::resource, $tags);
 				}
 				$class = strtr(trim($path, "/"), "/", "\\");
-				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
+				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath,$journal->getMainBranch(), $this->di))
 					->createResource(strtr(trim($path, "/"), "/", "\\"), $request->getVerb())
-					->call($journal->getMainBranch(), $this->getValues($request));
+					->call($this->getValues($request));
 			}
 		} catch (Response $e) {
 			$response = $e;

@@ -19,8 +19,7 @@ use Sturdy\Activity\Meta\{
 };
 use PHPUnit\Framework\TestCase;
 use Prophecy\{
-	Argument,
-	Prophet
+	Argument, Prophecy\ObjectProphecy, Prophet
 };
 use Faker;
 use Throwable;
@@ -162,9 +161,20 @@ class HyperMediaTest extends TestCase
 		// resource
 		$this->sourceUnit = "TestUnit1";
 		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
-		$this->class = TestUnit1\ResourceAccepted::class;
+		$this->class = $this->faker->word;
 		$this->method = "bar";
 		$this->tags = [];
+		
+		if(!class_exists($this->class)) {
+			eval(<<<CLASS
+final class $this->class
+{
+	public function bar(Sturdy\Activity\Response\Accepted \$response, \$di) {
+	}
+}
+CLASS
+			);
+		}
 		
 		// request
 		$this->protocolVersion = "1.1";
@@ -208,9 +218,20 @@ class HyperMediaTest extends TestCase
 		// resource
 		$this->sourceUnit = "TestUnit1";
 		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
-		$this->class = TestUnit1\ResourceCreated::class;
+		$this->class = $this->faker->word;
 		$this->method = "bar";
 		$this->tags = [];
+		
+		if(!class_exists($this->class)){
+			eval(<<<CLASS
+final class $this->class
+{
+	public function bar(Sturdy\Activity\Response\Created \$response, \$di) {
+	}
+}
+CLASS
+			);
+		}
 		
 		// request
 		$this->protocolVersion = "1.1";
@@ -242,9 +263,87 @@ class HyperMediaTest extends TestCase
 		// response
 		$this->statusCode = 201;
 		$this->statusText = "Created";
-		$this->location = null;
+		$this->location = $this->faker->url;
 		$this->contentType = null;
 		$this->content = null;
+		
+		$this->handle($this->createHyperMedia(), $this->createRequest());
+	}
+	
+	public function testGetOKResourceWithAttachement()
+	{
+		// resource
+		$this->sourceUnit = "TestUnit1";
+		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
+		$this->class = ucfirst($this->faker->unique()->word);
+		$this->classes = [ucfirst($this->faker->unique()->word)];
+		
+		if(!class_exists($this->class)) {
+			eval(<<<CLASS
+final class {$this->class}
+{
+	public function foo(Sturdy\Activity\Response\OK \$response, \$di) {
+		\$response->link("aside", "{$this->classes[0]}", [], true);
+	}
+}
+CLASS
+			);
+		}
+		
+		if(!class_exists($this->classes[0])) {
+			eval(<<<EOD
+final class {$this->classes[0]}
+{
+	public function foo(Sturdy\Activity\Response\OK \$response, \$di): void
+	{
+	}
+}
+EOD
+			);
+		}
+		
+		$this->method = "foo";
+		$this->tags = [];
+		
+		// request
+		$this->protocolVersion = "1.1";
+		$this->verb = "GET";
+		$this->root = false;
+		$this->journalId = $this->faker->boolean ? null : rand();
+		$this->fields = [];
+		if ($this->faker->boolean) {
+			$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+		}
+		if ($this->faker->boolean) {
+			$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
+		}
+		$this->requestContentType = null;
+		$this->requestContent = null;
+		
+		// response
+		$this->statusCode = 200;
+		$this->statusText = "OK";
+		$this->location = null;
+		$this->contentType = "application/json";
+		$content = new stdClass;
+		$content->main = new stdClass;
+		if (count($this->fields)) {
+			$content->main->fields = new stdClass;
+			foreach ($this->fields as $name => $field) {
+				$content->main->fields->$name = new stdClass;
+				$content->main->fields->$name->type = $field["type"];
+				if ($field["meta"]??false) {
+					$content->main->fields->$name->meta = true;
+				}
+				if ($field["required"]??false) {
+					$content->main->fields->$name->required = true;
+				}
+				if (isset($field["value"])) {
+					$content->main->fields->$name->value = $field["value"];
+				}
+			}
+		}
+		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 		
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -253,7 +352,7 @@ class HyperMediaTest extends TestCase
 	{
 		$resource = (new CacheItem_Resource())
 			->setClass($this->class)
-			->setTags([]);
+			->setTags($this->tags);
 		switch ($this->statusCode) {
 			case Verb::OK:
 				$resource->setVerb($this->verb, $this->method, Verb::OK);
@@ -265,24 +364,36 @@ class HyperMediaTest extends TestCase
 				$resource->setVerb($this->verb, $this->method, Verb::ACCEPTED);
 				break;
 			case Verb::CREATED:
-				$resource->setVerb($this->verb, $this->method, Verb::CREATED);
+				$resource->setVerb($this->verb, $this->method, Verb::CREATED, $this->location);
 				break;
 		}
-
+		
 		foreach ($this->fields as $name => $descriptor) {
-			$type = $descriptor["type"].",,,";
+			$type = $descriptor["type"] . ",,,";
 			$flags = 0;
-			if ($descriptor["required"]??false) $flags |= FieldFlags::required;
-			if ($descriptor["meta"]??false) $flags |= FieldFlags::meta;
-			$resource->setField($name, $type, $descriptor["defaultValue"]??null, $flags);
+			if ($descriptor["required"] ?? false) $flags |= FieldFlags::required;
+			if ($descriptor["meta"] ?? false) $flags |= FieldFlags::meta;
+			$resource->setField($name, $type, $descriptor["defaultValue"] ?? null, $flags);
 		}
-
+		
 		$cache = $this->prophet->prophesize();
 		$cache->willImplement(Cache::class);
 		$cache->getResource($this->sourceUnit, $this->class, $this->tags)
 			->shouldBeCalledTimes(1)
 			->willReturn($resource);
-		return $cache->reveal($resource);
+		
+		if (isset($this->classes)) {
+			foreach($this->classes as $class){
+				$resource = (new CacheItem_Resource())->setClass($class)->setTags($this->tags);
+				$resource->setVerb('GET', 'foo', Verb::OK);
+				$cache->getResource($this->sourceUnit, $class, $this->tags)
+					->shouldBeCalledTimes(1)
+					->willReturn($resource);
+			}
+		}
+		
+		
+		return $cache->reveal();
 	}
 
 	public function createJournalBranchEntry(): JournalBranchEntry
