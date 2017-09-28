@@ -8,6 +8,13 @@ namespace Sturdy\Activity;
 interface JournalBranch
 {
 	/**
+	 * Get the junction number of this branch.
+	 *
+	 * @return int  junction number
+	 */
+	public function getJunction(): int;
+
+	/**
 	 * Create a new entry from arguments and add it to the branch, making this entry the new last entry.
 	 *
 	 * @param object  $object         the object

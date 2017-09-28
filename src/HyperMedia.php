@@ -18,7 +18,7 @@ final class HyperMedia
 {
 	// dependencies/configuration
 	private $cache;
-	private $journalRepository;
+	private $journaling;
 	private $sourceUnit;
 	private $basePath;
 	private $di;
@@ -42,29 +42,10 @@ final class HyperMedia
 		/*object*/ $di)
 	{
 		$this->cache = $cache;
-		$this->journalRepository = $journalRepository;
+		$this->journaling = new Journaling($journalRepository);
 		$this->sourceUnit = $sourceUnit;
 		$this->basePath = rtrim($basePath, "/");
 		$this->di = $di;
-	}
-
-	public function getBasePath(): string
-	{
-		return $this->basePath;
-	}
-
-	/**
-	 * Create an activity
-	 *
-	 * @param  string $class  the activity class
-	 * @param  array  $tags   the tags
-	 */
-	public function createActivity(string $class, array $tags): Activity
-	{
-		$activity = new Activity($this->cache, $this->journalRepository, $this->sourceUnit);
-		$activity->load($class, $tags);
-		$activity->createJournal();
-		return $activity;
 	}
 
 	/**
@@ -78,11 +59,11 @@ final class HyperMedia
 	 * - an array in the structure of $_SERVER
 	 * - null, in which case $_SERVER should be used
 	 *
-	 * The $responseAdaptor argument can be eiter:
+	 * The $responseAdaptor argument can be either:
 	 * - "psr" returns a \Psr\Http\Message\ResponseInterface
 	 * - "symfony" returns a \Symfony\Component\HttpFoundation\Response
 	 * - "sturdy" returns a \Sturdy\Activity\Response\Response
-	 * - "array" returns [string $protocolVersion, string $statusCode, string $statusText, string[] $headers, ?string $content]
+	 * - "array" returns ["protocolVersion" => string, "statusCode" => int, "statusText" => string, "headers" => [string => string], "content" => ?string]
 	 * - "echo" returns void, echo's response to output instead using header and echo functions
 	 * - null, a matching response adaptor is choosen based on your request:
 	 *   + psr for \Psr\Http\Message\ServerRequestInterface
@@ -142,34 +123,31 @@ final class HyperMedia
 		try {
 			$path = substr($request->getPath(), strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				$journal = $this->journalRepository->createJournal();
-				$this->basePath.= "/".$journal->getId()."/";
-				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath,$journal->getMainBranch(), $this->di))
+				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
+				$this->basePath.= "/".$this->journaling->getId()."/";
+				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->journaling->getMainBranch(), $this->di))
 					->createRootResource($request->getVerb())
 					->call($this->getValues($request));
 			} else { // if normal resource
 				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
 					$path = substr($path, strlen($matches[0]));
-					$journalId = (int)$matches[1];
-					$this->basePath.= "/$journalId/";
-					$journal = $this->journalRepository->findOneJournalById($journalId);
+					$this->journaling->resume((int)$matches[1]);
 				} else {
-					$journal = $this->journalRepository->createJournal($this->sourceUnit, Journal::resource, $tags);
+					$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
 				}
+				$this->basePath.= "/".$this->journaling->getId()."/";
 				$class = strtr(trim($path, "/"), "/", "\\");
-				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath,$journal->getMainBranch(), $this->di))
-					->createResource(strtr(trim($path, "/"), "/", "\\"), $request->getVerb())
+				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->journaling->getMainBranch(), $this->di))
+					->createResource($class, $request->getVerb())
 					->call($this->getValues($request));
 			}
 		} catch (Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
-			$response = (new InternalServerError("Uncaught exception", 0, $e));
-		}
-
-		$response->setProtocolVersion($request->getProtocolVersion());
-		if (isset($journal)) {
-			$this->journalRepository->saveJournal($journal);
+			$response = new InternalServerError("Uncaught exception", 0, $e);
+		} finally {
+			$response->setProtocolVersion($request->getProtocolVersion());
+			$this->journaling->save();
 		}
 
 		// adaptors
@@ -192,7 +170,13 @@ final class HyperMedia
 				if ($contentType = $response->getContentType()) {
 					$headers["Content-Type"] = $contentType;
 				}
-				return [$response->getProtocolVersion(), $response->getStatusCode(), $response->getStatusText(), $headers, $response->getContent()];
+				return [
+					"protocolVersion" => $response->getProtocolVersion(),
+					"statusCode" => $response->getStatusCode(),
+					"statusText" => $response->getStatusText(),
+					"headers" => $headers,
+					"content" => $response->getContent()
+				];
 
 			case "echo":
 				header("HTTP/".$response->getProtocolVersion()." ".$response->getStatusCode()." ".$response->getStatusText());

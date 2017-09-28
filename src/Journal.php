@@ -39,35 +39,43 @@ interface Journal
 	public function getTags(): ?array;
 
 	/**
-	 * Get the main branch.
+	 * Creates a new branch, belonging to this journal
 	 *
-	 * @return JournalBranch  the main branch
+	 * @param int $junction   the junction number to create the branch for.
+	 * @return JournalBranch  a new journal branch
+	 *
+	 * Note that junction zero will only ever contain one branch, the main branch.
 	 */
-	public function getMainBranch(): JournalBranch;
+	public function createBranch(int $junction): JournalBranch;
 
 	/**
-	 * Fork the current journal and return a new concurrent branch
-	 * based on the main branch. The main branch will not be used
-	 * until joined.
+	 * Get the first branch created for this journal.
 	 *
-	 * @return JournalBranch
+	 * @return JournalBranch  the first branch
 	 */
-	public function fork(): JournalBranch;
+	public function getFirstBranch(): JournalBranch;
 
 	/**
-	 * Join the concurrent branches from this point the main
-	 * branch must be usable again and getConcurrentBranches
-	 * should return null.
+	 * Get the last branch created for this journal.
+	 *
+	 * @return JournalBranch  the last branch
 	 */
-	public function join(): void;
+	public function getLastBranch(): JournalBranch;
 
 	/**
-	 * Get the concurrent branches from the last fork or null
-	 * if no fork happened or a join has already occurred.
+	 * Get branches for the given junction.
 	 *
-	 * @return iterable  iterator to iterate over the branches
+	 * @param int $junction   the junction number
+	 * @return iterable  a iterable to iterate the branches
 	 */
-	public function getConcurrentBranches(): ?iterable;
+	public function getBranchesForJunction(int $junction): iterable;
+
+	/**
+	 * Get the branches from all junctions.
+	 *
+	 * @return iterable  a iterable to iterate the branches
+	 */
+	public function getBranches(): iterable;
 
 	/**
 	 * A split has been reached. The $branches argument
@@ -99,11 +107,4 @@ interface Journal
 	 * @return ?string
 	 */
 	public function getFollowBranch(): ?string;
-
-	/**
-	 * Get the all branches
-	 *
-	 * @return iterable  iterator to iterate over the branches
-	 */
-	public function getAllBranches(): ?iterable;
 }
