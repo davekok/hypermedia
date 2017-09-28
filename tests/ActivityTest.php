@@ -154,7 +154,6 @@ class ActivityTest extends TestCase
 		$journal->getSourceUnit()->willReturn(null);
 		$journal->getType()->willReturn(null);
 		$journal->getTags()->willReturn(null);
-		$journal->getMainBranch()->willReturn($mainBranch->reveal());
 		$journal->getSplit()->willReturn(null);
 		$journal->setSplit(Argument::type('array'))
 			->will(function($args, $self)use($journal) {
@@ -177,16 +176,29 @@ class ActivityTest extends TestCase
 				$journal->getFollowBranch()->willReturn($branch);
 				return $self;
 			});
+		$journal->getBranchesForJunction(0)->willReturn([]);
+		$journal->getBranchesForJunction(1)->willReturn([]);
+
+		$mainBranchRevealed = $mainBranch->reveal();
+		$journal->createBranch(0)
+			->shouldBeCalled(1)
+			->will(function($args)use($journal,$mainBranchRevealed){
+				$journal->getFirstBranch()->willReturn($mainBranchRevealed);
+				$journal->getLastBranch()->willReturn($mainBranchRevealed);
+				$journal->getBranchesForJunction(0)->willReturn([$mainBranchRevealed]);
+				return $mainBranchRevealed;
+			});
+
 
 		$branches = [];
 		$actionCursors = [0,0,0];
 		$branchCursor = 0;
-		$journal->getConcurrentBranches()->willReturn(null);
-		$journal->fork()
+		$journal->createBranch(1)
 			->shouldBeCalled(1)
 			->will(function()use($prophet,$journal,&$branches,&$actionCursors,&$branchCursor,$object){
 				$branch = $prophet->prophesize();
 				$branch->willImplement(JournalBranch::class);
+				$branch->getJunction()->willReturn(1);
 				$branch->getLastEntry()->willReturn(null);
 
 				$allactions = [
@@ -231,15 +243,11 @@ class ActivityTest extends TestCase
 						return $self;
 					});
 
-				$branches[] = $branch->reveal();
-				$journal->getConcurrentBranches()->willReturn($branches);
+				$branchRevealed = $branch->reveal();
+				$branches[] = $branchRevealed;
+				$journal->getLastBranch()->willReturn($branchRevealed);
+				$journal->getBranchesForJunction(1)->willReturn($branches);
 				return $branch;
-			});
-
-		$journal->join()
-			->shouldBeCalled(1)
-			->will(function()use($journal){
-				$journal->getConcurrentBranches()->willReturn(null);
 			});
 
 		$journalRepository = $prophet->prophesize();

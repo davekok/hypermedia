@@ -237,7 +237,8 @@ final class Activity implements ActivityInterface
 	 */
 	public function followBranch(string $branch): ActivityInterface
 	{
-		return $this->journaling->followBranch($branch);
+		$this->journaling->followBranch($branch);
+		return $this;
 	}
 
 	/**
