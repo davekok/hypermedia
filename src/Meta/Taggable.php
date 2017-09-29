@@ -82,6 +82,7 @@ class Taggable
 	 */
 	public function setKeyOrder(array $keyorder): void
 	{
+		$tags = [];
 		foreach ($keyorder as $key) {
 			$tags[$key] = $this->tags[$key] ?? null;
 		}

@@ -29,6 +29,8 @@ class Resource
 	{
 		$this->class = $class;
 		$this->description = $description;
+		$this->fields = [];
+		$this->verbs = [];
 	}
 
 	/**
@@ -99,6 +101,7 @@ class Resource
 
 	/**
 	 * Get fields
+	 *
 	 * @return array fields
 	 */
 	public function getFields(): array
