@@ -125,9 +125,9 @@ final class HyperMedia
 			if ($path === "" || $path === "/") { // if root resource
 				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
 				$this->basePath.= "/".$this->journaling->getId()."/";
-				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->journaling->getMainBranch(), $this->di))
-					->createRootResource($request->getVerb())
-					->call($this->getValues($request));
+				$resource = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
+					->createRootResource($request->getVerb());
+				$response = $resource->call($this->getValues($request));
 			} else { // if normal resource
 				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
 					$path = substr($path, strlen($matches[0]));
@@ -137,9 +137,9 @@ final class HyperMedia
 				}
 				$this->basePath.= "/".$this->journaling->getId()."/";
 				$class = strtr(trim($path, "/"), "/", "\\");
-				$response = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->journaling->getMainBranch(), $this->di))
-					->createResource($class, $request->getVerb())
-					->call($this->getValues($request));
+				$resource = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
+					->createResource($class, $request->getVerb());
+				$response = $resource->call($this->getValues($request));
 			}
 		} catch (Response $e) {
 			$response = $e;
@@ -147,6 +147,18 @@ final class HyperMedia
 			$response = new InternalServerError("Uncaught exception", 0, $e);
 		} finally {
 			$response->setProtocolVersion($request->getProtocolVersion());
+			if (!isset($resource)) {
+				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
+				$content = $response->getContent();
+				if (isset($content)) {
+					$content = json_decode($content);
+					$this->journaling->getMainBranch()->addEntry($content, "exception", $response->getStatusCode(), $response->getStatusText());
+				} else {
+					$this->journaling->getMainBranch()->addEntry($response, "exception", $response->getStatusCode(), $response->getStatusText());
+				}
+			} else {
+				$this->journaling->getMainBranch()->addEntry($resource->getObject(), $resource->getMethod(), $response->getStatusCode(), $response->getStatusText());
+			}
 			$this->journaling->save();
 		}
 

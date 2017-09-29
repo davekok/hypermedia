@@ -16,7 +16,7 @@ trait DateTrait
 	public function getDate(): DateTime
 	{
 		if (empty($this->date)) {
-			$this->date = \DateTime::createFromFormat('U', time());
+			$this->date = DateTime::createFromFormat('U', (string)time());
 		}
 		return $this->date;
 	}

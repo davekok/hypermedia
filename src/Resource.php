@@ -28,7 +28,6 @@ final class Resource
 	private $sourceUnit;
 	private $tags;
 	private $basePath;
-	private $branch;
 	private $di;
 
 	private $response;
@@ -40,13 +39,12 @@ final class Resource
 	private $location;
 	private $self;
 
-	public function __construct(Cache $cache, string $sourceUnit, array $tags, string $basePath, JournalBranch $branch, $di)
+	public function __construct(Cache $cache, string $sourceUnit, array $tags, string $basePath, $di)
 	{
 		$this->cache = $cache;
 		$this->sourceUnit = $sourceUnit;
 		$this->tags = $tags;
 		$this->basePath = $basePath;
-		$this->branch = $branch;
 		$this->di = $di;
 	}
 
@@ -55,7 +53,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->branch, $this->di);
+		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
 		$resource = $self->cache->getRootResource($self->sourceUnit, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
@@ -70,7 +68,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->branch, $this->di);
+		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -82,7 +80,7 @@ final class Resource
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->branch, $this->di);
+		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -127,6 +125,16 @@ final class Resource
 		}
 	}
 
+	public function getObject()/*: object*/
+	{
+		return $this->object;
+	}
+
+	public function getMethod(): atring
+	{
+		return $this->method;
+	}
+
 	public function call(array $values): Response
 	{
 		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
@@ -166,7 +174,6 @@ final class Resource
 			$this->object->$name = $values[$name] ?? null;
 		}
 		$this->object->{$this->method}($this->response, $this->di);
-		$this->branch->addEntry($this->object, $this->method, $this->response->getStatusCode(), $this->response->getStatusText());
 		if ($this->self && $this->status === Meta\Verb::OK) {
 			$fields = [];
 			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {

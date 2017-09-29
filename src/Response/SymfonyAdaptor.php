@@ -16,9 +16,9 @@ final class SymfonyAdaptor extends \Symfony\Component\HttpFoundation\Response
 	 */
 	public function __construct(Response $response)
 	{
-        $this->headers = new ResponseHeaderBag();
+        $this->headers = new \Symfony\Component\HttpFoundation\ResponseHeaderBag();
 		$this->setProtocolVersion($response->getProtocolVersion());
-		$this->setStatus($response->getStatusCode(), $response->getStatusText());
+		$this->setStatusCode($response->getStatusCode(), $response->getStatusText());
 		$this->setDate($response->getDate());
 		if ($location = $response->getLocation()) {
 			$this->headers->set("Location", $location);
