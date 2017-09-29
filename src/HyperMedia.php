@@ -144,6 +144,7 @@ final class HyperMedia
 		} catch (Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
+			echo $e;exit();
 			$response = new InternalServerError("Uncaught exception", 0, $e);
 		} finally {
 			$response->setProtocolVersion($request->getProtocolVersion());

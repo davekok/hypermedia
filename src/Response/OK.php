@@ -89,7 +89,7 @@ final class OK implements Response
 					$this->part->data = new stdClass;
 				}
 				$this->part->fields->$name = $field;
-				$this->part->data->$name = $field->value;
+				$this->part->data->$name = $field->value??null;
 			}
 		}
 	}
