@@ -32,7 +32,7 @@ final class SymfonyAdaptor implements Request
 
 	public function getQuery(): string
 	{
-		return $this->request->getQueryString();
+		return $this->request->getQueryString()??"";
 	}
 
 	public function getContentType(): ?string

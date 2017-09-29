@@ -18,11 +18,10 @@ class ResourceCompiler
 	{
 		$verbs = [];
 		$root;
-		foreach ($resource->getVerbs() as $key => $verbs) {
-			$verb = $matcher->findBestMatch($verbs);
+		foreach ($resource->getVerbs() as $key => $variants) {
+			$verb = $matcher->findBestMatch($variants);
 			if ($verb) {
-				$verbs = [
-					$key,
+				$verbs[$key] = [
 					$verb->getMethod(),
 					$verb->getStatus(),
 					$verb->getLocation(),
@@ -53,17 +52,8 @@ class ResourceCompiler
 			}
 		}
 
-		foreach ($resource->getVerbs() as $key => $verbs) {
-			$verb = $matcher->findBestMatch($verbs);
-			if ($verb) {
-				$item->setVerb(
-					$key,
-					$verb->getMethod(),
-					$verb->getStatus(),
-					$verb->getLocation(),
-					$verb->getSelf()
-				);
-			}
+		foreach ($verbs as $key => [$method, $status, $location, $self]) {
+			$item->setVerb($key, $method, $status, $location, $self);
 		}
 
 		return $item;
