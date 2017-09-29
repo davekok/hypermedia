@@ -22,21 +22,21 @@ interface Journal
 	 *
 	 * @return string
 	 */
-	public function getSourceUnit(): ?string;
+	public function getSourceUnit(): string;
 
 	/**
 	 * Get type
 	 *
 	 * @return int
 	 */
-	public function getType(): ?int;
+	public function getType(): int;
 
 	/**
 	 * Get tags
 	 *
 	 * @return array
 	 */
-	public function getTags(): ?array;
+	public function getTags(): array;
 
 	/**
 	 * Creates a new branch, belonging to this journal
