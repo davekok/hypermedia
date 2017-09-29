@@ -130,7 +130,7 @@ final class Resource
 		return $this->object;
 	}
 
-	public function getMethod(): atring
+	public function getMethod(): string
 	{
 		return $this->method;
 	}
