@@ -33,7 +33,7 @@ interface JournalEntry
 	 *
 	 * @return bool
 	 */
-	public function getRedacted(): bool;
+	public function isRedacted(): bool;
 
 	/**
 	 * Get object

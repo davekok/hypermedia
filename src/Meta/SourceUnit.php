@@ -41,6 +41,11 @@ final class SourceUnit implements CacheSourceUnit
 	private $activities;
 
 	/**
+	 * @var array
+	 */
+	private $resources;
+
+	/**
 	 * Constructor
 	 *
 	 * @param $name  the name of the unit
@@ -48,6 +53,8 @@ final class SourceUnit implements CacheSourceUnit
 	public function __construct(string $name)
 	{
 		$this->name = $name;
+		$this->activities = [];
+		$this->resources = [];
 	}
 
 	/**
