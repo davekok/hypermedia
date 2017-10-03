@@ -151,10 +151,11 @@ final class StringType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$value = trim(filter_var($value, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW));
+		$value = filter_var($value, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW);
 		if ($value === false) {
 			return false;
 		}
+		$value = trim($value);
 		if (isset($this->minimumLength) && strlen($value) < $this->minimumLength) {
 			return false;
 		}

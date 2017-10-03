@@ -141,15 +141,16 @@ final class HyperMedia
 					->createResource($class, $request->getVerb());
 				$response = $resource->call($this->getValues($request));
 			}
-		} catch (Response $e) {
+		} catch (Response\Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
-			echo $e;exit();
 			$response = new InternalServerError("Uncaught exception", 0, $e);
 		} finally {
 			$response->setProtocolVersion($request->getProtocolVersion());
-			if (!isset($resource)) {
+			if(!$this->journaling->hasJournal()){
 				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
+			}
+			if (!isset($resource)) {
 				$content = $response->getContent();
 				if (isset($content)) {
 					$content = json_decode($content);
@@ -226,7 +227,7 @@ final class HyperMedia
 					throw new BadRequest("The content is not valid JSON.");
 				}
 			} else {
-				throw new UnsupportedMediaType("Expected media type 'application/json'.");
+				throw new UnsupportedMediaType("Expected media type 'application/json', got '" . $request->getContentType() . "'.");
 			}
 		}
 		$query = $request->getQuery();

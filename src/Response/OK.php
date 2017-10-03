@@ -90,6 +90,7 @@ final class OK implements Response
 				}
 				$this->part->fields->$name = $field;
 				$this->part->data->$name = $field->value??null;
+				unset($field->value);
 			}
 		}
 	}

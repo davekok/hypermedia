@@ -191,6 +191,8 @@ final class Resource
 				if ($flags->isData()) $field->data = true;
 				if ($autocomplete) $field->autocomplete = $autocomplete;
 				$fields[$name] = $field;
+			}
+			if (!empty($fields)) {
 				$this->response->setFields($fields);
 			}
 		}

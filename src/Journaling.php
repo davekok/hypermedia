@@ -65,6 +65,14 @@ class Journaling
 	}
 
 	/**
+	 * Check if journal exists
+	 */
+	public function hasJournal(): bool
+	{
+		return isset($this->journal);
+	}
+	
+	/**
 	 * Save the journal
 	 */
 	public function save(): void
