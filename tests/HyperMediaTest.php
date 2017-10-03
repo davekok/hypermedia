@@ -348,38 +348,6 @@ class HyperMediaTest extends HyperMediaBase
 	$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
 	
-	public function testPostOKResource()
-	{
-		// resource
-		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
-		
-		// request
-		$this->fields = [];
-		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>true,"meta"=>true];
-		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
-		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>true,"meta"=>true];
-		$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>true,"meta"=>true];
-		$this->initRequest("1.1","POST",false, $this->fields);
-		
-		// response
-		$this->_journalId = $this->journalId??rand();
-		$this->statusCode = 200;
-		$this->statusText = "OK";
-		$this->location = null;
-		$this->contentType = 'application/json';
-		$content = new stdClass;
-		
-		$content->main = new stdClass;
-		$content->main->fields = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-		
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-		
-		$this->handle($this->createHyperMedia(), $this->createRequest());
-	}
-	
 	public function testPostResourceWithUnsupportedMediaType()
 	{
 		// resource
