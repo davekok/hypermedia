@@ -3,13 +3,45 @@
 namespace Sturdy\Activity\Response;
 
 use Exception;
+use Throwable;
 
 abstract class Error extends Exception implements Response
 {
 	use ProtocolVersionTrait;
 	use DateTrait;
 	use NoLocationTrait;
-
+	
+	private $messages;
+	
+	/**
+	 * Error constructor.
+	 * @param string $message
+	 * @param int $code
+	 * @param Throwable|null $previous
+	 */
+	public function __construct($message = "", $code = 0, Throwable $previous = null)
+	{
+		parent::__construct($message, $code, $previous);
+		if($message) {
+			$this->messages = [$message];
+		}
+	}
+	
+	public function addMessage(string $message)
+	{
+		$this->messages[] =	$message;
+	}
+	
+	public function hasMessages(): bool
+	{
+		return ($this->messages > 0);
+	}
+	
+	public function getMessages(): array
+	{
+		return $this->messages;
+	}
+	
 	/**
 	 * Get the content type
 	 *
@@ -27,7 +59,15 @@ abstract class Error extends Exception implements Response
 	 */
 	public function getContent(): string
 	{
-		$error = ["message"=>$this->getMessage()];
+		switch(count($this->messages)){
+			case 0:
+				break;
+			case 1:
+				$error["message"] = $this->messages[0];
+				break;
+			default:
+				$error["messages"] = $this->messages;
+		}
 		$code = $this->getCode();
 		if ($code > 0) {
 			$error["code"] = $code;
@@ -39,6 +79,6 @@ abstract class Error extends Exception implements Response
 				"trace" => explode("\n", $previous->getTraceAsString())
 			];
 		}
-		return json_encode(["error"=>$error], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		return json_encode(["error" => $error], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	}
 }

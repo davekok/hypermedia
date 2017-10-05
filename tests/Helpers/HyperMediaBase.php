@@ -162,7 +162,7 @@ CLASS
 			$this->requestContentType = "application/json";
 			$this->requestContent = [];
 			foreach ($this->fields as $name => &$field) {
-				if (!($field["meta"] ?? false)) {
+				if (!($field["meta"] ?? false) && array_key_exists('value',$field)) {
 					$this->requestContent[$name] = $field['value'];
 					unset($field['value']);
 				}

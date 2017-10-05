@@ -137,42 +137,52 @@ final class Resource
 
 	public function call(array $values): Response
 	{
+		$badRequest = new BadRequest();
 		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
 			// flags check
 			$flags = new FieldFlags($flags);
 			if ($flags->isRequired() && !isset($values[$name])) {
-				throw new BadRequest("$name is required");
+				$badRequest->addMessage("$name is required");
 			}
 			if ($flags->isReadonly() && isset($values[$name])) {
-				throw new BadRequest("$name is readonly");
+				$badRequest->addMessage("$name is readonly");
 			}
 			if ($flags->isDisabled() && isset($values[$name])) {
-				throw new BadRequest("$name is disabled");
+				$badRequest->addMessage("$name is disabled");
 			}
 			// type check
 			if (isset($values[$name])) {
 				$type = Type::createType($type);
 				if ($flags->isArray()) {
-					foreach ($values[$name] as $value) {
-						if (!$type->filter($value)) {
-							throw new BadRequest("$name does not have a valid value: {$value}");
+					if (is_array($values[$name])) {
+						foreach ($values[$name] as $value) {
+							if (!$type->filter($value)) {
+								$badRequest->addMessage("$name does not have a valid value: {$value}");
+							}
 						}
+					} else {
+						$badRequest->addMessage("Expected type of $name is array, " . gettype($values[$name]) . " found.");
 					}
 				} elseif ($flags->isMultiple()) {
 					foreach (explode(",", $values[$name]) as $value) {
 						$value = trim($value);
 						if (!$type->filter($value)) {
-							throw new BadRequest("$name does not have a valid value: {$value}");
+							$badRequest->addMessage("$name does not have a valid value: {$value}");
 						}
 					}
 				} else {
 					if (!$type->filter($values[$name])) {
-						throw new BadRequest("$name does not have a valid value: {$values[$name]}");
+						$badRequest->addMessage("$name does not have a valid value: {$values[$name]}");
 					}
 				}
 			}
 			$this->object->$name = $values[$name] ?? null;
 		}
+		
+		if($badRequest->hasMessages()) {
+			throw $badRequest;
+		}
+		
 		$this->object->{$this->method}($this->response, $this->di);
 		if ($this->self && $this->status === Meta\Verb::OK) {
 			$fields = [];

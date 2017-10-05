@@ -82,7 +82,7 @@ final class OK implements Response
 				$this->part->fields->$name = $field;
 			} elseif ($field->data??false) {
 				$this->part->fields->$name = $field;
-				$this->part->data = $field->value;
+				$this->part->data = $field->value??null;
 				unset($field->value);
 			} else {
 				if (!isset($this->part->data)) {
