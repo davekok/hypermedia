@@ -122,8 +122,12 @@ final class HyperMedia
 		// handle
 		try {
 			$path = substr($request->getPath(), strlen($this->basePath));
-			if ($path === "" || $path === "/") { // if root resource
-				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
+			if ($path === "" || $path === "/" || preg_match("|^/([0-9]+)/$|", $path, $matches)) { // if root resource
+				if (isset($matches[1])) {
+					$this->journaling->resume((int)$matches[1]);
+				} else {
+					$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
+				}
 				$this->basePath.= "/".$this->journaling->getId()."/";
 				$resource = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
 					->createRootResource($request->getVerb());

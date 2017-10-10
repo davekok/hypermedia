@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class YearType
+final class YearType extends Type
 {
 	const type = "year";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class YearType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class YearType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class YearType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -47,7 +47,7 @@ class YearType
 	public function filter(&$value): bool
 	{
 		if (!preg_match("/^(1[6-9][0-9]{2}|2[0-9]{3})$/", $value)) return false;
-		
+
 		return true;
 	}
 }

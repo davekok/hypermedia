@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class ColorType
+final class ColorType extends Type
 {
 	const type = "color";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class ColorType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class ColorType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class ColorType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -47,7 +47,7 @@ class ColorType
 	public function filter(&$value): bool
 	{
 		if(!preg_match("/^#?[0-9a-zA-Z]{6}$/",$value)) return false;
-		
+
 		return true;
 	}
 }

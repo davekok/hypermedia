@@ -5,11 +5,11 @@ namespace Sturdy\Activity\Meta\Type;
 
 use DateTime,stdClass;
 
-final class DateType
+final class DateType extends Type
 {
 	const type = "date";
 	private $date;
-	
+
 	/**
 	 * Constructor
 	 *
@@ -22,7 +22,7 @@ final class DateType
 			if (strlen($date)) $this->date = new \DateTime($date);
 		}
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -32,7 +32,7 @@ final class DateType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * @return \DateTime
 	 */
@@ -40,7 +40,7 @@ final class DateType
 	{
 		return $this->date;
 	}
-	
+
 	/**
 	 * @param string $date
 	 */
@@ -49,7 +49,7 @@ final class DateType
 		$this->date = new DateTime($date);
 		return $this;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -62,7 +62,7 @@ final class DateType
 			$meta->date = $this->date->format('Y-m-d');
 		}
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -72,7 +72,7 @@ final class DateType
 	public function filter(&$value): bool
 	{
 		if(!preg_match("^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)$",$value)) return false;
-		
+
 		return true;
 	}
 }

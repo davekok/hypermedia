@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class EmailType
+final class EmailType extends Type
 {
 	const type = "email";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class EmailType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class EmailType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class EmailType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -47,7 +47,7 @@ class EmailType
 	public function filter(&$value): bool
 	{
 		if(!filter_var($value,FILTER_VALIDATE_EMAIL)) return false;
-		
+
 		return true;
 	}
 }

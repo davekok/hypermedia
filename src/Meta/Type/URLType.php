@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class URLType
+final class URLType extends Type
 {
 	const type = "url";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class URLType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class URLType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class URLType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -47,7 +47,7 @@ class URLType
 	public function filter(&$value): bool
 	{
 		if(!filter_var($value,FILTER_VALIDATE_URL)) return false;
-		
+
 		return true;
 	}
 }

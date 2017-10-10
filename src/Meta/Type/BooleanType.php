@@ -6,7 +6,7 @@ namespace Sturdy\Activity\Meta\Type;
  * Class BooleanType
  * @package Sturdy\Activity\Meta\Type
  */
-final class BooleanType
+final class BooleanType extends Type
 {
 	const type = "boolean";
 

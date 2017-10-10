@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class UUIDType
+final class UUIDType extends Type
 {
 	const type = "uuid";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class UUIDType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class UUIDType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class UUIDType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -47,7 +47,7 @@ class UUIDType
 	public function filter(&$value): bool
 	{
 		if(!preg_match("/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/",$value)) return false;
-		
+
 		return true;
 	}
 }

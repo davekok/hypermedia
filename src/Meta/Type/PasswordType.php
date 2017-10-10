@@ -4,12 +4,12 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class PasswordType
+final class PasswordType extends Type
 {
 	const type = "password";
 	private $minimumLength;
 	private $maximumLength;
-	
+
 	/**
 	 * Constructor
 	 *
@@ -23,7 +23,7 @@ class PasswordType
 			if (strlen($max) > 0) $this->maximumLength = (int)$max;
 		}
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -33,7 +33,7 @@ class PasswordType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -43,7 +43,7 @@ class PasswordType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -54,7 +54,7 @@ class PasswordType
 	{
 		// Min length of <minimumLength>, max length of <maximumlength>, only allow $@$!%*?&, a-z and A-Z
 		if(!preg_match("/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&])[A-Za-z\d$@$!%*?&]{". $this->minimumLength .",". $this->maximumLength ."}/$",$value)) return false;
-		
+
 		return true;
 	}
 }

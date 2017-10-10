@@ -45,7 +45,7 @@ class ResourceCompiler
 				$item->setField(
 					$key,
 					$field->getType()->getDescriptor(),
-					$field->getDefault(),
+					$field->getDefaultValue(),
 					$field->getFlags()->toInt(),
 					$field->getAutocomplete()
 				);

@@ -9,7 +9,7 @@ use stdClass;
  * Class SetType
  * @package Sturdy\Activity\Meta\Type
  */
-final class SetType
+final class SetType extends Type
 {
 	const type = "set";
 	private $options;
@@ -82,7 +82,7 @@ final class SetType
 	public function filter(&$values): bool
 	{
 		if($this->options->contains(...explode(',',$values))) return false;
-		
+
 		return true;
 	}
 }

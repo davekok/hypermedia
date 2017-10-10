@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass, DOMDocument;
 
-class HTMLType
+final class HTMLType extends Type
 {
 	const type = "html";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class HTMLType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class HTMLType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class HTMLType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -49,7 +49,7 @@ class HTMLType
 		$dom = new DOMDocument();
 		$dom->loadHTML($value);
 		if(!$dom->validate()) return false;
-		
+
 		return true;
 	}
 }

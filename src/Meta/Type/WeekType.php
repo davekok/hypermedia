@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class WeekType
+final class WeekType extends Type
 {
 	const type = "week";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class WeekType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class WeekType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class WeekType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -48,7 +48,7 @@ class WeekType
 	{
 		if (is_numeric($value)) return false;
 		if ($value < 1 || $value > 53) return false;
-		
+
 		return true;
 	}
 }

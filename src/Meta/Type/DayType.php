@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class DayType
+final class DayType extends Type
 {
 	const type = "day";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -16,7 +16,7 @@ class DayType
 	public function __construct(array $state = null)
 	{
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -26,7 +26,7 @@ class DayType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -36,7 +36,7 @@ class DayType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -46,7 +46,7 @@ class DayType
 	public function filter(&$value): bool
 	{
 		if (!preg_match("^(0?[1-9]|[12]\d|3[01])$", $value)) return false;
-		
+
 		return true;
 	}
 }

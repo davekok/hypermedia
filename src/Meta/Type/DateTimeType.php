@@ -4,11 +4,11 @@ namespace Sturdy\Activity\Meta\Type;
 
 use DateTime,stdClass;
 
-final class DateTimeType
+final class DateTimeType extends Type
 {
 	const type = "datetime";
 	private $datetime;
-	
+
 	/**
 	 * Constructor
 	 *
@@ -21,7 +21,7 @@ final class DateTimeType
 			if (strlen($datetime)) $this->datetime = new \DateTime($datetime);
 		}
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -31,7 +31,7 @@ final class DateTimeType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * @return \DateTime
 	 */
@@ -39,7 +39,7 @@ final class DateTimeType
 	{
 		return $this->datetime;
 	}
-	
+
 	/**
 	 * @param string $datetime
 	 * @return self
@@ -49,7 +49,7 @@ final class DateTimeType
 		$this->datetime = new DateTime($datetime);
 		return $this;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -62,7 +62,7 @@ final class DateTimeType
 			$meta->date = $this->datetime->format(DATE_ATOM);
 		}
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -72,7 +72,7 @@ final class DateTimeType
 	public function filter(&$value): bool
 	{
 		if (!preg_match("^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:Z|[+-][01]\d:[0-5]\d)$", $value)) return false;
-		
+
 		return true;
 	}
 }

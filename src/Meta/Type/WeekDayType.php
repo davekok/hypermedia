@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class WeekDayType
+final class WeekDayType extends Type
 {
 	const type = "weekday";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class WeekDayType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class WeekDayType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class WeekDayType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -48,7 +48,7 @@ class WeekDayType
 	{
 		$days = array('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sun', 'Mon','Tue','Wed','Thu','Fri','Sat',1,2,3,4,5,6,7);
 		if(!in_array($value,$days)) return false;
-		
+
 		return true;
 	}
 }

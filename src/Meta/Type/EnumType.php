@@ -5,11 +5,11 @@ namespace Sturdy\Activity\Meta\Type;
 use Ds\Set;
 use stdClass;
 
-final class EnumType
+final class EnumType extends Type
 {
 	const type = "enum";
 	private $options;
-	
+
 	/**
 	 * Constructor
 	 *
@@ -22,7 +22,7 @@ final class EnumType
 			if (strlen($options)) $this->options = new Set(...explode(";", $options));
 		}
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -32,7 +32,7 @@ final class EnumType
 	{
 		return self::type."," .  $this->options->join(';');
 	}
-	
+
 	/**
 	 * Get all possible options
 	 *
@@ -42,7 +42,7 @@ final class EnumType
 	{
 		return $this->options;
 	}
-	
+
 	/**
 	 * Set possible options
 	 *
@@ -54,7 +54,7 @@ final class EnumType
 		$this->options = $options;
 		return $this;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -67,7 +67,7 @@ final class EnumType
 			$meta->options = $this->options->toArray();
 		}
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -77,7 +77,7 @@ final class EnumType
 	public function filter(&$value): bool
 	{
 		if(!$this->options->contains($value)) return false;
-		
+
 		return true;
 	}
 }

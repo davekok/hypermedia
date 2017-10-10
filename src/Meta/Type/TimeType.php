@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 
-class TimeType
+final class TimeType extends Type
 {
 	const type = "time";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -15,9 +15,9 @@ class TimeType
 	 */
 	public function __construct(array $state = null)
 	{
-	
+
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -27,7 +27,7 @@ class TimeType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -37,7 +37,7 @@ class TimeType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -47,7 +47,7 @@ class TimeType
 	public function filter(&$value): bool
 	{
 		if (!preg_match("^T?(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:|[+-][01]\d:[0-5]\d)$", $value)) return false;
-		
+
 		return true;
 	}
 }

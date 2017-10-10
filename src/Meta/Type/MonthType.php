@@ -4,10 +4,10 @@ namespace Sturdy\Activity\Meta\Type;
 
 use DateTime,stdClass;
 
-class MonthType
+final class MonthType extends Type
 {
 	const type = "month";
-	
+
 	/**
 	 * Constructor
 	 *
@@ -16,7 +16,7 @@ class MonthType
 	public function __construct(array $state = null)
 	{
 	}
-	
+
 	/**
 	 * Get descriptor
 	 *
@@ -26,7 +26,7 @@ class MonthType
 	{
 		return self::type;
 	}
-	
+
 	/**
 	 * Set meta properties on object
 	 *
@@ -36,7 +36,7 @@ class MonthType
 	{
 		$meta->type = self::type;
 	}
-	
+
 	/**
 	 * Filter value
 	 *
@@ -46,17 +46,17 @@ class MonthType
 	public function filter(&$value): bool
 	{
 		$monthNames = [];
-		
+
 		for($i = 1; $i <= 12; $i++)
 		{
 			$date = new DateTime('01-'. str_pad($i,2,"0",STR_PAD_LEFT) .'-Y');
 			$monthNames[] = $date->format('F');
 			$monthNames[] = $date->format('M');
 		}
-		
+
 		if (is_numeric($value) && !preg_match("/^(0[1-9]|[12]\d|3[01])$/", $value)) return false;
 		if (!in_array(ucfirst(strtolower($value)),$monthNames)) return false;
-		
+
 		return true;
 	}
 }

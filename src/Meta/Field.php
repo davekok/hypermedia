@@ -5,7 +5,6 @@ namespace Sturdy\Activity\Meta;
 use Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
 use Exception;
 
-
 /**
  * The field annotation.
  *
@@ -89,7 +88,7 @@ final class Field extends Taggable
 	 * @param string $type
 	 * @return self
 	 */
-	public function setType(string $type): self
+	public function setType(Type\Type $type): self
 	{
 		$this->type = $type;
 		return $this;
@@ -100,7 +99,7 @@ final class Field extends Taggable
 	 *
 	 * @return string
 	 */
-	public function getType(): string
+	public function getType(): Type\Type
 	{
 		return $this->type;
 	}
@@ -166,7 +165,7 @@ final class Field extends Taggable
 	 *
 	 * @return string
 	 */
-	public function getAutocomplete(): string
+	public function getAutocomplete(): ?string
 	{
 		return $this->autocomplete;
 	}
