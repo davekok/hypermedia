@@ -72,6 +72,9 @@ class SourceUnitFactoryTest extends TestCase
 		$this->assertTrue(in_array(TestUnit2\Activity2::class, $classes), TestUnit2\Activity2::class." not in ".var_export($classes, true));
 		$this->assertEquals(["route", "role"], $unit->getTagOrder(), "tag order");
 		$items = iterator_to_array($unit->getCacheItems(), false);
-		$this->assertEquals(2, count($items), "item count");
+		foreach ($items as $item) {
+//			var_dump($item->getClass(), $item->getTags());
+		}
+		$this->assertEquals(5, count($items), "item count");
 	}
 }

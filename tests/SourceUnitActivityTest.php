@@ -17,7 +17,7 @@ use Prophecy\{
 };
 use stdClass;
 
-class SourceUnitTest extends TestCase
+class SourceUnitActivityTest extends TestCase
 {
 	private $unit;
 
@@ -83,7 +83,7 @@ class SourceUnitTest extends TestCase
 		$this->assertTrue(!empty($activity->getActionsWithName("action11")));
 	}
 
-	public function testBestMatch()
+	public function testBestMatchActions()
 	{
 		[$activity] = $this->unit->getActivities();
 		$m = new TagMatcher([], ["route", "role"]);
@@ -100,9 +100,10 @@ class SourceUnitTest extends TestCase
 		$this->assertEquals((string)$m->setTags(["route"=>"/","role"=>"admin"])->findBestMatch($action3), "[action3] > action6 #route=/ #role=admin", "best match 9");
 	}
 
-	public function testCompile()
+	public function testCompileActions()
 	{
 		$items = iterator_to_array($this->unit->getCacheItems());
+		
 		$this->assertEquals(4, count($items));
 		$a1 = new CacheItem_Activity();
 		$a1->setClass("Home");

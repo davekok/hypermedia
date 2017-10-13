@@ -9,11 +9,35 @@ use stdClass;
  */
 abstract class Type
 {
+	const types = [
+		BooleanType::type => BooleanType::class,
+		ColorType::type => ColorType::class,
+		DatetimeType::type => DateTimeType::class,
+		DateType::type => DateType::class,
+		DayType::type => DayType::class,
+		EmailType::type => EmailType::class,
+		EnumType::type => EnumType::class,
+		FloatType::type => FloatType::class,
+		HtmlType::type => HtmlType::class,
+		IntegerType::type => IntegerType::class,
+		MonthType::type => MonthType::class,
+		PasswordType::type => PasswordType::class,
+		SetType::type => SetType::class,
+		StringType::type => StringType::class,
+		TimeType::type => TimeType::class,
+		UrlType::type => URLType::class,
+		UuidType::type => UUIDType::class,
+		WeekdayType::type => WeekDayType::class,
+		WeekType::type => WeekType::class,
+		YearType::type => YearType::class,
+		ObjectType::type => ObjectType::class,
+	];
+	
 	public static function createType(string $state): Type
 	{
 		$state = explode(",", $state);
 		$type = array_shift($state);
-		$class = __NAMESPACE__."\\".ucfirst($type)."Type";
+		$class = self::types[$type];
 		return new $class($state);
 	}
 

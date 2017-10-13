@@ -87,7 +87,7 @@ final class SourceUnit implements CacheSourceUnit
 	 *
 	 * @param string[]  the tags
 	 */
-	public function setTagOrder(array $tags): self
+	public function setTagOrder(array $tagorder): self
 	{
 		$this->tagorder = $tagorder;
 		return $this;
@@ -178,13 +178,37 @@ final class SourceUnit implements CacheSourceUnit
 	 */
 	public function getCacheItems(): iterable
 	{
-		$compiler = new ActivityCompiler();
-		foreach ($this->activities??[] as $activity) {
-			yield from $this->compileItem($activity, $compiler);
+		$tagMatchers = [];
+		
+		foreach([$this->activities??[], $this->resources??[]] as $items) {
+			foreach ($items as $item) {
+				foreach ($item->getTaggables() as $taggable) {
+					$taggable->setKeyOrder($this->tagorder);
+					foreach ($this->tagPermutations($taggable->getTags()) as $tags) {
+						$hash = hash("md5", serialize($tags), true);
+						if (!isset($tagMatchers[$hash])) {
+							$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
+						}
+					}
+				}
+			}
 		}
-		$compiler = new ResourceCompiler();
-		foreach ($this->resources??[] as $resource) {
-			yield from $this->compileItem($resource, $compiler);
+		
+		foreach ($tagMatchers as $tagMatcher) {
+			$compiler = new ActivityCompiler();
+			foreach ($this->activities??[] as $activity) {
+				// compile item
+				$cacheItem = $compiler->compile($activity, $tagMatcher);
+				if (!$cacheItem->valid()) continue;
+				yield $cacheItem;
+			}
+			$compiler = new ResourceCompiler();
+			foreach ($this->resources??[] as $resource) {
+				// compile item
+				$cacheItem = $compiler->compile($resource, $tagMatcher);
+				if (!$cacheItem->valid()) continue;
+				yield $cacheItem;
+			}
 		}
 	}
 
@@ -206,37 +230,67 @@ final class SourceUnit implements CacheSourceUnit
 			}
 		}
 	}
-
+	
 	/**
-	 * Compile one item
+	 * Return all permutations of tags without duplicates.
 	 *
-	 * @param  $item      item to compile
-	 * @param  $compiler  compiler to use
+	 * @param  array  $tags  the tags to return the permutations for
+	 * @return iterable  to iterate over the permutations
 	 */
-	private function compileItem($item, $compiler): iterable
+	private function tagPermutations(array $tags): iterable
 	{
-		foreach ($item->getTaggables() as $taggable) {
-			$taggable->setKeyOrder($this->tagorder);
+		$keys = array_keys($tags);
+		$array = [];
+		foreach ($tags as $key => $value) {
+			if ($value !== null) {
+				$array[] = [$key, $value];
+			}
 		}
-
-		// compile item
-		$hashes = [];
-		foreach ($item->getTaggables() as $taggable) {
-			$tags = $taggable->getTags();
-
-			// create a hash so items are only compiled once
-			$hash = hash("md5", serialize($tags), true);
-
-			// check that item is not already compiled
-			if (isset($hashes[$hash]))
-				continue;
-
-			$cacheItem = $compiler->compile($item, $taggable->createMatcher());
-			if (!$cacheItem->valid()) continue;
-
-			// remember that this variant has been found
-			$hashes[$hash] = $cacheItem;
-			yield $cacheItem;
+		yield $this->orderTags([]);
+		foreach ($this->permutations($array) as $permutation) {
+			$tags = [];
+			foreach ($permutation as [$key, $value]) {
+				$tags[$key] = $value;
+			}
+			yield $this->orderTags($tags);
 		}
+	}
+	
+	/**
+	 * Return all permutations of tags without duplicates.
+	 *
+	 * @param  array  $tags  the tags to return the permutations for
+	 * @return iterable  to iterate over the permutations
+	 */
+	private function permutations(array $array): iterable
+	{
+		$l = count($array);
+		switch ($l) {
+			case 0:
+				break;
+			case 1:
+				yield $array;
+				break;
+			default:
+				foreach ($array as $value) {
+					yield [$value];
+				}
+				for ($i = 0; $i < $l; ++$i) {
+					$value = array_shift($array);
+					foreach ($this->permutations($array) as $sub) {
+						array_unshift($sub, $value);
+						yield $sub;
+					}
+				}
+		}
+	}
+	
+	private function orderTags(array $array)
+	{
+		$tags = [];
+		foreach ($this->tagorder as $key) {
+			$tags[$key] = $array[$key] ?? null;
+		}
+		return $tags;
 	}
 }

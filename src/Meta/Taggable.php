@@ -91,17 +91,6 @@ class Taggable
 	}
 
 	/**
-	 * Create a matcher for this taggable to find other
-	 * similar taggables.
-	 *
-	 * @return TagMatcher  the matcher object
-	 */
-	public function createMatcher(): TagMatcher
-	{
-		return new TagMatcher($this->tags, $this->keyorder);
-	}
-
-	/**
 	 * To string
 	 *
 	 * @return string  text representation of object

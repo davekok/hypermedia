@@ -17,7 +17,7 @@ class ResourceCompiler
 	public function compile(Resource $resource, TagMatcher $matcher): CacheItem_Resource
 	{
 		$verbs = [];
-		$root;
+		$root = false;
 		foreach ($resource->getVerbs() as $key => $variants) {
 			$verb = $matcher->findBestMatch($variants);
 			if ($verb) {

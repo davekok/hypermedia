@@ -48,7 +48,7 @@ final class SourceUnitFactory
 				$className = $this->getClassNameFromSource($source);
 				if (!class_exists($className)) {
 					require($file);
-					if (!class_exists($className)) {
+					if (!class_exists($className, false)) {
 						continue;
 					}
 				}
