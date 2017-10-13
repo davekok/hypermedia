@@ -8,7 +8,6 @@ use DateTime,stdClass;
 final class DateType extends Type
 {
 	const type = "date";
-	private $date;
 
 	/**
 	 * Constructor
@@ -17,10 +16,6 @@ final class DateType extends Type
 	 */
 	public function __construct(array $state = null)
 	{
-		if($state !== null){
-			[$date] = $state;
-			if (strlen($date)) $this->date = new \DateTime($date);
-		}
 	}
 
 	/**
@@ -34,23 +29,6 @@ final class DateType extends Type
 	}
 
 	/**
-	 * @return \DateTime
-	 */
-	public function getDate(): DateTime
-	{
-		return $this->date;
-	}
-
-	/**
-	 * @param string $date
-	 */
-	public function setDate(string $date) : self
-	{
-		$this->date = new DateTime($date);
-		return $this;
-	}
-
-	/**
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
@@ -58,9 +36,6 @@ final class DateType extends Type
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		if($this->date) {
-			$meta->date = $this->date->format('Y-m-d');
-		}
 	}
 
 	/**
@@ -71,8 +46,6 @@ final class DateType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!preg_match("^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)$",$value)) return false;
-
-		return true;
+		return 1 === preg_match("^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)$", $value = trim($value));
 	}
 }

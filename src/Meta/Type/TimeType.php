@@ -46,8 +46,6 @@ final class TimeType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if (!preg_match("^T?(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:|[+-][01]\d:[0-5]\d)$", $value)) return false;
-
-		return true;
+		return 1 === preg_match("^T?(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:|[+-][01]\d:[0-5]\d)$", $value);
 	}
 }

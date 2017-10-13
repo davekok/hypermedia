@@ -46,8 +46,6 @@ final class UUIDType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!preg_match("/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/",$value)) return false;
-
-		return true;
+		return 1 === preg_match("/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/", $value);
 	}
 }

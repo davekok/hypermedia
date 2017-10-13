@@ -46,8 +46,11 @@ final class YearType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if (!preg_match("/^(1[6-9][0-9]{2}|2[0-9]{3})$/", $value)) return false;
-
+		$year = filter_var(trim($value), FILTER_VALIDATE_INT);
+		if ($year === false || $year === 0) { // there is no year 0
+			return false;
+		}
+		$value = $year;
 		return true;
 	}
 }

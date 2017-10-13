@@ -162,6 +162,7 @@ final class ActionParser
 	private $actionToken;
 	private $branchActionToken;
 
+	private $action;
 	private $text;
 	private $done;
 

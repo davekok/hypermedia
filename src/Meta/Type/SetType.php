@@ -81,8 +81,6 @@ final class SetType extends Type
 	 */
 	public function filter(&$values): bool
 	{
-		if($this->options->contains(...explode(',',$values))) return false;
-
-		return true;
+		return $this->options->contains(...explode(',', $values));
 	}
 }

@@ -2,11 +2,26 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
-use DateTime,stdClass;
+use DateTime;
+use stdClass;
 
 final class MonthType extends Type
 {
 	const type = "month";
+	const monthNames = [
+		"january"   =>  1, "jan" =>  1,  1 =>  1,
+		"february"  =>  2, "feb" =>  2,  2 =>  2,
+		"march"     =>  3, "mar" =>  3,  3 =>  3,
+		"april"     =>  4, "apr" =>  4,  4 =>  4,
+		"may"       =>  5, "may" =>  5,  5 =>  5,
+		"june"      =>  6, "jun" =>  6,  6 =>  6,
+		"july"      =>  7, "jul" =>  7,  7 =>  7,
+		"august"    =>  8, "aug" =>  8,  8 =>  8,
+		"september" =>  9, "sep" =>  9,  9 =>  9,
+		"october"   => 10, "oct" => 10, 10 => 10,
+		"november"  => 11, "nov" => 11, 11 => 11,
+		"december"  => 12, "dec" => 12, 12 => 12,
+	];
 
 	/**
 	 * Constructor
@@ -45,18 +60,9 @@ final class MonthType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$monthNames = [];
-
-		for($i = 1; $i <= 12; $i++)
-		{
-			$date = new DateTime('01-'. str_pad($i,2,"0",STR_PAD_LEFT) .'-Y');
-			$monthNames[] = $date->format('F');
-			$monthNames[] = $date->format('M');
-		}
-
-		if (is_numeric($value) && !preg_match("/^(0[1-9]|[12]\d|3[01])$/", $value)) return false;
-		if (!in_array(ucfirst(strtolower($value)),$monthNames)) return false;
-
+		$month = self::monthNames[strtolower(trim($value))] ?? false;
+		if ($month === false) return false;
+		$value = $month;
 		return true;
 	}
 }

@@ -7,6 +7,29 @@ use stdClass;
 final class WeekDayType extends Type
 {
 	const type = "weekday";
+	const weekdays = [
+		'sunday'    => 1,
+		'monday'    => 2,
+		'tuesday'   => 3,
+		'wednesday' => 4,
+		'thursday'  => 5,
+		'friday'    => 6,
+		'saturday'  => 7,
+		'sun'       => 1,
+		'mon'       => 2,
+		'tue'       => 3,
+		'wed'       => 4,
+		'thu'       => 5,
+		'fri'       => 6,
+		'sat'       => 7,
+		1           => 1,
+		2           => 2,
+		3           => 3,
+		4           => 4,
+		5           => 5,
+		6           => 6,
+		7           => 7,
+	);
 
 	/**
 	 * Constructor
@@ -46,9 +69,9 @@ final class WeekDayType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$days = array('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sun', 'Mon','Tue','Wed','Thu','Fri','Sat',1,2,3,4,5,6,7);
-		if(!in_array($value,$days)) return false;
-
+		$weekday = self::weekdays[strtolower(trim($value))] ?? false;
+		if ($weekday === false) return false;
+		$value = $weekday;
 		return true;
 	}
 }

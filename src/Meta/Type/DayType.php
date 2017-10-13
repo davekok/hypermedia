@@ -45,8 +45,10 @@ final class DayType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if (!preg_match("^(0?[1-9]|[12]\d|3[01])$", $value)) return false;
-
-		return true;
+		if (preg_match("^(0?[1-9]|[12]\d|3[01])$", $value = trim($value))) {
+			$day = (int)$value;
+			return true;
+		}
+		return false;
 	}
 }

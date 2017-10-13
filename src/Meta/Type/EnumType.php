@@ -30,7 +30,7 @@ final class EnumType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type."," .  $this->options->join(';');
+		return self::type.",".$this->options->join(';');
 	}
 
 	/**
@@ -63,7 +63,7 @@ final class EnumType extends Type
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		if($this->options->count()) {
+		if ($this->options->count()) {
 			$meta->options = $this->options->toArray();
 		}
 	}
@@ -76,9 +76,7 @@ final class EnumType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!$this->options->contains($value)) return false;
-
-		return true;
+		return $this->options->contains($value = trim($value));
 	}
 }
 

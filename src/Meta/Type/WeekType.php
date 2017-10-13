@@ -46,9 +46,10 @@ final class WeekType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if (is_numeric($value)) return false;
-		if ($value < 1 || $value > 53) return false;
-
+		$week = filter_var(trim($value), FILTER_VALIDATE_INT);
+		if ($week === false) return false;
+		if ($week < 1 || $week > 53) return false;
+		$value = $week;
 		return true;
 	}
 }

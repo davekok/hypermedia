@@ -46,8 +46,6 @@ final class ColorType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!preg_match("/^#?[0-9a-zA-Z]{6}$/",$value)) return false;
-
-		return true;
+		return 1 === preg_match("/^#?[0-9a-zA-Z]{6}$/", $value = trim($value));
 	}
 }

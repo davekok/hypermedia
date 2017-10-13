@@ -132,19 +132,19 @@ final class FloatType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$value = filter_var($value, FILTER_VALIDATE_FLOAT);
-		if ($value === false) {
+		$float = filter_var(trim($value), FILTER_VALIDATE_FLOAT);
+		if ($float === false) {
 			return false;
 		}
-		if (isset($this->minimumRange) && $value < $this->minimumRange) {
+		if (isset($this->minimumRange) && $float < $this->minimumRange) {
 			return false;
 		}
-		if (isset($this->maximumRange) && $value > $this->maximumRange) {
+		if (isset($this->maximumRange) && $float > $this->maximumRange) {
 			return false;
 		}
 		if (isset($this->step)) {
 			// ratio should be an integer if value is a multiple of step
-			$ratio = (($value-($this->minimumRange??0.0)) / $this->step);
+			$ratio = (($float-($this->minimumRange??0.0)) / $this->step);
 			// distance should be 0, if ration is an integer
 			$distance = abs($ratio - round($ratio, 0));
 			// allow distance to be a little bit imprise to allow for floating point rounding errors
@@ -152,6 +152,7 @@ final class FloatType extends Type
 				return false;
 			}
 		}
+		$value = $float;
 		return true;
 	}
 }

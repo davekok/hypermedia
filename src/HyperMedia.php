@@ -151,7 +151,7 @@ final class HyperMedia
 			$response = new InternalServerError("Uncaught exception", 0, $e);
 		} finally {
 			$response->setProtocolVersion($request->getProtocolVersion());
-			if(!$this->journaling->hasJournal()){
+			if (!$this->journaling->hasJournal()) {
 				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
 			}
 			if (!isset($resource)) {

@@ -46,8 +46,9 @@ final class URLType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!filter_var($value,FILTER_VALIDATE_URL)) return false;
-
+		$url = filter_var(trim($value), FILTER_VALIDATE_URL);
+		if ($url === false) return false;
+		$value = $url;
 		return true;
 	}
 }

@@ -132,19 +132,20 @@ final class IntegerType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$value = filter_var($value, FILTER_VALIDATE_INT);
-		if ($value === false) {
+		$integer = filter_var(trim($value), FILTER_VALIDATE_INT);
+		if ($integer === false) {
 			return false;
 		}
-		if (isset($this->minimumRange) && $value < $this->minimumRange) {
+		if (isset($this->minimumRange) && $integer < $this->minimumRange) {
 			return false;
 		}
-		if (isset($this->maximumRange) && $value > $this->maximumRange) {
+		if (isset($this->maximumRange) && $integer > $this->maximumRange) {
 			return false;
 		}
-		if (isset($this->step) && 0 !== (($value - ($this->minimumRange ?? 0)) % $this->step)) {
+		if (isset($this->step) && 0 !== (($integer - ($this->minimumRange ?? 0)) % $this->step)) {
 			return false;
 		}
+		$value = $integer;
 		return true;
 	}
 }
