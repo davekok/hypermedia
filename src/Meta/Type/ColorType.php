@@ -41,11 +41,12 @@ final class ColorType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value string the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		return 1 === preg_match("/^#?[0-9a-zA-Z]{6}$/", $value = trim($value));
+		if(!is_string($value)) return false;
+		return 1 === preg_match("/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/", $value = trim($value));
 	}
 }

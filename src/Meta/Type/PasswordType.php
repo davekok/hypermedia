@@ -91,7 +91,7 @@ final class PasswordType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value string the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
@@ -113,7 +113,7 @@ Passwords must contain characters from three of the following five categories:
 Passwords of a length lower then 16 must have at least an upper and lower case character, a base 10 digit.
 Passwords of a length lower then 8 must have at least an upper and lower case character, a base 10 digit and nonalphanumeric character.
 */
-
+		
 		$l = strlen($value);
 		if (isset($this->minimumLength) && $l < $this->minimumLength) {
 			return false;
@@ -128,11 +128,11 @@ Passwords of a length lower then 8 must have at least an upper and lower case ch
 			$alpha = "\p{Lo}"; // other characters
 			$special = addcslashes("~!@#$%^&*_-+=`|\\(){}[]:;\"'<>,.?/ ", "[]-\\/");
 			if ($l > 16) { // for long password entropy is good enough to not require any type of characters
-				return 1 === preg_match("/^[$lower$upper$alpha$digit$special]{16,}$/u", $value);
+				return 1 === preg_match("/^[$lower$upper$alpha$digit$special]*$/u", $value);
 			} elseif ($l > 8) { // require at least a lower, upper alphabet character and one digit character
-				return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])[$lower$upper$alpha$digit$special]{8,}$/u", $value);
+				return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])[$lower$upper$alpha$digit$special]*$/u", $value);
 			} else { // require also a special character
-				return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])(?=.*[$special])[$lower$upper$alpha$digit$special]{,8}$/u", $value);
+				return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])(?=.*[$special])[$lower$upper$alpha$digit$special]*$/u", $value);
 			}
 		}
 	}

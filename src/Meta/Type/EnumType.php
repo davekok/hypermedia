@@ -53,7 +53,6 @@ final class EnumType extends Type
 	public function addOption(string $option): self
 	{
 		$this->options->add($option);
-
 		return $this;
 	}
 
@@ -73,12 +72,12 @@ final class EnumType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value  the value to filter
-	 * @return bool  whether the value is valid
+	 * @param  $value string the value to filter
+	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		return $this->options->contains($value = trim($value));
+		return $this->options->contains($value);
 	}
 }
 

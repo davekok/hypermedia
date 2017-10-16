@@ -40,15 +40,13 @@ final class DayType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value string the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		if (preg_match("^(0?[1-9]|[12]\d|3[01])$", $value = trim($value))) {
-			$day = (int)$value;
-			return true;
-		}
+		if(!is_string($value)) return false;
+		if (preg_match("/^(0?[1-9]|[12]\d|3[01])$/", $value = trim($value)))	 return true;
 		return false;
 	}
 }

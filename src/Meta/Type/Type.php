@@ -21,6 +21,7 @@ abstract class Type
 		HTMLType::type => HTMLType::class,
 		IntegerType::type => IntegerType::class,
 		MonthType::type => MonthType::class,
+		ObjectType::type => ObjectType::class,
 		PasswordType::type => PasswordType::class,
 		SetType::type => SetType::class,
 		StringType::type => StringType::class,
@@ -30,7 +31,6 @@ abstract class Type
 		WeekDayType::type => WeekDayType::class,
 		WeekType::type => WeekType::class,
 		YearType::type => YearType::class,
-		ObjectType::type => ObjectType::class,
 	];
 
 	public static function createType(string $state): Type
@@ -58,7 +58,7 @@ abstract class Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value  the value to filter
+	 * @param  &$value string the value to filter
 	 * @return bool  whether the value is valid
 	 */
 	public abstract function filter(&$value): bool;
