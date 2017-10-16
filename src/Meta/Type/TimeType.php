@@ -41,11 +41,11 @@ final class TimeType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value string the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		return 1 === preg_match("^T?(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:|[+-][01]\d:[0-5]\d)$", $value);
+		return 1 === preg_match("/^T?(?:[01]\d|2[0-3]):[0-5]\d(:[0-5]\d(?:|[+-][01]\d:[0-5]\d))?(?:Z|[+-][01]\d:[0-5]\d)?$/", $value);
 	}
 }

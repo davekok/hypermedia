@@ -41,12 +41,13 @@ final class WeekType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value int the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		$week = filter_var(trim($value), FILTER_VALIDATE_INT);
+		if(!is_int($value)) return false;
+		$week = filter_var($value, FILTER_VALIDATE_INT);
 		if ($week === false) return false;
 		if ($week < 1 || $week > 53) return false;
 		$value = $week;

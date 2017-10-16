@@ -127,12 +127,12 @@ final class IntegerType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value  the value to filter
+	 * @param  &$value integer the value to filter
 	 * @return bool  whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		$integer = filter_var(trim($value), FILTER_VALIDATE_INT);
+		$integer = filter_var($value, FILTER_VALIDATE_INT);
 		if ($integer === false) {
 			return false;
 		}

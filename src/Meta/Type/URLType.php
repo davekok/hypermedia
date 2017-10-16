@@ -41,11 +41,12 @@ final class URLType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value string the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
+		if (!is_string($value)) return false;
 		$url = filter_var(trim($value), FILTER_VALIDATE_URL);
 		if ($url === false) return false;
 		$value = $url;

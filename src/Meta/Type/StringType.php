@@ -146,11 +146,12 @@ final class StringType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value  the value to filter
+	 * @param  &$value string the value to filter
 	 * @return bool  whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
+		if (!is_string($value)) return false;
 		$string = filter_var(trim($value), FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW);
 		if ($string === false) {
 			return false;

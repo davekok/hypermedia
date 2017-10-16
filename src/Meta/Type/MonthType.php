@@ -55,14 +55,14 @@ final class MonthType extends Type
 	/**
 	 * Filter value
 	 *
-	 * @param  &$value the value to filter
+	 * @param  &$value string|int the value to filter
 	 * @return bool whether the value is valid
 	 */
 	public function filter(&$value): bool
 	{
-		$month = self::monthNames[strtolower(trim($value))] ?? false;
-		if ($month === false) return false;
-		$value = $month;
+		if(is_int($value)) $value = self::monthNames[$value] ?? false;
+		if(is_string($value)) $value = self::monthNames[strtolower(trim($value))] ?? false;
+		if ($value === false) return false;
 		return true;
 	}
 }
