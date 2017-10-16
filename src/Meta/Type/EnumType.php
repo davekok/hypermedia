@@ -8,7 +8,7 @@ use stdClass;
 final class EnumType extends Type
 {
 	const type = "enum";
-	private $options;
+	private $options = [];
 
 	/**
 	 * Constructor
@@ -17,9 +17,10 @@ final class EnumType extends Type
 	 */
 	public function __construct(array $state = null)
 	{
-		if($state !== null){
+		$this->options = new Set;
+		if ($state !== null) {
 			[$options] = $state;
-			if (strlen($options)) $this->options = new Set(...explode(";", $options));
+			if (strlen($options)) $this->options->add(...explode(";", $options));
 		}
 	}
 
@@ -30,7 +31,7 @@ final class EnumType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.",".$this->options->join(';');
+		return self::type.",".$this->options->join(";");
 	}
 
 	/**
@@ -44,14 +45,15 @@ final class EnumType extends Type
 	}
 
 	/**
-	 * Set possible options
+	 * Add option
 	 *
-	 * @param mixed $options
+	 * @param string $option
 	 * @return EnumType
 	 */
-	public function setOptions(array $options): self
+	public function addOption(string $option): self
 	{
-		$this->options = $options;
+		$this->options->add($option);
+
 		return $this;
 	}
 

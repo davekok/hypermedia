@@ -21,9 +21,10 @@ final class SetType extends Type
 	 */
 	public function __construct(array $state = null)
 	{
-		if($state !== null){
+		$this->options = new Set;
+		if ($state !== null) {
 			[$options] = $state;
-			if (strlen($options)) $this->options = new Set(...explode(";", $options));
+			if (strlen($options)) $this->options->add(...explode(";", $options));
 		}
 	}
 
@@ -34,8 +35,7 @@ final class SetType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		$options = implode(";",$this->options);
-		return self::type.",".$options;
+		return self::type.",".$this->options->join(";");
 	}
 
 	/**
@@ -49,14 +49,15 @@ final class SetType extends Type
 	}
 
 	/**
-	 * Set set options
+	 * Add option
 	 *
-	 * @param mixed $options
-	 * @return SetType
+	 * @param string $option
+	 * @return EnumType
 	 */
-	public function setOptions(array $options): self
+	public function addOption(string $option): self
 	{
-		$this->options = $options;
+		$this->options->add($option);
+
 		return $this;
 	}
 

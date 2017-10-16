@@ -29,7 +29,7 @@ final class WeekDayType extends Type
 		5           => 5,
 		6           => 6,
 		7           => 7,
-	);
+	];
 
 	/**
 	 * Constructor

@@ -38,6 +38,11 @@ final class Field extends Taggable
 		}
 	}
 
+	public function parse(string $text)
+	{
+		(new FieldParser)->parse($this, $text);
+	}
+
 	/**
 	 * Set name
 	 *
@@ -55,7 +60,7 @@ final class Field extends Taggable
 	 *
 	 * @return string
 	 */
-	public function getName(): string
+	public function getName(): ?string
 	{
 		return $this->name;
 	}
@@ -168,195 +173,6 @@ final class Field extends Taggable
 	public function getAutocomplete(): ?string
 	{
 		return $this->autocomplete;
-	}
-
-	/**
-	 * Parse the annotation text
-	 *
-	 * @param  string $text  the annotation text
-	 */
-	public function parse(string $text): void
-	{
-		$delimiters = " (*\t\r\n";
-		$token = strtok($text, $delimiters);
-		do {
-			switch ($token) {
-
-				// basic types
-				case "string":
-					$this->type = new Type\StringType();
-					break;
-
-				case "integer":
-					$this->type = new Type\IntegerType();
-					break;
-
-				case "float":
-					$this->type = new Type\FloatType();
-					break;
-
-				case "boolean":
-					$this->type = new Type\BooleanType();
-					break;
-
-				case "set":
-					$this->type = new Type\SetType();
-					break;
-
-				case "enum":
-					$this->type = new Type\EnumType();
-					break;
-
-				// calendar types
-				case "date":
-					$this->type = new Type\DateType();
-					break;
-
-				case "datetime":
-					$this->type = new Type\DateTimeType();
-					break;
-
-				case "time":
-					$this->type = new Type\TimeType();
-					break;
-
-				case "day":
-					$this->type = new Type\DayType();
-					break;
-
-				case "month":
-					$this->type = new Type\MonthType();
-					break;
-
-				case "year":
-					$this->type = new Type\YearType();
-					break;
-
-				case "week":
-					$this->type = new Type\WeekType();
-					break;
-
-				case "weekday":
-					$this->type = new Type\WeekDayType();
-					break;
-
-				// special types
-				case "uuid":
-					$this->type = new Type\UUIDType();
-					break;
-
-				case "password":
-					$this->type = new Type\PasswordType();
-					break;
-
-				case "color":
-					$this->type = new Type\ColorType();
-					break;
-
-				case "email":
-					$this->type = new Type\EmailType();
-					break;
-
-				case "url":
-					$this->type = new Type\URLType();
-					break;
-
-				case "link": // a link pointing to a resource within this API
-					$this->type = new Type\LinkType();
-					break;
-
-				case "list": // like enum but resolve link and use data section for options
-					$this->type = new Type\ListType();
-					break;
-
-				case "table": // an table containing data, requires Column annotations
-					$this->type = new Type\TableType();
-					break;
-
-				case "html": // string containing HTML
-					$this->type = new Type\HTMLType();
-					break;
-
-				case "meta":
-					$this->flags->setMeta();
-					break;
-
-				case "data":
-					$this->flags->setData();
-					break;
-
-				case "required":
-					$this->flags->setRequired();
-					break;
-
-				case "readonly":
-					$this->flags->setReadonly();
-					break;
-
-				case "disabled":
-					$this->flags->setDisabled();
-					break;
-
-				case "multiple":
-					$this->flags->setMultiple();
-					break;
-
-				case "autocomplete":
-					$this->setAutocomplete(strtok(")"));
-					break;
-
-				case "min":
-					$this->type->setMinimumRange(trim(strok(")")));
-					break;
-
-				case "max":
-					$this->type->setMaximumRange(trim(strok(")")));
-					break;
-
-				case "step":
-					$this->type->setStep(trim(strok(")")));
-					break;
-
-				case "minlength":
-					$this->type->setMinimumLength(trim(strok(")")));
-					break;
-
-				case "maxlength":
-					$this->type->setMaximumLength(trim(strok(")")));
-					break;
-
-				case "pattern":
-					$this->type->setPatternName(trim(strok(")")));
-					break;
-
-				case "options":
-					$this->type->setOptions(explode(',',trim(strok(")"))));
-					break;
-
-				case "link":
-					$this->type->setLink(trim(strok(")")));
-					break;
-
-				default:
-					if ($token[0] === "#") {
-						$token = ltrim($token, "#");
-						$token = explode("=", $token);
-						if (count($token) === 2) {
-							$this->matchTagValue($token[0], $token[1]);
-						} else {
-							$this->needsTag($token[0]);
-						}
-					} elseif (substr($token, -2, 2) == "[]") {
-						$this->flags->setArray();
-						$token = substr($token, 0, -2);
-						continue;
-					} else {
-						throw new Exception("Parse error at $token");
-					}
-					break;
-			}
-			$token = strtok($delimiters);
-		} while ($token !== false);
 	}
 
 	/**

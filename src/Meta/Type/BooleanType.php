@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
+use stdClass;
+
 /**
  * Class BooleanType
  * @package Sturdy\Activity\Meta\Type

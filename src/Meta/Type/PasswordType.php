@@ -45,6 +45,50 @@ final class PasswordType extends Type
 	}
 
 	/**
+	 * Set minimumLength
+	 *
+	 * @param ?int $minimumLength
+	 * @return self
+	 */
+	public function setMinimumLength(?int $minimumLength): self
+	{
+		$this->minimumLength = $minimumLength;
+		return $this;
+	}
+
+	/**
+	 * Get minimumLength
+	 *
+	 * @return ?int
+	 */
+	public function getMinimumLength(): ?int
+	{
+		return $this->minimumLength;
+	}
+
+	/**
+	 * Set maximum length
+	 *
+	 * @param ?int $maximumLength
+	 * @return self
+	 */
+	public function setMaximumLength(?int $maximumLength): self
+	{
+		$this->maximumLength = $maximumLength;
+		return $this;
+	}
+
+	/**
+	 * Get maximum length
+	 *
+	 * @return ?int
+	 */
+	public function getMaximumLength(): ?int
+	{
+		return $this->maximumLength;
+	}
+
+	/**
 	 * Filter value
 	 *
 	 * @param  &$value the value to filter

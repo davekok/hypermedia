@@ -22,6 +22,8 @@ final class ObjectType extends Type
 	public function __construct(array $state = null)
 	{
 		if ($state !== null) {
+			[$fields] = $state;
+			$this->fields = unserialize($fields);
 		}
 	}
 
@@ -35,8 +37,9 @@ final class ObjectType extends Type
 		$meta->type = self::type;
 		$meta->fields = [];
 		foreach ($this->fields as $field) {
-			$meta->fields[] = $submeta = new stdClass;
+			$submeta = new stdClass;
 			$field->meta($submeta);
+			$meta->fields[$field->getName()] = $submeta;
 		}
 	}
 
@@ -47,11 +50,7 @@ final class ObjectType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		$descriptor = self::type;
-		foreach ($this->fields as $field) {
-			$descriptor .= ",(".$field->getDescriptor().")";
-		}
-		return $descriptor;
+		return self::type.",".serialize($this->fields);
 	}
 
 	/**
@@ -59,9 +58,10 @@ final class ObjectType extends Type
 	 *
 	 * @param Field $field  the field to add
 	 */
-	public function addField(Field $field)
+	public function addField(Field $field): self
 	{
-		$this->fields[] = $field;
+		$this->fields[$field->getName()] = $field;
+		return $this;
 	}
 
 	/**

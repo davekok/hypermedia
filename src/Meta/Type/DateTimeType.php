@@ -2,7 +2,8 @@
 
 namespace Sturdy\Activity\Meta\Type;
 
-use DateTime,stdClass;
+use DateTime;
+use stdClass;
 
 final class DateTimeType extends Type
 {
@@ -45,6 +46,10 @@ final class DateTimeType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		return 1 === preg_match("^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:Z|[+-][01]\d:[0-5]\d)$", $value = trim($value));
+		if (!preg_match("^(?:[1-9]\d{3}-(?:(?:0[1-9]|1[0-2])-(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])-(?:29|30)|(?:0[13578]|1[02])-31)|(?:[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00)-02-29)T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:Z|[+-][01]\d:[0-5]\d)$", $value = trim($value))) {
+			return false;
+		}
+		$value = new DateTime($value);
+		return true;
 	}
 }

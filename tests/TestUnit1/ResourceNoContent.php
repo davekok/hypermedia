@@ -27,6 +27,6 @@ class ResourceNoContent
 	 */
 	public function bar(NoContent $response, $di): void
 	{
-	
+
 	}
 }
