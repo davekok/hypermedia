@@ -53,7 +53,7 @@ class TypeTest extends TestCase
 	{
 		$type = new Type\DateTimeType();
 		$datetime = "1995-09-03T23:59:59Z"; $this->assertTrue($type->filter($datetime));
-		$datetime = "1995-09-03T23:59:59"; $this->assertFalse($type->filter($datetime));
+		$datetime = "1995-09-03 23:59:59"; $this->assertFalse($type->filter($datetime));
 		$datetime = "1995-09-03T23:59:"; $this->assertFalse($type->filter($datetime));
 		$datetime = true; $this->assertFalse($type->filter($datetime));
 	}
@@ -90,8 +90,13 @@ class TypeTest extends TestCase
 	public function testEnumType()
 	{
 		$type = new Type\EnumType();
-		$options = $type->setOptions(["a","b","c"])->getOptions();
-		$this->assertTrue($type->filter($options));
+		$type->addOption("a");
+		$type->addOption("b");
+		$type->addOption("c");
+		$choice = "b";
+		$this->assertTrue($type->filter($choice));
+		$choice = "d";
+		$this->assertFalse($type->filter($choice));
 	}
 	
 	public function testFloatType()
