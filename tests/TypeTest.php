@@ -146,6 +146,7 @@ class TypeTest extends TestCase
 	{
 		$type = new Type\StringType();
 		$string = "abc"; $this->assertTrue($type->filter($string));
+		$string = "안녕하세요"; $this->assertTrue($type->filter($string));
 		$string = 123; $this->assertFalse($type->filter($string));
 		$string = $this->faker->boolean(); $this->assertFalse($type->filter($string));
 		$string = ["a","b"]; $this->assertFalse($type->filter($string));
@@ -154,10 +155,21 @@ class TypeTest extends TestCase
 	public function testTimeType()
 	{
 		$type = new Type\TimeType();
+		// Positive assertions
 		$time = "20:00"; $this->assertTrue($type->filter($time));
 		$time = "20:00:59"; $this->assertTrue($type->filter($time));
 		$time = "T20:00:59"; $this->assertTrue($type->filter($time));
+		$time = "20:00:59Z";  $this->assertTrue($type->filter($time));
+		$time = "20:00:00+01:00";  $this->assertTrue($type->filter($time));
+		$time = "20:00+01:00";  $this->assertTrue($type->filter($time));
+		$time = "00:00";  $this->assertTrue($type->filter($time));
+		// Negative assertions
 		$time = "20:00:60";  $this->assertFalse($type->filter($time));
+		$time = "20:00Z+01:00";  $this->assertFalse($type->filter($time));
+		$time = "20:00:";  $this->assertFalse($type->filter($time));
+		$time = "20:60";  $this->assertFalse($type->filter($time));
+		$time = "20:60:";  $this->assertFalse($type->filter($time));
+		$time = "24:00";  $this->assertFalse($type->filter($time));
 	}
 	
 	public function testURLType()
@@ -200,6 +212,7 @@ class TypeTest extends TestCase
 	{
 		$type = new Type\YearType();
 		$year = 1995; $this->assertTrue($type->filter($year));
+		$year = 12345; $this->assertTrue($type->filter($year));
 		$year = 0; $this->assertFalse($type->filter($year));
 	}
 }
