@@ -4,6 +4,7 @@ namespace Sturdy\Activity\Meta;
 
 use Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
 use Exception;
+use Sturdy\Activity\Meta\FieldParserError as ParserError;
 
 /**
  * Parser for the field annotation.
@@ -203,6 +204,10 @@ final class FieldParser
 		// bit 8: min length token
 		// bit 9: max length token
 		// bit 10: pattern token
+		// bit 11: autocomplete token
+		// bit 12: default value token
+		// bit 13: description token
+		// bit 14: object type allowed
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -210,6 +215,8 @@ final class FieldParser
 		$this->clearbit($mask, 8); // min length token
 		$this->clearbit($mask, 9); // max length token
 		$this->clearbit($mask, 10); // pattern token
+		$this->clearbit($mask, 11); // autocomplete token
+		$this->clearbit($mask, 14); // object type allowed
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -220,6 +227,7 @@ final class FieldParser
 				$this->setbit($mask, 8);
 				$this->setbit($mask, 9);
 				$this->setbit($mask, 10);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\StringType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('integerToken')) {
@@ -227,6 +235,7 @@ final class FieldParser
 				$this->setbit($mask, 5);
 				$this->setbit($mask, 6);
 				$this->setbit($mask, 7);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\IntegerType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('floatToken')) {
@@ -234,52 +243,64 @@ final class FieldParser
 				$this->setbit($mask, 5);
 				$this->setbit($mask, 6);
 				$this->setbit($mask, 7);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\FloatType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('booleanToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\BooleanType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('setToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\SetType());
 				$this->parseArray($flags);
 				$this->parseOptions($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('enumToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\EnumType());
 				$this->parseArray($flags);
 				$this->parseOptions($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('dateToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\DateType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('datetimeToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\DateTimeType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('timeToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\TimeType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('dayToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\DayType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('monthToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\MonthType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('yearToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\YearType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('weekToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\WeekType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('weekdayToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\WeekDayType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('uuidToken')) {
@@ -294,15 +315,18 @@ final class FieldParser
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('colorToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\ColorType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('emailToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 4);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\EmailType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('urlToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\URLType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('linkToken')) {
@@ -312,10 +336,12 @@ final class FieldParser
 				$this->parseLink($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('listToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
 				$field->setType($type = new Type\ListType());
 				$this->parseArray($flags);
-			} elseif ($this->isbitset($mask, 1) && $this->match('objectToken')) {
+			} elseif ($this->isbitset($mask, 1) && $this->isbitset($mask, 14) && $this->match('objectToken')) {
 				$this->clearbit($mask, 1);
+				$this->clearbit($mask, 14);
 				$field->setType($type = new Type\ObjectType());
 				$this->parseArray($flags);
 				$this->parseFields($type);
@@ -325,15 +351,18 @@ final class FieldParser
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 2) && $this->match('dataToken')) {
 				$this->clearbit($mask, 2);
+				$this->setbit($mask, 14);
 				$flags->setData();
 			} elseif ($this->isbitset($mask, 2) && $this->match('metaToken')) {
 				$this->clearbit($mask, 2);
 				$flags->setMeta();
 			} elseif ($this->isbitset($mask, 3) && $this->match('requiredToken')) {
 				$this->clearbit($mask, 3);
+				$this->clearbit($mask, 12);
 				$flags->setRequired();
 			} elseif ($this->isbitset($mask, 3) && $this->match('readonlyToken')) {
 				$this->clearbit($mask, 3);
+				$this->clearbit($mask, 12);
 				$flags->setReadonly();
 			} elseif ($this->isbitset($mask, 3) && $this->match('disabledToken')) {
 				$this->clearbit($mask, 3);

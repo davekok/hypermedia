@@ -42,7 +42,7 @@ class FieldTest extends TestCase
 		$field = new Field;
 		$field->setName("person");
 		$field->setDescription("person field");
-		$field->parse("required object[] (
+		$field->parse("required data object[] (
 			*    firstName: required string 'first name of person' #version1,
 			*    firstName: string 'first name of person' #version2,
 			*    lastName: required string,
