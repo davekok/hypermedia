@@ -35,8 +35,14 @@ abstract class Type
 
 	public static function createType(string $state): Type
 	{
-		$state = explode(",", $state);
-		$type = array_shift($state);
+		$p = strpos($state, ":");
+		if ($p !== false) {
+			$type = substr($state, 0, $p);
+			$state = substr($state, $p+1);
+		} else {
+			$type = $state;
+			$state = null;
+		}
 		$class = self::types[$type];
 		return new $class($state);
 	}

@@ -21,7 +21,7 @@ final class Field extends Taggable
 	private $name;         // the name of field
 	private $description;  // the description of field
 	private $type;         // the type of field
-	private $default;      // the default value
+	private $defaultValue; // the default value
 	private $flags;        // bitmask of the above constants
 	private $autocomplete; // autocomplete expression, see HTML 5 autofill documentation
 

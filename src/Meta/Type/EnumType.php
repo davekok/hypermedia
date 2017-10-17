@@ -13,14 +13,13 @@ final class EnumType extends Type
 	/**
 	 * Constructor
 	 *
-	 * @param array|null $state  the objects state
+	 * @param string|null $state  the objects state
 	 */
-	public function __construct(array $state = null)
+	public function __construct(string $state = null)
 	{
 		$this->options = new Set;
 		if ($state !== null) {
-			[$options] = $state;
-			if (strlen($options)) $this->options->add(...explode(";", $options));
+			$this->options->add(...explode(",", $state));
 		}
 	}
 
@@ -31,7 +30,7 @@ final class EnumType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.",".$this->options->join(";");
+		return self::type.":".$this->options->join(",");
 	}
 
 	/**

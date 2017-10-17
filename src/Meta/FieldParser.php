@@ -67,56 +67,61 @@ final class FieldParser
 		$nsname = '[A-Za-z_][A-Za-z0-9_]+(?=\\[A-Za-z_][A-Za-z0-9_]+)*';
 		$name = '[A-Za-z_][A-Za-z0-9_]+';
 
-		$this->spaceToken     = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
-		$this->tagToken       = "/^#($name)/";
-		$this->nameToken      = "/^$name:/";
-		$this->stringToken    = "/^string/";
-		$this->integerToken   = "/^integer/";
-		$this->floatToken     = "/^float/";
-		$this->booleanToken   = "/^boolean/";
-		$this->setToken       = "/^set/";
-		$this->enumToken      = "/^enum/";
-		$this->dateToken      = "/^date/";
-		$this->datetimeToken  = "/^datetime/";
-		$this->timeToken      = "/^time/";
-		$this->dayToken       = "/^day/";
-		$this->monthToken     = "/^month/";
-		$this->yearToken      = "/^year/";
-		$this->weekToken      = "/^week/";
-		$this->weekdayToken   = "/^weekday/";
-		$this->uuidToken      = "/^uuid/";
-		$this->passwordToken  = "/^password/";
-		$this->colorToken     = "/^color/";
-		$this->emailToken     = "/^email/";
-		$this->urlToken       = "/^url/";
-		$this->linkToken      = "/^link/";
-		$this->listToken      = "/^list/";
-		$this->objectToken    = "/^object/";
-		$this->htmlToken      = "/^html/";
-		$this->dataToken      = "/^data/";
-		$this->metaToken      = "/^meta/";
-		$this->requiredToken  = "/^required/";
-		$this->readonlyToken  = "/^readonly/";
-		$this->disabledToken  = "/^disabled/";
-		$this->multipleToken  = "/^multiple/";
-		$this->arrayToken     = "/^\[\]/";
+		$this->spaceToken         = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
+		$this->tagToken           = "/^#($name)/";
+		$this->equalsToken        = "/^=/";
+		$this->valueToken         = "/^(\S*)(?=\s|\*|$)/";
+		$this->nameToken          = "/^($name):/";
+		$this->stringToken        = "/^string/";
+		$this->integerToken       = "/^integer/";
+		$this->floatToken         = "/^float/";
+		$this->booleanToken       = "/^boolean/";
+		$this->setToken           = "/^set/";
+		$this->enumToken          = "/^enum/";
+		$this->dateToken          = "/^date/";
+		$this->datetimeToken      = "/^datetime/";
+		$this->timeToken          = "/^time/";
+		$this->dayToken           = "/^day/";
+		$this->monthToken         = "/^month/";
+		$this->yearToken          = "/^year/";
+		$this->weekToken          = "/^week/";
+		$this->weekdayToken       = "/^weekday/";
+		$this->uuidToken          = "/^uuid/";
+		$this->passwordToken      = "/^password/";
+		$this->colorToken         = "/^color/";
+		$this->emailToken         = "/^email/";
+		$this->urlToken           = "/^url/";
+		$this->linkToken          = "/^link/";
+		$this->listToken          = "/^list/";
+		$this->objectToken        = "/^object/";
+		$this->htmlToken          = "/^html/";
+		$this->dataToken          = "/^data/";
+		$this->metaToken          = "/^meta/";
+		$this->requiredToken      = "/^required/";
+		$this->readonlyToken      = "/^readonly/";
+		$this->disabledToken      = "/^disabled/";
+		$this->multipleToken      = "/^multiple/";
+		$this->arrayToken         = "/^\[\]/";
 
-		$this->minToken       = "/^min=($int)/";
-		$this->maxToken       = "/^max=($int)/";
-		$this->stepToken      = "/^step=($int)/";
+		$this->minToken           = "/^min=($int)/";
+		$this->maxToken           = "/^max=($int)/";
+		$this->stepToken          = "/^step=($int)/";
 
-		$this->minlengthToken = "/^minlength=($int)/";
-		$this->maxlengthToken = "/^maxlength=($int)/";
-		$this->patternToken   = "/^pattern=((?=$nsname::)?$name)/";
+		$this->minlengthToken     = "/^minlength=($int)/";
+		$this->maxlengthToken     = "/^maxlength=($int)/";
+		$this->patternToken       = "/^pattern=((?=$nsname::)?$name)/";
 
-		$this->optionToken = "/^($name)/";
-		$this->linkOptionToken = "/^($nsname)/";
-		$this->autocompleteToken = "/^autocomplete/";
+		$this->optionToken        = "/^($name)/";
+		$this->linkOptionToken    = "/^($nsname)/";
+		$this->autocompleteToken  = "/^autocomplete/";
 		$this->autocompleteOption = "/^[^\S\*\(\)]+/";
 
-		$this->listStartToken = "/^\(/";
+		$this->listStartToken     = "/^\(/";
 		$this->listDelimiterToken = "/^,/";
-		$this->listEndToken = "/^\)/";
+		$this->listEndToken       = "/^\)/";
+
+		$this->defaultValueToken  = "/^default=(\"[^\v\"]*\"|\'[^\v\']*\'|[1-9][0-9]*(?=\.[0-9]+)?|0\.[0-9]+|true|false)/";
+		$this->descriptionToken   = "/^(\"[^\v\"]*\"|\'[^\v\']*\')/";
 	}
 
 	private function valid(): bool
@@ -212,6 +217,9 @@ final class FieldParser
 				$this->parseTag($field, $tag);
 			} elseif ($this->isbitset($mask, 1) && $this->match('stringToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 8);
+				$this->setbit($mask, 9);
+				$this->setbit($mask, 10);
 				$field->setType($type = new Type\StringType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('integerToken')) {
@@ -280,6 +288,8 @@ final class FieldParser
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('passwordToken')) {
 				$this->clearbit($mask, 1);
+				$this->setbit($mask, 8);
+				$this->setbit($mask, 9);
 				$field->setType($type = new Type\PasswordType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('colorToken')) {
@@ -348,16 +358,30 @@ final class FieldParser
 				$type->setMaximumLength($max);
 			} elseif ($this->isbitset($mask, 10) && $this->match('patternToken', $pattern)) {
 				$this->clearbit($mask, 10);
+				if (defined($pattern)) {
+					throw new ParserError($this->parseError("Pattern $pattern not defined."));
+				}
 				$type->setPattern($pattern);
 			} elseif ($this->isbitset($mask, 11) && $this->match('autocompleteToken')) {
 				$this->clearbit($mask, 11);
 				$this->parseAutocomplete($field);
 			} elseif ($subfield && $this->isbitset($mask, 12) && $this->match('defaultValueToken', $defaultValue)) {
 				$this->clearbit($mask, 12);
+				if ($defaultValue === "true") {
+					$defaultValue = true;
+				} elseif ($defaultValue === "false") {
+					$defaultValue = false;
+				} elseif ($defaultValue[0] === "\"" || $defaultValue[0] === "'") {
+					$defaultValue = substr($defaultValue, 1, -1);
+				} elseif (strpos($defaultValue, ".") !== false) {
+					$defaultValue = (float)$defaultValue;
+				} else {
+					$defaultValue = (int)$defaultValue;
+				}
 				$field->setDefaultValue($defaultValue);
 			} elseif ($subfield && $this->isbitset($mask, 13) && $this->match('descriptionToken', $description)) {
 				$this->clearbit($mask, 13);
-				$field->setDescription($defaultValue);
+				$field->setDescription(substr($description, 1, -1));
 			} elseif ($subfield) {
 				break;
 			} else {

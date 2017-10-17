@@ -12,9 +12,9 @@ final class DateTimeType extends Type
 	/**
 	 * Constructor
 	 *
-	 * @param array|null $state the objects state
+	 * @param string|null $state the objects state
 	 */
-	public function __construct(array $state = null)
+	public function __construct(string $state = null)
 	{
 	}
 

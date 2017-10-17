@@ -13,12 +13,12 @@ final class PasswordType extends Type
 	/**
 	 * Constructor
 	 *
-	 * @param array|null $state the objects state
+	 * @param string|null $state the objects state
 	 */
-	public function __construct(array $state = null)
+	public function __construct(string $state = null)
 	{
 		if ($state !== null) {
-			[$min, $max] = $state;
+			[$min, $max] = explode(",", $state);
 			if (strlen($min) > 0) $this->minimumLength = (int)$min;
 			if (strlen($max) > 0) $this->maximumLength = (int)$max;
 		}
@@ -31,7 +31,7 @@ final class PasswordType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type;
+		return self::type.":".$this->minimumLength.",".$this->maximumLength;
 	}
 
 	/**
@@ -113,7 +113,7 @@ Passwords must contain characters from three of the following five categories:
 Passwords of a length lower then 16 must have at least an upper and lower case character, a base 10 digit.
 Passwords of a length lower then 8 must have at least an upper and lower case character, a base 10 digit and nonalphanumeric character.
 */
-		
+
 		$l = strlen($value);
 		if (isset($this->minimumLength) && $l < $this->minimumLength) {
 			return false;

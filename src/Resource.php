@@ -178,11 +178,11 @@ final class Resource
 			}
 			$this->object->$name = $values[$name] ?? null;
 		}
-		
+
 		if($badRequest->hasMessages()) {
 			throw $badRequest;
 		}
-		
+
 		$this->object->{$this->method}($this->response, $this->di);
 		if ($this->self && $this->status === Meta\Verb::OK) {
 			$fields = [];
@@ -191,14 +191,7 @@ final class Resource
 				if (isset($this->object->$name)) $field->value = $this->object->$name;
 				Type::createType($type)->meta($field);
 				if ($defaultValue !== null) $field->defaultValue = $defaultValue;
-				$flags = new FieldFlags($flags);
-				if ($flags->isRequired()) $field->required = true;
-				if ($flags->isReadonly()) $field->readonly = true;
-				if ($flags->isDisabled()) $field->disabled = true;
-				if ($flags->isMultiple()) $field->multiple = true;
-				if ($flags->isArray()) $field->{"array"} = true;
-				if ($flags->isMeta()) $field->meta = true;
-				if ($flags->isData()) $field->data = true;
+				(new FieldFlags($flags))->meta($field);
 				if ($autocomplete) $field->autocomplete = $autocomplete;
 				$fields[$name] = $field;
 			}

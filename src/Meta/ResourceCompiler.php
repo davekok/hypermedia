@@ -18,10 +18,10 @@ class ResourceCompiler
 	{
 		$verbs = [];
 		$root = false;
-		foreach ($resource->getVerbs() as $key => $variants) {
+		foreach ($resource->getVerbs() as $name => $variants) {
 			$verb = $matcher->findBestMatch($variants);
 			if ($verb) {
-				$verbs[$key] = [
+				$verbs[$name] = [
 					$verb->getMethod(),
 					$verb->getStatus(),
 					$verb->getLocation(),
@@ -35,15 +35,33 @@ class ResourceCompiler
 			throw new Exception("A root resource may only have one verb.");
 		}
 
-		$item = $root ? new CacheItem_RootResource() : new CacheItem_Resource();
+		$type = $resource->getObjectType();
+		$this->compileObjectType($type, $matcher);
+
+		$item = $root ? new CacheItem_RootResource : new CacheItem_Resource;
 		$item->setClass($resource->getClass());
 		$item->setTags($matcher->getTags());
+		foreach ($type->getFieldDescriptors() as $name => $descriptor) {
+			$item->setField($name, ...$descriptor);
+		}
+		foreach ($verbs as $name => [$method, $status, $location, $self]) {
+			$item->setVerb($name, $method, $status, $location, $self);
+		}
 
-		foreach ($resource->getFields() as $key => $fields) {
-			$field = $matcher->findBestMatch($fields);
+		return $item;
+	}
+
+	private function compileObjectType(Type\ObjectType $type, TagMatcher $matcher)
+	{
+		foreach ($type->getFields() as $name => $variants) {
+			$field = $matcher->findBestMatch($variants);
 			if ($field) {
-				$item->setField(
-					$key,
+				$subtype = $field->getType();
+				if ($subtype instanceof Type\ObjectType) {
+					$this->compileObjectType($subtype, $matcher);
+				}
+				$type->setFieldDescriptor(
+					$name,
 					$field->getType()->getDescriptor(),
 					$field->getDefaultValue(),
 					$field->getFlags()->toInt(),
@@ -51,11 +69,5 @@ class ResourceCompiler
 				);
 			}
 		}
-
-		foreach ($verbs as $key => [$method, $status, $location, $self]) {
-			$item->setVerb($key, $method, $status, $location, $self);
-		}
-
-		return $item;
 	}
 }

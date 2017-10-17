@@ -30,17 +30,17 @@ class HyperMediaBase extends TestCase
 {
 	protected $prophet;
 	protected $faker;
-	
+
 	// resource
 	protected $sourceUnit;
 	protected $basePath;
 	protected $class;
 	protected $classes;
 	protected $attachmentFields;
-	
+
 	protected $method;
 	protected $tags;
-	
+
 	// request
 	protected $protocolVersion;
 	protected $verb;
@@ -49,21 +49,21 @@ class HyperMediaBase extends TestCase
 	protected $_journalId;
 	protected $fields;
 	protected $requestContent;
-	
+
 	// response
 	protected $statusCode;
 	protected $statusText;
 	protected $location;
 	protected $contentType;
 	protected $content;
-	
+
 	public function __construct($name = null, array $data = [], $dataName = '')
 	{
 		parent::__construct($name, $data, $dataName);
 		$this->prophet = new Prophet;
 		$this->faker = Faker\Factory::create();
 	}
-	
+
 	public function createCache(): Cache
 	{
 		$resource = (new CacheItem_Resource())
@@ -84,9 +84,9 @@ class HyperMediaBase extends TestCase
 				$resource->setVerb($this->verb, $this->method, Verb::CREATED, $this->location);
 				break;
 		}
-		
+
 		foreach ($this->fields as $name => $descriptor) {
-			$type = $descriptor["type"] . ",,,";
+			$type = $descriptor["type"] . ":,,";
 			$flags = 0;
 			if ($descriptor["required"] ?? false) $flags |= FieldFlags::required;
 			if ($descriptor["meta"] ?? false) $flags |= FieldFlags::meta;
@@ -97,13 +97,13 @@ class HyperMediaBase extends TestCase
 			if ($descriptor["disabled"] ?? false) $flags |= FieldFlags::disabled;
 			$resource->setField($name, $type, $descriptor["defaultValue"] ?? null, $flags);
 		}
-		
+
 		$cache = $this->prophet->prophesize();
 		$cache->willImplement(Cache::class);
 		$cache->getResource($this->sourceUnit, $this->class, $this->tags)
 			->shouldBeCalledTimes(1)
 			->willReturn($resource);
-		
+
 		if (isset($this->classes)) {
 			foreach($this->classes as $class){
 				$resource = (new CacheItem_Resource())->setClass($class)->setTags($this->tags);
@@ -111,9 +111,9 @@ class HyperMediaBase extends TestCase
 				$cache->getResource($this->sourceUnit, $class, $this->tags)
 					->shouldBeCalledTimes(2)
 					->willReturn($resource);
-				
+
 				foreach ($this->attachmentFields[$class]??[] as $name => $descriptor) {
-					$type = $descriptor["type"] . ",,,";
+					$type = $descriptor["type"] . ":,,";
 					$flags = 0;
 					if ($descriptor["required"] ?? false) $flags |= FieldFlags::required;
 					if ($descriptor["meta"] ?? false) $flags |= FieldFlags::meta;
@@ -123,7 +123,7 @@ class HyperMediaBase extends TestCase
 		}
 		return $cache->reveal();
 	}
-	
+
 	public function initResource(string $sourceUnit,string $class,string $method, array $tags = [], string $responseType, string $code = null): void
 	{
 		// resource
@@ -134,11 +134,11 @@ class HyperMediaBase extends TestCase
 		{
 			$this->class = $this->faker->unique()->word;
 		}
-		
+
 		$this->method = $method;
 		$this->tags = $tags;
 		$responseType = "Sturdy\\Activity\\Response\\" . ucfirst($responseType);
-		
+
 		eval(<<<CLASS
 final class $this->class
 {
@@ -149,7 +149,7 @@ final class $this->class
 CLASS
 		);
 	}
-	
+
 	public function initRequest(string $protocolVersion, string $verb, bool $root = false, array $fields = [])
 	{
 		$this->protocolVersion = $protocolVersion;
@@ -157,7 +157,7 @@ CLASS
 		$this->root = $root;
 		$this->journalId = $this->faker->boolean ? null : rand();
 		$this->fields = $fields;
-		
+
 		if($verb === "POST") {
 			$this->requestContentType = "application/json";
 			$this->requestContent = [];
@@ -173,7 +173,7 @@ CLASS
 			$this->requestContent = null;
 		}
 	}
-	
+
 	public function initContent(array $fields = [], array $links = null): stdClass
 	{
 		$content = new stdClass;
@@ -222,14 +222,14 @@ CLASS
 		return $content;
 	}
 
-	
+
 	public function createJournalBranchEntry(): JournalEntry
 	{
 		$entry = $this->prophet->prophesize();
 		$entry->willImplement(JournalEntry::class);
 		return $entry->reveal();
 	}
-	
+
 	public function createJournalBranch(): JournalBranch
 	{
 		$branch = $this->prophet->prophesize();
@@ -257,7 +257,7 @@ CLASS
 		}
 		return $branch->reveal();
 	}
-	
+
 	public function createNewJournal(): Journal
 	{
 		$journal = $this->prophet->prophesize();
@@ -275,7 +275,7 @@ CLASS
 		});
 		return $journal->reveal();
 	}
-	
+
 	public function createResumableJournal(): Journal
 	{
 		$journal = $this->prophet->prophesize();
@@ -292,7 +292,7 @@ CLASS
 		});
 		return $journal->reveal();
 	}
-	
+
 	public function createJournalRepository(): JournalRepository
 	{
 		$journalRepository = $this->prophet->prophesize();
@@ -309,7 +309,7 @@ CLASS
 		}
 		return $journalRepository->reveal();
 	}
-	
+
 	public function createRequest(bool $predictQuery = true): Request
 	{
 		$request = $this->prophet->prophesize();
@@ -347,7 +347,7 @@ CLASS
 		}
 		return $request->reveal();
 	}
-	
+
 	public function createErrorRequest(): Request
 	{
 		$request = $this->prophet->prophesize();
@@ -370,7 +370,7 @@ CLASS
 	{
 		return new HyperMedia($this->createCache(), $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);
 	}
-	
+
 	public function createHyperMediaWithNullCache(): HyperMedia
 	{
 		$cache = $this->prophet->prophesize();
@@ -378,16 +378,16 @@ CLASS
 		$cache->getResource($this->sourceUnit, $this->class, $this->tags)
 			->shouldBeCalledTimes(1)
 			->willReturn(null);
-		
+
 		$cache = $cache->reveal();
-		
+
 		return new HyperMedia($cache, $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);
 	}
 	public function createHyperMediaWithErrorCache(): HyperMedia
 	{
 		return new HyperMedia($this->prophet->prophesize()->willImplement(Cache::class)->reveal(), $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);
 	}
-	
+
 	public function handle(HyperMedia $hm, Request $request)
 	{
 		$response = $hm->handle($this->tags, $request);

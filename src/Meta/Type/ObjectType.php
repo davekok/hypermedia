@@ -4,6 +4,7 @@ namespace Sturdy\Activity\Meta\Type;
 
 use stdClass;
 use Sturdy\Activity\Meta\Field;
+use Sturdy\Activity\Meta\FieldFlags;
 
 /**
  * String type
@@ -12,18 +13,18 @@ final class ObjectType extends Type
 {
 	const type = "object";
 
-	private $fields;
+	private $fieldDescriptors;
+	private $fields; // only used for during compilation
 
 	/**
 	 * Constructor
 	 *
-	 * @param array|null $state  the objects state
+	 * @param string|null $state  the objects state
 	 */
-	public function __construct(array $state = null)
+	public function __construct(string $state = null)
 	{
 		if ($state !== null) {
-			[$fields] = $state;
-			$this->fields = unserialize($fields);
+			$this->fieldDescriptors = unserialize($state);
 		}
 	}
 
@@ -35,11 +36,18 @@ final class ObjectType extends Type
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		$meta->fields = [];
-		foreach ($this->fields as $field) {
+		$meta->fields = new stdClass;
+		foreach ($this->fieldDescriptors as $name => [$type, $defaultValue, $flags, $autocomplete]) {
 			$submeta = new stdClass;
-			$field->meta($submeta);
-			$meta->fields[$field->getName()] = $submeta;
+			Type::createType($type)->meta($submeta);
+			(new FieldFlags($flags))->meta($submeta);
+			if ($defaultValue !== null) {
+				$submeta->defaultValue = $defaultValue;
+			}
+			if ($autocomplete !== null) {
+				$submeta->autocomplete = $autocomplete;
+			}
+			$meta->fields->$name = $submeta;
 		}
 	}
 
@@ -50,7 +58,30 @@ final class ObjectType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.",".serialize($this->fields);
+		return self::type.":".serialize($this->fieldDescriptors);
+	}
+
+	/**
+	 * Set field descriptor
+	 *
+	 * @param string $name          the name of the field
+	 * @param string $type          the type descriptor
+	 * @param mixed  $defaultValue  the default value
+	 * @param int    $flags         field flags
+	 * @param string $autocomplete  autocomplete expression
+	 */
+	public function setFieldDescriptor(string $name, string $type, $defaultValue, int $flags, ?string $autocomplete): self
+	{
+		$this->fieldDescriptors[$name] = [$type, $defaultValue, $flags, $autocomplete];
+		return $this;
+	}
+
+	/**
+	 * Get field descriptors
+	 */
+	public function getFieldDescriptors(): array
+	{
+		return $this->fieldDescriptors??[];
 	}
 
 	/**
@@ -60,7 +91,7 @@ final class ObjectType extends Type
 	 */
 	public function addField(Field $field): self
 	{
-		$this->fields[$field->getName()] = $field;
+		$this->fields[$field->getName()][] = $field;
 		return $this;
 	}
 
@@ -71,7 +102,25 @@ final class ObjectType extends Type
 	 */
 	public function getFields(): iterable
 	{
-		return $this->fields;
+		return $this->fields??[];
+	}
+
+	/**
+	 * Get fields
+	 *
+	 * @return iterable  the fields
+	 */
+	public function getTaggables(): iterable
+	{
+		foreach ($this->fields??[] as $name => $fields) {
+			foreach ($fields as $field) {
+				yield $field;
+				$type = $field->getType();
+				if ($type instanceof self) {
+					yield from $type->getTaggables();
+				}
+			}
+		}
 	}
 
 	/**
@@ -82,6 +131,15 @@ final class ObjectType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		return is_object($value);
+		if (!is_object($value)) {
+			return false;
+		}
+		foreach ($this->fieldDescriptors as $name => [$type, $defaultValue, $flags, $autocomplete]) {
+			$flags = new FieldFlags($flags);
+			if (isset($value->$name)) {
+			} elseif ($flags->isRequired()) {
+			}
+			$type = Type::createType($type);
+		}
 	}
 }

@@ -2,6 +2,8 @@
 
 namespace Sturdy\Activity\Meta;
 
+use stdClass;
+
 /**
  * Field flags
  */
@@ -151,5 +153,16 @@ final class FieldFlags
 	public function toInt(): int
 	{
 		return $this->flags;
+	}
+
+	public function meta(stdClass $meta)
+	{
+		if ($this->isRequired()) $meta->required = true;
+		if ($this->isReadonly()) $meta->readonly = true;
+		if ($this->isDisabled()) $meta->disabled = true;
+		if ($this->isMultiple()) $meta->multiple = true;
+		if ($this->isArray()) $meta->{"array"} = true;
+		if ($this->isMeta()) $meta->meta = true;
+		if ($this->isData()) $meta->data = true;
 	}
 }

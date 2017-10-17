@@ -18,12 +18,12 @@ final class StringType extends Type
 	/**
 	 * Constructor
 	 *
-	 * @param array|null $state  the objects state
+	 * @param string|null $state  the objects state
 	 */
-	public function __construct(array $state = null)
+	public function __construct(string $state = null)
 	{
 		if ($state !== null) {
-			[$min, $max, $patternName] = $state;
+			[$min, $max, $patternName] = explode(",", $state);
 			if (strlen($min) > 0) $this->minimumLength = (int)$min;
 			if (strlen($max) > 0) $this->maximumLength = (int)$max;
 			if (strlen($patternName) > 0) {
@@ -59,7 +59,7 @@ final class StringType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.",".$this->minimumLength.",".$this->maximumLength.",".$this->patternName;
+		return self::type.":".$this->minimumLength.",".$this->maximumLength.",".$this->patternName;
 	}
 
 	/**

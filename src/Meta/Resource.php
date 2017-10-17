@@ -17,7 +17,7 @@ class Resource
 {
 	private $class;
 	private $description;
-	private $fields;
+	private $object;
 	private $verbs;
 
 	/**
@@ -29,7 +29,7 @@ class Resource
 	{
 		$this->class = $class;
 		$this->description = $description;
-		$this->fields = [];
+		$this->object = new Type\ObjectType;
 		$this->verbs = [];
 	}
 
@@ -95,18 +95,18 @@ class Resource
 	 */
 	public function addField(Field $field): self
 	{
-		$this->fields[$field->getName()][] = $field;
+		$this->object->addField($field);
 		return $this;
 	}
 
 	/**
-	 * Get fields
+	 * Get object type
 	 *
-	 * @return array fields
+	 * @return Type\ObjectType  the object type
 	 */
-	public function getFields(): array
+	public function getObjectType(): Type\ObjectType
 	{
-		return $this->fields;
+		return $this->object;
 	}
 
 	/**
@@ -138,13 +138,9 @@ class Resource
 	 */
 	public function getTaggables(): iterable
 	{
-		foreach ($this->fields??[] as $key => $fields) {
-			foreach ($fields as $field) {
-				yield $field;
-			}
-		}
-		foreach ($this->verbs??[] as $key => $verbs) {
-			foreach ($verbs as $verb) {
+		yield from $this->object->getTaggables();
+		foreach ($this->verbs??[] as $key => $variants) {
+			foreach ($variants as $verb) {
 				yield $verb;
 			}
 		}

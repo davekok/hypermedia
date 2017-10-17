@@ -17,12 +17,12 @@ final class FloatType extends Type
 	/**
 	 * Constructor
 	 *
-	 * @param array|null $state  the objects state
+	 * @param string|null $state  the objects state
 	 */
-	public function __construct(array $state = null)
+	public function __construct(string $state = null)
 	{
 		if ($state !== null) {
-			[$min, $max, $step] = $state;
+			[$min, $max, $step] = explode(",", $state);
 			$this->minimumRange = strlen($min) ? (float)$min : null;
 			$this->maximumRange = strlen($max) ? (float)$max : null;
 			$this->step = strlen($step) ? (float)$step : null;
@@ -55,7 +55,7 @@ final class FloatType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.",".$this->minimumRange.",".$this->maximumRange.",".$this->step;
+		return self::type.":".$this->minimumRange.",".$this->maximumRange.",".$this->step;
 	}
 
 	/**
