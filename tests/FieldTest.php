@@ -45,7 +45,7 @@ class FieldTest extends TestCase
 		$field->parse("required data object[] (
 			*    firstName: required string 'first name of person' #version1,
 			*    firstName: string 'first name of person' #version2,
-			*    lastName: required string,
+			*    lastName: required string minlength=0 maxlength=40,
 			*    emailAddress: email multiple,
 			*    telephone: string #version1,
 		)");
