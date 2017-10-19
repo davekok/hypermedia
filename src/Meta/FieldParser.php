@@ -263,15 +263,15 @@ final class FieldParser
 				$field->setType($type = new Type\EnumType());
 				$this->parseArray($flags);
 				$this->parseOptions($type);
-			} elseif ($this->isbitset($mask, 1) && $this->match('dateToken')) {
-				$this->clearbit($mask, 1);
-				$this->setbit($mask, 11);
-				$field->setType($type = new Type\DateType());
-				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('datetimeToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
 				$field->setType($type = new Type\DateTimeType());
+				$this->parseArray($flags);
+			} elseif ($this->isbitset($mask, 1) && $this->match('dateToken')) {
+				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
+				$field->setType($type = new Type\DateType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('timeToken')) {
 				$this->clearbit($mask, 1);
@@ -293,15 +293,15 @@ final class FieldParser
 				$this->setbit($mask, 11);
 				$field->setType($type = new Type\YearType());
 				$this->parseArray($flags);
-			} elseif ($this->isbitset($mask, 1) && $this->match('weekToken')) {
-				$this->clearbit($mask, 1);
-				$this->setbit($mask, 11);
-				$field->setType($type = new Type\WeekType());
-				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('weekdayToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
 				$field->setType($type = new Type\WeekDayType());
+				$this->parseArray($flags);
+			} elseif ($this->isbitset($mask, 1) && $this->match('weekToken')) {
+				$this->clearbit($mask, 1);
+				$this->setbit($mask, 11);
+				$field->setType($type = new Type\WeekType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('uuidToken')) {
 				$this->clearbit($mask, 1);
