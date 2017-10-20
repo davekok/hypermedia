@@ -38,9 +38,9 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 *
 	 * @return $this
 	 */
-	public function setVerb(string $key, string $method, int $status = Verb::OK, ?string $location = null, bool $self = true): self
+	public function setVerb(string $key, string $method, int $status = Verb::OK, ?string $location = null, bool $self = true, bool $data = true): self
 	{
-		$this->verbs[$key] = [$method, $status, $location, $self];
+		$this->verbs[$key] = [$method, $status, $location, $self, $data];
 		return $this;
 	}
 

@@ -51,7 +51,6 @@ final class FieldParser
 	private $patternToken;
 	private $tagToken;
 	private $optionToken;
-	private $linkOptionToken;
 	private $autocompleteToken;
 	private $autocompleteOption;
 	private $listStartToken;
@@ -74,9 +73,9 @@ final class FieldParser
 		$this->valueToken         = "/^(\S*)(?=\s|\*|$)/";
 		$this->nameToken          = "/^($name):/";
 		$this->stringToken        = "/^string/";
-		$this->integerToken       = "/^integer/";
+		$this->integerToken       = "/^int(?:eger)?/";
 		$this->floatToken         = "/^float/";
-		$this->booleanToken       = "/^boolean/";
+		$this->booleanToken       = "/^bool(?:ean)?/";
 		$this->setToken           = "/^set/";
 		$this->enumToken          = "/^enum/";
 		$this->dateToken          = "/^date/";
@@ -110,10 +109,9 @@ final class FieldParser
 
 		$this->minlengthToken     = "/^minlength=($int)/";
 		$this->maxlengthToken     = "/^maxlength=($int)/";
-		$this->patternToken       = "/^pattern=((?=$nsname::)?$name)/";
+		$this->patternToken       = "/^pattern=((?:$nsname::)?$name)/";
 
 		$this->optionToken        = "/^($name)/";
-		$this->linkOptionToken    = "/^($nsname)/";
 		$this->autocompleteToken  = "/^autocomplete/";
 		$this->autocompleteOption = "/^[^\S\*\(\)]+/";
 
@@ -339,6 +337,7 @@ final class FieldParser
 				$this->setbit($mask, 11);
 				$field->setType($type = new Type\ListType());
 				$this->parseArray($flags);
+				$this->parseList($type);
 			} elseif ($this->isbitset($mask, 1) && $this->isbitset($mask, 14) && $this->match('objectToken')) {
 				$this->clearbit($mask, 1);
 				$this->clearbit($mask, 14);
@@ -512,14 +511,35 @@ final class FieldParser
 		}
 	}
 
-	private function parseLink(Type\Link $link)
+	private function parseLink(Type\LinkType $link)
 	{
 		$sequence = 0;
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
-			} elseif (1 === $sequence && $this->match('linkOptionToken', $option)) {
+			} elseif (1 === $sequence && $this->match('optionToken', $option)) {
 				$link->setLink($option);
+			} elseif (0 !== $sequence && $this->match('listEndToken')) {
+				break;
+			} elseif (0 === $sequence && $this->match('listStartToken')) {
+				$sequence = 1;
+			} else {
+				break;
+			}
+		}
+		if (0 === $sequence) {
+			throw new ParserError($this->parseError("Expected options"));
+		}
+	}
+
+	private function parseList(Type\ListType $list)
+	{
+		$sequence = 0;
+		while ($this->valid()) {
+			if ($this->match('spaceToken')) {
+				// do nothing
+			} elseif (1 === $sequence && $this->match('optionToken', $option)) {
+				$list->setLink($option);
 			} elseif (0 !== $sequence && $this->match('listEndToken')) {
 				break;
 			} elseif (0 === $sequence && $this->match('listStartToken')) {

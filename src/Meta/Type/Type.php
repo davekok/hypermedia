@@ -20,6 +20,7 @@ abstract class Type
 		FloatType::type => FloatType::class,
 		HTMLType::type => HTMLType::class,
 		IntegerType::type => IntegerType::class,
+		ListType::type => ListType::class,
 		MonthType::type => MonthType::class,
 		ObjectType::type => ObjectType::class,
 		PasswordType::type => PasswordType::class,

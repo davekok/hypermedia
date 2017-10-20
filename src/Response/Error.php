@@ -10,9 +10,9 @@ abstract class Error extends Exception implements Response
 	use ProtocolVersionTrait;
 	use DateTrait;
 	use NoLocationTrait;
-	
+
 	private $messages;
-	
+
 	/**
 	 * Error constructor.
 	 * @param string $message
@@ -26,22 +26,22 @@ abstract class Error extends Exception implements Response
 			$this->messages = [$message];
 		}
 	}
-	
+
 	public function addMessage(string $message)
 	{
 		$this->messages[] =	$message;
 	}
-	
+
 	public function hasMessages(): bool
 	{
 		return ($this->messages > 0);
 	}
-	
+
 	public function getMessages(): array
 	{
 		return $this->messages;
 	}
-	
+
 	/**
 	 * Get the content type
 	 *
@@ -75,6 +75,7 @@ abstract class Error extends Exception implements Response
 		$previous = $this->getPrevious();
 		if ($previous) {
 			$error["previous"] = [
+				"class" => get_class($previous),
 				"message" => $previous->getMessage(),
 				"trace" => explode("\n", $previous->getTraceAsString())
 			];

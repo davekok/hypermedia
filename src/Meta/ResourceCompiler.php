@@ -25,7 +25,8 @@ class ResourceCompiler
 					$verb->getMethod(),
 					$verb->getStatus(),
 					$verb->getLocation(),
-					$verb->getSelf()
+					$verb->getSelf(),
+					$verb->getData(),
 				];
 				$root = $verb->getRoot();
 			}
@@ -44,8 +45,8 @@ class ResourceCompiler
 		foreach ($type->getFieldDescriptors() as $name => $descriptor) {
 			$item->setField($name, ...$descriptor);
 		}
-		foreach ($verbs as $name => [$method, $status, $location, $self]) {
-			$item->setVerb($name, $method, $status, $location, $self);
+		foreach ($verbs as $name => [$method, $status, $location, $self, $data]) {
+			$item->setVerb($name, $method, $status, $location, $self, $data);
 		}
 
 		return $item;

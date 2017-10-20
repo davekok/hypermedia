@@ -74,7 +74,7 @@ final class OK implements Response
 	 * @param array $fields
 	 * @return self
 	 */
-	public function setFields(array $fields): void
+	public function setFields(array $fields, bool $data): void
 	{
 		$this->part->fields = new stdClass;
 		foreach ($fields as $name => $field) {
@@ -82,14 +82,18 @@ final class OK implements Response
 				$this->part->fields->$name = $field;
 			} elseif ($field->data??false) {
 				$this->part->fields->$name = $field;
-				$this->part->data = $field->value??null;
+				if ($data) {
+					$this->part->data = $field->value??null;
+				}
 				unset($field->value);
 			} else {
-				if (!isset($this->part->data)) {
-					$this->part->data = new stdClass;
-				}
 				$this->part->fields->$name = $field;
-				$this->part->data->$name = $field->value??null;
+				if ($data) {
+					if (!isset($this->part->data)) {
+						$this->part->data = new stdClass;
+					}
+					$this->part->data->$name = $field->value??null;
+				}
 				unset($field->value);
 			}
 		}
@@ -101,20 +105,32 @@ final class OK implements Response
 	 * @param  string $name    the name of the link
 	 * @param  string $class   the class of the resource
 	 * @param  array  $values  the values in case the resource has uri fields
-	 * @param  bool   $attach  also attach the resource in the response
-	 *
-	 * Please note that $attach is ignored if link is called from a Resource
-	 * that itself is attached by another resource.
+	 * @return bool  link succeeded
 	 */
-	public function link(string $name, string $class, array $values = [], bool $attach = false): void
+	public function link(string $name, string $class, array $values = [], bool $attach = false): bool
 	{
 		$link = $this->resource->createLink($class, $values);
-		if ($link === null) return;
+		if ($link === null) return false;
 		if (!isset($this->part->links)) {
 			$this->part->links = new stdClass();
 		}
 		$this->part->links->$name = $link->toArray();
-		if ($attach && $this->part === $this->parts->main) { // only attach if linking from first resource
+		return true;
+	}
+
+	/**
+	 * Attach another resource.
+	 *
+	 * @param  string $name    the name of the link
+	 * @param  string $class   the class of the resource
+	 * @param  array  $values  the values in case the resource has uri fields
+	 *
+	 * Please note that $attach is ignored if link is called from a Resource
+	 * that itself is attached by another resource.
+	 */
+	public function attach(string $name, string $class, array $values = []): void
+	{
+		if ($this->link($name, $class, $values)) {
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;

@@ -22,6 +22,7 @@ abstract class Verb extends Taggable
 	private $location;
 	private $status = self::OK;
 	private $self = true;
+	private $data = true;
 	private $root = false;
 
 	/**
@@ -155,6 +156,28 @@ abstract class Verb extends Taggable
 	}
 
 	/**
+	 * Set data
+	 *
+	 * @param bool $data
+	 * @return self
+	 */
+	public function setData(bool $data): self
+	{
+		$this->data = $data;
+		return $this;
+	}
+
+	/**
+	 * Get data
+	 *
+	 * @return bool
+	 */
+	public function getData(): bool
+	{
+		return $this->data;
+	}
+
+	/**
 	 * Set location
 	 *
 	 * @param string $location
@@ -202,6 +225,10 @@ abstract class Verb extends Taggable
 
 				case "no-self":
 					$this->self = false;
+					break;
+
+				case "no-data":
+					$this->data = false;
 					break;
 
 				case "root":

@@ -32,12 +32,14 @@ final class Resource
 
 	private $response;
 
+	private $verb;
 	private $fields;
 	private $object;
 	private $method;
 	private $status;
 	private $location;
 	private $self;
+	private $data;
 
 	public function __construct(Cache $cache, string $sourceUnit, array $tags, string $basePath, $di)
 	{
@@ -96,9 +98,10 @@ final class Resource
 	private function initResource(CacheItem_Resource $resource, string $verb): void
 	{
 		$class = $resource->getClass();
+		$this->verb = $verb;
 		$this->fields = $resource->getFields()??[];
 		$this->object = new $class;
-		[$this->method, $this->status, $this->location, $this->self] = $resource->getVerb($verb);
+		[$this->method, $this->status, $this->location, $this->self, $this->data] = $resource->getVerb($verb);
 	}
 
 	private function initResponse(): void
@@ -141,7 +144,7 @@ final class Resource
 		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
 			// flags check
 			$flags = new FieldFlags($flags);
-			if ($flags->isRequired() && !isset($values[$name])) {
+			if ($flags->isRequired() && !isset($values[$name]) && ($flags->isMeta() || $this->verb === "POST")) {
 				$badRequest->addMessage("$name is required");
 			}
 			if ($flags->isReadonly() && isset($values[$name])) {
@@ -196,7 +199,7 @@ final class Resource
 				$fields[$name] = $field;
 			}
 			if (!empty($fields)) {
-				$this->response->setFields($fields);
+				$this->response->setFields($fields, $this->data);
 			}
 		}
 		return $this->response;
