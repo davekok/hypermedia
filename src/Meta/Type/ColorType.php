@@ -46,7 +46,7 @@ final class ColorType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!is_string($value)) return false;
+		if (!is_string($value)) return false;
 		return 1 === preg_match("/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/", $value = trim($value));
 	}
 }

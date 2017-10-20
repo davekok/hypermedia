@@ -114,6 +114,7 @@ Passwords of a length lower then 16 must have at least an upper and lower case c
 Passwords of a length lower then 8 must have at least an upper and lower case character, a base 10 digit and nonalphanumeric character.
 */
 
+		if (!is_string($value)) return false;
 		$l = strlen($value);
 		if (isset($this->minimumLength) && $l < $this->minimumLength) {
 			return false;

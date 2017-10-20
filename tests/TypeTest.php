@@ -9,13 +9,13 @@ use Faker;
 class TypeTest extends TestCase
 {
 	private $faker;
-	
+
 	public function __construct($name = null, array $data = [], $dataName = '')
 	{
 		parent::__construct($name, $data, $dataName);
 		$this->faker = Faker\Factory::create();
 	}
-	
+
 	public function testPasswordType()
 	{
 		$type = new Type\PasswordType;
@@ -26,7 +26,7 @@ class TypeTest extends TestCase
 		$password = "SqZ2n㗓FCnM$"; $this->assertTrue($type->filter($password));
 		$password = "㗐㗑㗒㗓㗔㗕8#"; $this->assertTrue($type->filter($password));
 	}
-	
+
 	public function testBooleanType()
 	{
 		$type = new Type\BooleanType();
@@ -35,7 +35,7 @@ class TypeTest extends TestCase
 		$boolean = "false"; $this->assertTrue($type->filter($boolean)); $this->assertTrue($boolean === false);
 		$boolean = false; $this->assertTrue($type->filter($boolean));
 	}
-	
+
 	public function testColorType()
 	{
 		$type = new Type\ColorType();
@@ -48,7 +48,7 @@ class TypeTest extends TestCase
 		$color = "fff123"; $this->assertFalse($type->filter($color));
 		$color = false; $this->assertFalse($type->filter($color));
 	}
-	
+
 	public function testDateTimeType()
 	{
 		$type = new Type\DateTimeType();
@@ -57,7 +57,7 @@ class TypeTest extends TestCase
 		$datetime = "1995-09-03T23:59:"; $this->assertFalse($type->filter($datetime));
 		$datetime = true; $this->assertFalse($type->filter($datetime));
 	}
-	
+
 	// TODO: All Below
 	public function testDateType()
 	{
@@ -66,16 +66,19 @@ class TypeTest extends TestCase
 		$datetime = "1995-13-03"; $this->assertFalse($type->filter($datetime));
 		$datetime = 1; $this->assertFalse($type->filter($datetime));
 	}
-	
+
 	public function testDayType()
 	{
 		$type = new Type\DayType();
 		$day = "31"; $this->assertTrue($type->filter($day));
 		$day = "01"; $this->assertTrue($type->filter($day));
+		$day = "0"; $this->assertFalse($type->filter($day));
 		$day = "2"; $this->assertTrue($type->filter($day));
-		$day = 2; $this->assertFalse($type->filter($day));
+		$day = 2; $this->assertTrue($type->filter($day));
+		$day = 2.0; $this->assertTrue($type->filter($day));
+		$day = 2.1; $this->assertFalse($type->filter($day));
 	}
-	
+
 	public function testEmailType()
 	{
 		$type = new Type\EmailType();
@@ -86,7 +89,7 @@ class TypeTest extends TestCase
 		$email = "firstname"; $this->assertFalse($type->filter($email));
 		$email = 2; $this->assertFalse($type->filter($email));
 	}
-	
+
 	public function testEnumType()
 	{
 		$type = new Type\EnumType();
@@ -98,28 +101,31 @@ class TypeTest extends TestCase
 		$choice = "d";
 		$this->assertFalse($type->filter($choice));
 	}
-	
+
 	public function testFloatType()
 	{
 		$type = new Type\FloatType();
 		$float = 5.2; $this->assertTrue($type->filter($float));
-		$float = 5; $this->assertFalse($type->filter($float));
-		$float = "Test"; $this->assertFalse($type->filter($float));
+		$float = 5; $this->assertTrue($type->filter($float));
+		$float = "5"; $this->assertTrue($type->filter($float));
+		$float = "5.0"; $this->assertTrue($type->filter($float));
+		$float = "5.3"; $this->assertTrue($type->filter($float));
+		$float = "sdf"; $this->assertFalse($type->filter($float));
 	}
-	
+
 	public function testHTMLType()
 	{
 		$type = new Type\HTMLType();
 		$html = $this->faker->randomHtml(); $this->assertTrue($type->filter($html));
 	}
-	
+
 	public function testIntegerType()
 	{
 		$type = new Type\IntegerType();
 		$int = 5; $this->assertTrue($type->filter($int));
 		$int = "Invalid"; $this->assertFalse($type->filter($int));
 	}
-	
+
 	public function testMonthType()
 	{
 		$type = new Type\MonthType();
@@ -129,7 +135,7 @@ class TypeTest extends TestCase
 		$month = 13; 		$this->assertFalse($type->filter($month));
 		$month = 00; 		$this->assertFalse($type->filter($month));
 	}
-	
+
 	public function testSetType()
 	{
 		$type = new Type\SetType();
@@ -141,7 +147,7 @@ class TypeTest extends TestCase
 		$set = "a,b,d"; $this->assertFalse($type->filter($set));
 		$set = "a,b;d"; $this->assertFalse($type->filter($set));
 	}
-	
+
 	public function testStringType()
 	{
 		$type = new Type\StringType();
@@ -151,7 +157,7 @@ class TypeTest extends TestCase
 		$string = $this->faker->boolean(); $this->assertFalse($type->filter($string));
 		$string = ["a","b"]; $this->assertFalse($type->filter($string));
 	}
-	
+
 	public function testTimeType()
 	{
 		$type = new Type\TimeType();
@@ -171,7 +177,7 @@ class TypeTest extends TestCase
 		$time = "20:60:";  $this->assertFalse($type->filter($time));
 		$time = "24:00";  $this->assertFalse($type->filter($time));
 	}
-	
+
 	public function testURLType()
 	{
 		$type = new Type\URLType();
@@ -182,13 +188,13 @@ class TypeTest extends TestCase
 		$url = "a"; $this->assertFalse($type->filter($url));
 		$url = 2; $this->assertFalse($type->filter($url));
 	}
-	
+
 	public function testUUIDType()
 	{
 		$type = new Type\UUIDType();
 		$uuid = $this->faker->uuid; $this->assertTrue($type->filter($uuid));
 	}
-	
+
 	public function testWeekDayType()
 	{
 		$type = new Type\WeekDayType();
@@ -198,7 +204,7 @@ class TypeTest extends TestCase
 		$weekday = 0; $this->assertFalse($type->filter($weekday));
 		$weekday = "mond"; $this->assertFalse($type->filter($weekday));
 	}
-	
+
 	public function testWeekType()
 	{
 		$type = new Type\WeekType();
@@ -207,7 +213,7 @@ class TypeTest extends TestCase
 		$week = 0; $this->assertFalse($type->filter($week));
 		$week = "Fifty-two"; $this->assertFalse($type->filter($week));
 	}
-	
+
 	public function testYearType()
 	{
 		$type = new Type\YearType();

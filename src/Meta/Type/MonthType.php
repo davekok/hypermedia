@@ -60,9 +60,13 @@ final class MonthType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(is_int($value)) $value = self::monthNames[$value] ?? false;
-		if(is_string($value)) $value = self::monthNames[strtolower(trim($value))] ?? false;
-		if ($value === false) return false;
+		if (is_int($value)) {
+			$month = self::monthNames[$value] ?? false;
+		} elseif (is_string($value)) {
+			$month = self::monthNames[strtolower(trim($value))] ?? false;
+		}
+		if ($month === false) return false;
+		$value = $month;
 		return true;
 	}
 }

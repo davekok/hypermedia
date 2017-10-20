@@ -45,8 +45,19 @@ final class DayType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!is_string($value)) return false;
-		if (preg_match("/^(0?[1-9]|[12]\d|3[01])$/", $value = trim($value)))	 return true;
-		return false;
+		if (is_string($value)) {
+			$day = trim($value);
+			if (!preg_match("/^(0?[1-9]|[12]\d|3[01])$/", $day)) {
+				return false;
+			}
+			$day = (int)$day;
+		} else {
+			$day = filter_var($value, FILTER_VALIDATE_INT);
+			if ($day === false || $day < 1 || $day > 31) {
+				return false;
+			}
+		}
+		$value = $day;
+		return true;
 	}
 }

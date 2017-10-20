@@ -69,10 +69,13 @@ final class WeekDayType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(is_int($value)) $value = self::weekdays[$value] ?? false;
-		if(is_string($value)) $value = self::weekdays[strtolower(trim($value))] ?? false;
-		if ($value === false) return false;
-		$value = $value;
+		if (is_int($value)) {
+			$weekday = self::weekdays[$value] ?? false;
+		} elseif (is_string($value)) {
+			$weekday = self::weekdays[strtolower(trim($value))] ?? false;
+		}
+		if ($weekday === false) return false;
+		$value = $weekday;
 		return true;
 	}
 }

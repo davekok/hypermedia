@@ -61,6 +61,7 @@ final class HTMLType extends Type
 	 */
 	public function filter(&$value): bool
 	{
+		if (!is_string($value)) return false;
 		$tidy = tidy_parse_string($value, self::tidyconfig, 'utf8');
 		if (tidy_error_count($tidy)) return false;
 		$value = tidy_get_output($tidy);

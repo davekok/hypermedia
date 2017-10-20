@@ -46,7 +46,8 @@ final class YearType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$year = filter_var(trim($value), FILTER_VALIDATE_INT);
+		if (is_string($value)) $value = trim($value);
+		$year = filter_var($value, FILTER_VALIDATE_INT);
 		if ($year === false || $year === 0) { // there is no year 0
 			return false;
 		}

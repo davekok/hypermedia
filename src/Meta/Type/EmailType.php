@@ -46,7 +46,7 @@ final class EmailType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!is_string($value)) return false;
+		if (!is_string($value)) return false;
 		$email = filter_var(trim($value), FILTER_VALIDATE_EMAIL);
 		if ($email === false) return false;
 		$value = $email;

@@ -50,7 +50,8 @@ final class BooleanType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$boolean = filter_var(trim($value), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+		if (is_string($value)) $value = trim($value);
+		$boolean = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
 		if ($boolean === null) return false;
 		$value = $boolean;
 		return true;

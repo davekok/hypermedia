@@ -132,7 +132,7 @@ final class FloatType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if(!is_float($value)) return false;
+		if (is_string($value)) $value = trim($value);
 		$float = filter_var($value, FILTER_VALIDATE_FLOAT);
 		if ($float === false) {
 			return false;

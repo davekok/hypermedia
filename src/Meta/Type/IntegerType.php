@@ -132,13 +132,8 @@ final class IntegerType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		$integer = false;
-		
-		if(is_string($value)) {
-			$integer = filter_var(trim($value), FILTER_VALIDATE_INT);
-		} else {
-			$integer = filter_var($value, FILTER_VALIDATE_INT);
-		}
+		if (is_string($value)) $value = trim($value);
+		$integer = filter_var($value, FILTER_VALIDATE_INT);
 		if ($integer === false) {
 			return false;
 		}

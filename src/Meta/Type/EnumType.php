@@ -76,6 +76,7 @@ final class EnumType extends Type
 	 */
 	public function filter(&$value): bool
 	{
+		if (!is_string($value)) return false;
 		return $this->options->contains($value);
 	}
 }
