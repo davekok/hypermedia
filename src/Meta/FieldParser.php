@@ -64,7 +64,7 @@ final class FieldParser
 	public function __construct()
 	{
 		$int = '0|[1-9][0-9]*';
-		$nsname = '[A-Za-z_][A-Za-z0-9_]+(?=\\[A-Za-z_][A-Za-z0-9_]+)*';
+		$nsname = '[A-Za-z_][A-Za-z0-9_]+(?:\\\\[A-Za-z_][A-Za-z0-9_]+)*';
 		$name = '[A-Za-z_][A-Za-z0-9_]+';
 
 		$this->spaceToken         = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
@@ -386,7 +386,7 @@ final class FieldParser
 				$type->setMaximumLength((int)$max);
 			} elseif ($this->isbitset($mask, 10) && $this->match('patternToken', $pattern)) {
 				$this->clearbit($mask, 10);
-				if (defined($pattern)) {
+				if (!defined($pattern)) {
 					throw new ParserError($this->parseError("Pattern $pattern not defined."));
 				}
 				$type->setPatternName($pattern);
