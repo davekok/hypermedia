@@ -389,7 +389,7 @@ final class FieldParser
 				if (defined($pattern)) {
 					throw new ParserError($this->parseError("Pattern $pattern not defined."));
 				}
-				$type->setPattern($pattern);
+				$type->setPatternName($pattern);
 			} elseif ($this->isbitset($mask, 11) && $this->match('autocompleteToken')) {
 				$this->clearbit($mask, 11);
 				$this->parseAutocomplete($field);
