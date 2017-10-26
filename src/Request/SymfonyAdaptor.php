@@ -37,7 +37,29 @@ final class SymfonyAdaptor implements Request
 
 	public function getContentType(): ?string
 	{
-		return $this->request->getContentType();
+		$contentType = $this->request->getContentType();
+		switch ($contentType) {
+			case 'json':
+				return 'application/json';
+			case 'html':
+				return 'text/html';
+			case 'txt':
+				return 'text/plain';
+			case 'css':
+				return 'text/css';
+			case 'xml':
+				return 'text/xml';
+			case 'rdf':
+				return 'application/rdf+xml';
+			case 'atom':
+				return 'application/atom+xml';
+			case 'rss':
+				return 'application/rss+xml';
+			case 'form':
+				return 'application/x-www-form-urlencoded';
+			default:
+				return $contentType;
+		}
 	}
 
 	public function getContent(): ?string
