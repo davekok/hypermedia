@@ -16,6 +16,8 @@ class ResourceCompiler
 	 */
 	public function compile(Resource $resource, TagMatcher $matcher): CacheItem_Resource
 	{
+		$section = $matcher->findBestMatch($resource->getSections());
+
 		$verbs = [];
 		$root = false;
 		foreach ($resource->getVerbs() as $name => $variants) {
@@ -41,6 +43,7 @@ class ResourceCompiler
 
 		$item = $root ? new CacheItem_RootResource : new CacheItem_Resource;
 		$item->setClass($resource->getClass());
+		$item->setSection($section ? $section->getName() : null);
 		$item->setTags($matcher->getTags());
 		foreach ($type->getFieldDescriptors() as $name => $descriptor) {
 			$item->setField($name, ...$descriptor);

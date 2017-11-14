@@ -69,12 +69,25 @@ final class OK implements Response
 	}
 
 	/**
-	 * Set the fields of this response.
+	 * Set section
+	 *
+	 * @param ?string $section
+	 */
+	public function section(?string $section): void
+	{
+		if ($section !== null) {
+			$this->part->section = $section;
+		}
+	}
+
+	/**
+	 * Set the data of this response.
 	 *
 	 * @param array $fields
+	 * @param bool  $data
 	 * @return self
 	 */
-	public function setFields(array $fields, bool $data): void
+	public function fields(array $fields, bool $data): void
 	{
 		$this->part->fields = new stdClass;
 		foreach ($fields as $name => $field) {

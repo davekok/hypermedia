@@ -35,6 +35,7 @@ class HyperMediaBase extends TestCase
 	protected $sourceUnit;
 	protected $basePath;
 	protected $class;
+	protected $section;
 	protected $classes;
 	protected $attachmentFields;
 
@@ -68,6 +69,7 @@ class HyperMediaBase extends TestCase
 	{
 		$resource = (new CacheItem_Resource())
 			->setClass($this->class)
+			->setSection($this->section)
 			->setTags($this->tags);
 		switch ($this->statusCode) {
 			default:
@@ -124,14 +126,13 @@ class HyperMediaBase extends TestCase
 		return $cache->reveal();
 	}
 
-	public function initResource(string $sourceUnit,string $class,string $method, array $tags = [], string $responseType, string $code = null): void
+	public function initResource(string $sourceUnit, string $class, string $method, array $tags = [], string $responseType, string $code = null): void
 	{
 		// resource
 		$this->sourceUnit = $sourceUnit;
 		$this->basePath = $this->faker->boolean ? "/" : "/".strtr($this->faker->slug, "-", "/")."/";
 		$this->class = $class;
-		while(class_exists($this->class))
-		{
+		while (class_exists($this->class)) {
 			$this->class = $this->faker->unique()->word;
 		}
 
@@ -383,6 +384,7 @@ CLASS
 
 		return new HyperMedia($cache, $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);
 	}
+
 	public function createHyperMediaWithErrorCache(): HyperMedia
 	{
 		return new HyperMedia($this->prophet->prophesize()->willImplement(Cache::class)->reveal(), $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);

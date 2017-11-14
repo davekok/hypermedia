@@ -170,6 +170,32 @@ class HyperMediaTest extends HyperMediaBase
 		$this->handle($this->createHyperMediaWithErrorCache(), $this->createErrorRequest());
 	}
 
+	public function testGetOKResourceWithSection()
+	{
+		// resource
+		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
+
+		// request
+		$this->section = "main";
+		$this->initRequest("1.1", "GET");
+
+		$this->requestContentType = null;
+		$this->requestContent = null;
+
+		// response
+		$this->_journalId = $this->journalId ?? rand();
+		$this->statusCode = 200;
+		$this->statusText = "OK";
+		$this->location = null;
+		$this->contentType = "application/json";
+		$content = new stdClass;
+		$content->main = new stdClass;
+		$content->main->section = "main";
+		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+
+		$this->handle($this->createHyperMedia(), $this->createRequest());
+	}
+
 	public function testGetOKResourceWithMetaField()
 	{
 		// resource

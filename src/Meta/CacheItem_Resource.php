@@ -9,8 +9,30 @@ namespace Sturdy\Activity\Meta;
  */
 class CacheItem_Resource extends CacheItem_UnitItem
 {
+	private $section;
 	private $fields;
 	private $verbs;
+
+	/**
+	 * Set section
+	 *
+	 * @param ?string $section
+	 */
+	public function setSection(?string $section): self
+	{
+		$this->section = $section;
+		return $this;
+	}
+
+	/**
+	 * Get section
+	 *
+	 * @return ?string
+	 */
+	public function getSection(): ?string
+	{
+		return $this->section;
+	}
 
 	/**
 	 * Set field
@@ -61,6 +83,7 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 */
 	public function clear(): self
 	{
+		$this->section = null;
 		$this->fields = null;
 		$this->verbs = null;
 		return $this;

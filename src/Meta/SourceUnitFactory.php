@@ -53,6 +53,12 @@ final class SourceUnitFactory
 					}
 				}
 				$reflect = new ReflectionClass($className);
+				foreach ($this->annotationReader->getClassAnnotations($reflect) as $annotation) {
+					if ($annotation instanceof Section) {
+						if (!isset($resource)) $resource = new Resource($className, $this->getDescription($reflect->getDocComment()?:""));
+						$resource->addSection($annotation);
+					}
+				}
 				$defaults = $reflect->getDefaultProperties();
 				foreach ($reflect->getProperties() as $property) {
 					foreach ($this->annotationReader->getPropertyAnnotations($property) as $annotation) {

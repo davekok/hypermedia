@@ -33,6 +33,7 @@ final class Resource
 	private $response;
 
 	private $verb;
+	private $section;
 	private $fields;
 	private $object;
 	private $method;
@@ -99,6 +100,7 @@ final class Resource
 	{
 		$class = $resource->getClass();
 		$this->verb = $verb;
+		$this->section = $resource->getSection();
 		$this->fields = $resource->getFields()??[];
 		$this->object = new $class;
 		[$this->method, $this->status, $this->location, $this->self, $this->data] = $resource->getVerb($verb);
@@ -182,12 +184,14 @@ final class Resource
 			$this->object->$name = $values[$name] ?? null;
 		}
 
-		if($badRequest->hasMessages()) {
+		if ($badRequest->hasMessages()) {
 			throw $badRequest;
 		}
 
 		$this->object->{$this->method}($this->response, $this->di);
+
 		if ($this->self && $this->status === Meta\Verb::OK) {
+			$this->response->section($this->section);
 			$fields = [];
 			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
 				$field = new stdClass;
@@ -199,7 +203,7 @@ final class Resource
 				$fields[$name] = $field;
 			}
 			if (!empty($fields)) {
-				$this->response->setFields($fields, $this->data);
+				$this->response->fields($fields, $this->data, $this->section);
 			}
 		}
 		return $this->response;
