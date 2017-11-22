@@ -71,7 +71,7 @@ final class Section extends Taggable
 					$this->needsTag($token[0]);
 				}
 			} else {
-				$this->section = $token;
+				$this->name = $token;
 			}
 			$token = strtok($delimiters);
 		} while ($token !== false);
