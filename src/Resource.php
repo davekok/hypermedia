@@ -35,6 +35,7 @@ final class Resource
 	private $verb;
 	private $section;
 	private $fields;
+	private $class;
 	private $object;
 	private $method;
 	private $status;
@@ -98,11 +99,11 @@ final class Resource
 
 	private function initResource(CacheItem_Resource $resource, string $verb): void
 	{
-		$class = $resource->getClass();
+		$this->class = $resource->getClass();
 		$this->verb = $verb;
 		$this->section = $resource->getSection();
 		$this->fields = $resource->getFields()??[];
-		$this->object = new $class;
+		$this->object = new $this->class;
 		[$this->method, $this->status, $this->location, $this->self, $this->data] = $resource->getVerb($verb);
 	}
 
@@ -192,16 +193,22 @@ final class Resource
 
 		if ($this->self && $this->status === Meta\Verb::OK) {
 			$this->response->section($this->section);
+			$meta = [];
 			$fields = [];
 			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
 				$field = new stdClass;
 				if (isset($this->object->$name)) $field->value = $this->object->$name;
 				Type::createType($type)->meta($field);
 				if ($defaultValue !== null) $field->defaultValue = $defaultValue;
-				(new FieldFlags($flags))->meta($field);
+				$flags = new FieldFlags($flags);
+				$flags->meta($field);
 				if ($autocomplete) $field->autocomplete = $autocomplete;
 				$fields[$name] = $field;
+				if ($flags->isMeta() && $this->object->$name !== null) {
+					$meta[$name] = $this->object->$name;
+				}
 			}
+			$this->response->link("self", $this->class, $meta);
 			if (!empty($fields)) {
 				$this->response->fields($fields, $this->data, $this->section);
 			}
@@ -232,7 +239,7 @@ final class Resource
 			if ($flags->isMeta()) {
 				if ($flags->isReadonly() || $flags->isDisabled()) continue;
 				if (array_key_exists($name, $values)) {
-					$known.= "&" . $name . "=" . urlencode($values[$name]);
+					$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
 				} elseif ($mayBeTemplated) {
 					$unknown.= "," . $name;
 				} elseif ($flags->isRequired()) {
