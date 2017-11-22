@@ -185,13 +185,14 @@ final class Field extends Taggable
 		$text = "";
 		if ($this->flags->isMeta()) $text.= "meta ";
 		if ($this->flags->isData()) $text.= "data ";
-		$text.= $this->type::type;
-		if ($this->flags->isArray()) $text.= "[]";
-		$text.= " ";
+		if ($this->flags->isState()) $text.= "state ";
 		if ($this->flags->isRequired()) $text.= "required ";
 		if ($this->flags->isReadonly()) $text.= "readonly ";
 		if ($this->flags->isDisabled()) $text.= "disabled ";
 		if ($this->flags->isMultiple()) $text.= "multiple ";
+		$text.= $this->type::type;
+		if ($this->flags->isArray()) $text.= "[]";
+		$text.= " ";
 		if ($this->autocomplete) $text.= "autocomplete({$this->autocomplete}) ";
 		if (method_exists($this->type, "getMinimumRange") && $min = $this->type->getMinimumRange()) {
 			$text.= " min($min)";

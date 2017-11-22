@@ -18,6 +18,8 @@ final class FieldFlags
 	                        // also meta data is never in the data section
 	const data     =  64;   // only one field may have this flag, when used on a field the value of the field will
 	                        // be put in the data section and all other fields must have the meta flag
+	const state    = 128;   // whether the field is a state field, state fields are hidden from the client
+	                        // state fields can be used to embed data in the URL without the client knowing about it
 
 	private $flags;         // bitmask of the above constants
 
@@ -150,6 +152,23 @@ final class FieldFlags
 		return (bool)($this->flags & self::data);
 	}
 
+	public function setState(): self
+	{
+		$this->flags |= self::state;
+		return $this;
+	}
+
+	public function clearState(): self
+	{
+		$this->flags &= ~self::state;
+		return $this;
+	}
+
+	public function isState(): bool
+	{
+		return (bool)($this->flags & self::state);
+	}
+
 	public function toInt(): int
 	{
 		return $this->flags;
@@ -157,6 +176,9 @@ final class FieldFlags
 
 	public function meta(stdClass $meta)
 	{
+		if ($this->isState()) {
+			throw new \LogicException("State fields should not be visible to the client.");
+		}
 		if ($this->isRequired()) $meta->required = true;
 		if ($this->isReadonly()) $meta->readonly = true;
 		if ($this->isDisabled()) $meta->disabled = true;

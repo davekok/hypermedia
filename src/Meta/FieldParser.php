@@ -42,6 +42,7 @@ final class FieldParser
 	private $readonlyToken;
 	private $disabledToken;
 	private $multipleToken;
+	private $stateToken;
 	private $arrayToken;
 	private $minToken;
 	private $maxToken;
@@ -101,6 +102,7 @@ final class FieldParser
 		$this->readonlyToken      = "/^readonly/";
 		$this->disabledToken      = "/^disabled/";
 		$this->multipleToken      = "/^multiple/";
+		$this->stateToken         = "/^state/";
 		$this->arrayToken         = "/^\[\]/";
 
 		$this->minToken           = "/^min=($int)/";
@@ -193,7 +195,7 @@ final class FieldParser
 
 		$mask = ~0;
 		// bit 1: type
-		// bit 2: meta or data field
+		// bit 2: meta, data or state field
 		// bit 3: required/readonly/disabled
 		// bit 4: multiple token
 		// bit 5: min token
@@ -355,6 +357,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 2) && $this->match('metaToken')) {
 				$this->clearbit($mask, 2);
 				$flags->setMeta();
+			} elseif ($this->isbitset($mask, 2) && $this->match('stateToken')) {
+				$this->clearbit($mask, 2);
+				$flags->setState();
 			} elseif ($this->isbitset($mask, 3) && $this->match('requiredToken')) {
 				$this->clearbit($mask, 3);
 				$this->clearbit($mask, 12);

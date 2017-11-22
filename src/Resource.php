@@ -193,22 +193,25 @@ final class Resource
 
 		if ($this->self && $this->status === Meta\Verb::OK) {
 			$this->response->section($this->section);
-			$meta = [];
 			$fields = [];
+			$state = [];
 			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
-				$field = new stdClass;
-				if (isset($this->object->$name)) $field->value = $this->object->$name;
-				Type::createType($type)->meta($field);
-				if ($defaultValue !== null) $field->defaultValue = $defaultValue;
 				$flags = new FieldFlags($flags);
-				$flags->meta($field);
-				if ($autocomplete) $field->autocomplete = $autocomplete;
-				$fields[$name] = $field;
-				if ($flags->isMeta() && $this->object->$name !== null) {
-					$meta[$name] = $this->object->$name;
+				if ($flags->isState()) {
+					if (isset($this->object->$name)) {
+						$state[$name] = $this->object->$name;
+					}
+				} else {
+					$field = new stdClass;
+					if (isset($this->object->$name)) $field->value = $this->object->$name;
+					Type::createType($type)->meta($field);
+					if ($defaultValue !== null) $field->defaultValue = $defaultValue;
+					$flags->meta($field);
+					if ($autocomplete) $field->autocomplete = $autocomplete;
+					$fields[$name] = $field;
 				}
 			}
-			$this->response->link("self", $this->class, $meta);
+			$this->response->link("self", $this->class, $state);
 			if (!empty($fields)) {
 				$this->response->fields($fields, $this->data, $this->section);
 			}
@@ -243,6 +246,12 @@ final class Resource
 				} elseif ($mayBeTemplated) {
 					$unknown.= "," . $name;
 				} elseif ($flags->isRequired()) {
+					throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
+				}
+			} elseif ($flags->isState()) {
+				if (array_key_exists($name, $values)) {
+					$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
+				} elseif (!$mayBeTemplated && $flags->isRequired()) {
 					throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
 				}
 			}
