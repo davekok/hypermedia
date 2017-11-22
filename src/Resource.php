@@ -211,9 +211,11 @@ final class Resource
 					$fields[$name] = $field;
 				}
 			}
-			$this->response->link("self", $this->class, $state);
+			if ($this->data) {
+				$this->response->link("self", $this->class, $state);
+			}
 			if (!empty($fields)) {
-				$this->response->fields($fields, $this->data, $this->section);
+				$this->response->fields($fields, $this->data);
 			}
 		}
 		return $this->response;

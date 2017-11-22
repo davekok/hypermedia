@@ -278,6 +278,9 @@ abstract class Verb extends Taggable
 		if (!$this->self) {
 			$text.= "no-self ";
 		}
+		if (!$this->data) {
+			$text.= "no-data ";
+		}
 		if ($this->root) {
 			$text.= "root ";
 		}
