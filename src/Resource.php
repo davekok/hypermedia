@@ -38,10 +38,8 @@ final class Resource
 	private $class;
 	private $object;
 	private $method;
-	private $status;
+	private $verbflags;
 	private $location;
-	private $self;
-	private $data;
 
 	public function __construct(Cache $cache, string $sourceUnit, array $tags, string $basePath, $di)
 	{
@@ -90,7 +88,7 @@ final class Resource
 			throw new FileNotFound("Resource $class not found.");
 		}
 		$self->initResource($resource, "GET");
-		if ($self->status !== Meta\Verb::OK) {
+		if ($self->verbflags->getStatus() !== Meta\Verb::OK) {
 			throw new InternalServerError("Attached resources must return an OK status code.");
 		}
 		$self->response = $this->response;
@@ -104,12 +102,13 @@ final class Resource
 		$this->section = $resource->getSection();
 		$this->fields = $resource->getFields()??[];
 		$this->object = new $this->class;
-		[$this->method, $this->status, $this->location, $this->self, $this->data] = $resource->getVerb($verb);
+		[$this->method, $this->verbflags, $this->location] = $resource->getVerb($verb);
+		$this->verbflags = new Meta\VerbFlags($this->verbflags);
 	}
 
 	private function initResponse(): void
 	{
-		switch ($this->status) {
+		switch ($this->verbflags->getStatus()) {
 			case Meta\Verb::OK:
 				$this->response = new OK($this);
 				break;
@@ -127,7 +126,7 @@ final class Resource
 				break;
 
 			default:
-				throw new InternalServerError("[{$this->class}::{$this->method}] Attached resources must return an OK status code, got {$this->status}.");
+				throw new InternalServerError("[{$this->class}::{$method}] Unkown status code.");
 		}
 	}
 
@@ -191,7 +190,7 @@ final class Resource
 
 		$this->object->{$this->method}($this->response, $this->di);
 
-		if ($this->self && $this->status === Meta\Verb::OK) {
+		if ($this->verbflags->hasFields() && $this->verbflags->getStatus() === Meta\Verb::OK) {
 			$this->response->section($this->section);
 			$fields = [];
 			$state = [];
@@ -211,11 +210,11 @@ final class Resource
 					$fields[$name] = $field;
 				}
 			}
-			if ($this->data) {
+			if ($this->verbflags->hasSelfLink()) {
 				$this->response->link("self", $this->class, $state);
 			}
 			if (!empty($fields)) {
-				$this->response->fields($fields, $this->data);
+				$this->response->fields($fields, $this->verbflags->hasData());
 			}
 		}
 		return $this->response;

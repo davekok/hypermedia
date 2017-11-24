@@ -23,14 +23,8 @@ class ResourceCompiler
 		foreach ($resource->getVerbs() as $name => $variants) {
 			$verb = $matcher->findBestMatch($variants);
 			if ($verb) {
-				$verbs[$name] = [
-					$verb->getMethod(),
-					$verb->getStatus(),
-					$verb->getLocation(),
-					$verb->getSelf(),
-					$verb->getData(),
-				];
-				$root = $verb->getRoot();
+				$verbs[$name] = [$verb->getMethod(), $verb->getFlags()->toInt(), $verb->getLocation()];
+				$root = $verb->getFlags()->getRoot();
 			}
 		}
 
@@ -48,8 +42,8 @@ class ResourceCompiler
 		foreach ($type->getFieldDescriptors() as $name => $descriptor) {
 			$item->setField($name, ...$descriptor);
 		}
-		foreach ($verbs as $name => [$method, $status, $location, $self, $data]) {
-			$item->setVerb($name, $method, $status, $location, $self, $data);
+		foreach ($verbs as $name => [$method, $flags, $location]) {
+			$item->setVerb($name, $method, $flags, $location);
 		}
 
 		return $item;

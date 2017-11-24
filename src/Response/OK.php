@@ -84,10 +84,10 @@ final class OK implements Response
 	 * Set the data of this response.
 	 *
 	 * @param array $fields
-	 * @param bool  $data
+	 * @param bool  $hasData
 	 * @return self
 	 */
-	public function fields(array $fields, bool $data): void
+	public function fields(array $fields, bool $hasData): void
 	{
 		$this->part->fields = new stdClass;
 		foreach ($fields as $name => $field) {
@@ -95,13 +95,13 @@ final class OK implements Response
 				$this->part->fields->$name = $field;
 			} elseif ($field->data??false) {
 				$this->part->fields->$name = $field;
-				if ($data) {
+				if ($hasData) {
 					$this->part->data = $field->value??null;
 				}
 				unset($field->value);
 			} else {
 				$this->part->fields->$name = $field;
-				if ($data) {
+				if ($hasData) {
 					if (!isset($this->part->data)) {
 						$this->part->data = new stdClass;
 					}

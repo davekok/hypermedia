@@ -34,7 +34,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"foo",[],"OK");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>true,"meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->initRequest("1.1","GET",false, $this->fields);
@@ -49,25 +48,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = new stdClass;
-			foreach ($this->fields as $name => $field) {
-				$content->main->fields->$name = new stdClass;
-				$content->main->fields->$name->type = $field["type"];
-				if ($field["meta"]??false) {
-					$content->main->fields->$name->meta = true;
-				}
-				if ($field["required"]??false) {
-					$content->main->fields->$name->required = true;
-				}
-				if (isset($field["value"])) {
-					$content->main->fields->$name->value = $field["value"];
-				}
-			}
-		}
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -78,7 +59,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"foo",[],"OK","throw new \Exception('bla bla bla');");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>true,"meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->initRequest("1.1","GET",false, $this->fields);
@@ -117,7 +97,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$resourceName,"exception",[],"OK");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>true,"meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->initRequest("1.1","GET",false, $this->fields);
@@ -132,10 +111,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "File Not Found";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->error = new stdClass;
-		$content->error->message = "Resource $resourceName not found.";
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "Resource $resourceName not found.";
 
 		$this->handle($this->createHyperMediaWithNullCache(), $this->createErrorRequest());
 	}
@@ -161,11 +139,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Method Not Allowed";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->error = new stdClass;
-		$content->error->message = "Test not allowed.";
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "Test not allowed.";
 
 		$this->handle($this->createHyperMediaWithErrorCache(), $this->createErrorRequest());
 	}
@@ -188,10 +164,8 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		$content->main->section = "main";
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class);
+		$this->content->main->section = "main";
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -202,7 +176,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK", '$this->name = "sdfsedfsd";');
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type" => "string"];
 		$this->fields["streetName"] = ["type" => "string", "value" => $this->faker->streetName, "required" => true, "meta" => true];
 		$this->initRequest("1.1", "GET", false, $this->fields);
@@ -216,14 +189,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-		$content->main->data = new stdClass;
-		$content->main->data->name = "sdfsedfsd";
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, ["name" => "sdfsedfsd"]);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -234,7 +200,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK", '$this->name = "sdfsedfsd";');
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type" => "string", "data" => true];
 		$this->initRequest("1.1", "GET", false, $this->fields);
 
@@ -247,13 +212,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-		$content->main->data = "sdfsedfsd";
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, "sdfsedfsd");
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -264,7 +223,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK", '$this->name = null;');
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type" => "string", "data" => true];
 		$this->initRequest("1.1", "GET", false, $this->fields);
 
@@ -277,13 +235,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-		$content->main->data = null;
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, null);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -294,8 +246,8 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["testArray"] = ["type" => "string", "value" => ["val1","val2"], "array" => true];
+		$this->fields["testArray"] = ["type" => "string", "array" => true];
+		$this->data = ["testArray"=>["val1","val2"]];
 		$this->initRequest("1.1", "POST", false, $this->fields);
 
 		// response
@@ -304,14 +256,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-		$content->main->data = new stdClass;
-		$content->main->data->testArray = ["val1","val2"];
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, $this->data);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -322,8 +267,8 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["testArray"] = ["type" => "string", "value" => "val1", "array" => true];
+		$this->fields["testArray"] = ["type" => "string", "array" => true];
+		$this->data = ["testArray"=>"val1"];
 		$this->initRequest("1.1", "POST", false, $this->fields);
 
 		// response
@@ -332,11 +277,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Bad Request";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-
-		$content->error = new stdClass;
-		$content->error->message = "Expected type of testArray is array, string found.";
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "Expected type of testArray is array, string found.";
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -347,8 +290,8 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["testMultiple"] = ["type" => "string", "value" => "val1,val2,val3,val4", "multiple" => true];
+		$this->fields["testMultiple"] = ["type" => "string", "multiple" => true];
+		$this->data = ["testMultiple"=>"val1,val2,val3,val4"];
 		$this->initRequest("1.1", "POST", false, $this->fields);
 
 		// response
@@ -357,14 +300,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-		$content->main->data = new stdClass;
-		$content->main->data->testMultiple = "val1,val2,val3,val4";
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, $this->data);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -375,8 +311,8 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["testRequired"] = ["type" => "string", "value" => "value", "required" => true];
+		$this->fields["testRequired"] = ["type" => "string", "required" => true];
+		$this->data = ["testRequired"=>"value"];
 		$this->initRequest("1.1", "POST", false, $this->fields);
 
 		// response
@@ -385,14 +321,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-		$content->main->data = new stdClass;
-		$content->main->data->testRequired = "value";
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, $this->data);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -403,8 +332,8 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["testRequired"] = ["type" => "string", "value" => null, "required" => true];
+		$this->fields["testRequired"] = ["type" => "string", "required" => true];
+		$this->data = ["testRequired"=>null];
 		$this->initRequest("1.1", "POST", false, $this->fields);
 
 		// response
@@ -413,14 +342,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Bad Request";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-
-		$content = new stdClass;
-		$content->error = new stdClass;
-		$content->error->message = "testRequired is required";
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "testRequired is required";
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -431,9 +355,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["testRequiredNull"] = ["type" => "string", "value" => null, "required" => true];
+		$this->fields["testRequiredNull"] = ["type" => "string", "required" => true];
 		$this->fields["testRequiredMissing"] = ["type" => "string", "required" => true];
+		$this->data = ["testRequiredNull"=>null];
 		$this->initRequest("1.1", "POST", false, $this->fields);
 
 		// response
@@ -442,11 +366,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Bad Request";
 		$this->location = null;
 		$this->contentType = "application/json";
-
-		$content = new stdClass;
-		$content->error = new stdClass;
-		$content->error->messages = ["testRequiredNull is required","testRequiredMissing is required"];
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->messages = ["testRequiredNull is required","testRequiredMissing is required"];
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -457,7 +379,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","readonly" => true, "meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>true,"meta"=>true];
@@ -470,15 +391,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = 'application/json';
-		$content = new stdClass;
-
-		$content->main = new stdClass;
-		$content->main->fields = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -489,11 +402,11 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["name"] = ["type"=>"string","value"=>"abc123", "readonly" => true];
+		$this->fields["name"] = ["type"=>"string", "readonly" => true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>true,"meta"=>true];
 		$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>true,"meta"=>true];
+		$this->data = ["name"=>"abc123"];
 		$this->initRequest("1.1","POST",false, $this->fields);
 
 		// response
@@ -502,12 +415,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Bad Request";
 		$this->location = null;
 		$this->contentType = 'application/json';
-		$content = new stdClass;
-
-		$content->error = new stdClass;
-		$content->error->message = "name is readonly";
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "name is readonly";
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -518,7 +428,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","disabled"=>true,"meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>true,"meta"=>true];
@@ -531,15 +440,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = 'application/json';
-		$content = new stdClass;
-
-		$content->main = new stdClass;
-		$content->main->fields = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -550,7 +451,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name, "disabled"=>true,"meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>true,"meta"=>true];
@@ -563,12 +463,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Bad Request";
 		$this->location = null;
 		$this->contentType = 'application/json';
-		$content = new stdClass;
-
-		$content->error = new stdClass;
-		$content->error->message = "name is disabled";
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "name is disabled";
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -579,7 +476,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>true,"meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>true,"meta"=>true];
@@ -592,15 +488,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = 'application/json';
-		$content = new stdClass;
-
-		$content->main = new stdClass;
-		$content->main->fields = new stdClass;
-		if (count($this->fields)) {
-			$content->main->fields = $this->fields;
-		}
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -611,14 +499,11 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name];
+		$this->fields["name"] = ["type"=>"string"];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
-		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode];
+		$this->fields["postcode"] = ["type"=>"string"];
 		$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>true,"meta"=>true];
-
-		$content = new stdClass;
-		$content->main = $this->initContent($this->fields);
+		$this->data = ["name"=>$this->faker->name, "postcode"=>$this->faker->postcode];
 
 		$this->initRequest("1.1","POST",false, $this->fields);
 
@@ -628,9 +513,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = 'application/json';
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, $this->data);
 
-	$this->handle($this->createHyperMedia(), $this->createRequest());
+		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
 
 	public function testPostResourceWithUnsupportedMediaType()
@@ -639,7 +524,6 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
 		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>true,"meta"=>true];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
 		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>true,"meta"=>true];
@@ -654,12 +538,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Unsupported Media Type";
 		$this->location = null;
 		$this->contentType = 'application/json';
-		$content = new stdClass;
-
-		$content->error = new stdClass;
-		$content->error->message = "Expected media type 'application/json', got '" . $this->requestContentType . "'.";
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "Expected media type 'application/json', got '" . $this->requestContentType . "'.";
 
 		$this->handle($this->createHyperMedia(), $this->createRequest(false));
 	}
@@ -670,11 +551,11 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"OK");
 
 		// request
-		$this->fields = [];
-		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name];
+		$this->fields["name"] = ["type"=>"string"];
 		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>true,"meta"=>true];
-		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode];
+		$this->fields["postcode"] = ["type"=>"string"];
 		$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>true,"meta"=>true];
+		$this->data = ["name"=>$this->faker->name,"postcode"=>$this->faker->postcode];
 		$this->initRequest("1.1","POST",false, $this->fields);
 		$this->requestContent = $this->faker->word;
 
@@ -684,12 +565,9 @@ class HyperMediaTest extends HyperMediaBase
 		$this->statusText = "Bad Request";
 		$this->location = null;
 		$this->contentType = 'application/json';
-
-		$content = new stdClass;
-		$content->error = new stdClass;
-		$content->error->message = "The content is not valid JSON.";
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->content = new stdClass;
+		$this->content->error = new stdClass;
+		$this->content->error->message = "The content is not valid JSON.";
 
 		$this->handle($this->createHyperMedia(), $this->createRequest(false));
 	}
@@ -700,11 +578,11 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[],"NoContent");
 
 		// request
-		$this->fields = [];
-		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
-		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>$this->faker->boolean];
-		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>$this->faker->boolean];
-		$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>$this->faker->boolean];
+		$this->fields["name"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->fields["streetName"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->fields["postcode"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->fields["country"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->data = ["name"=>$this->faker->name,"streetName"=>$this->faker->streetName,"postcode"=>$this->faker->postcode,"country"=>$this->faker->country];
 		$this->initRequest("1.1","POST",false, $this->fields);
 
 		// response
@@ -724,11 +602,11 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[], "Accepted");
 
 		// request
-		$this->fields = [];
-		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
-		$this->fields["streetName"] = ["type"=>"string","value"=>$this->faker->streetName,"required"=>$this->faker->boolean];
-		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"required"=>$this->faker->boolean];
-		$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"required"=>$this->faker->boolean];
+		$this->fields["name"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->fields["streetName"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->fields["postcode"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->fields["country"] = ["type"=>"string","required"=>$this->faker->boolean];
+		$this->data = ["name"=>$this->faker->name,"streetName"=>$this->faker->streetName,"postcode"=>$this->faker->postcode,"country"=>$this->faker->country];
 		$this->initRequest("1.1","POST",false, $this->fields);
 
 		// response
@@ -748,11 +626,11 @@ class HyperMediaTest extends HyperMediaBase
 		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar", [], "Created");
 
 		// request
-		$this->fields = [];
-		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name, "required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
-		$this->fields["streetName"] = ["type"=>"string", "value"=>$this->faker->streetName, "required"=>$this->faker->boolean];
-		$this->fields["postcode"] = ["type"=>"string", "value"=>$this->faker->postcode, "required"=>$this->faker->boolean];
-		$this->fields["country"] = ["type"=>"string", "value"=>$this->faker->country, "required"=>$this->faker->boolean];
+		$this->fields["name"] = ["type"=>"string", "required"=>$this->faker->boolean];
+		$this->fields["streetName"] = ["type"=>"string", "required"=>$this->faker->boolean];
+		$this->fields["postcode"] = ["type"=>"string", "required"=>$this->faker->boolean];
+		$this->fields["country"] = ["type"=>"string", "required"=>$this->faker->boolean];
+		$this->data = ["name"=>$this->faker->name,"streetName"=>$this->faker->streetName,"postcode"=>$this->faker->postcode,"country"=>$this->faker->country];
 		$this->initRequest("1.1","POST",false, $this->fields);
 
 		// response
@@ -816,9 +694,14 @@ EOD
 		$this->contentType = "application/json";
 		$content = new stdClass;
 		$content->main = new stdClass;
+		$meta = "";
 		if (count($this->fields)) {
 			$content->main->fields = new stdClass;
+			$meta = "{?";
+			$i = 0;
 			foreach ($this->fields as $name => $field) {
+				if ($i++) $meta.= ",";
+				$meta.= $name;
 				$content->main->fields->$name = new stdClass;
 				$content->main->fields->$name->type = $field["type"];
 				if ($field["meta"]??false) {
@@ -831,11 +714,20 @@ EOD
 					$content->main->fields->$name->value = $field["value"];
 				}
 			}
+			$meta.= "}";
 		}
 		$content->main->links = new stdClass;
 		$content->main->links->aside = new stdClass;
 		$content->main->links->aside->href = $this->basePath . $this->_journalId . '/' . $this->classes[0];
+		$content->main->links->self = new stdClass;
+		$content->main->links->self->href = $this->basePath . $this->_journalId . '/' . $this->class . $meta;
+		if ($meta) {
+			$content->main->links->self->templated = true;
+		}
 		$content->aside = new stdClass;
+		$content->aside->links = new stdClass;
+		$content->aside->links->self = new stdClass;
+		$content->aside->links->self->href = $this->basePath . $this->_journalId . '/' . $this->classes[0];
 
 		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 
@@ -879,7 +771,6 @@ EOD
 		$this->verb = "GET";
 		$this->root = false;
 		$this->journalId = $this->faker->boolean ? null : rand();
-		$this->fields = [];
 		if ($this->faker->boolean) {
 			$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"required"=>$this->faker->boolean,"meta"=>$this->verb==="GET"?true:$this->faker->boolean];
 		}
@@ -903,9 +794,14 @@ EOD
 		$this->contentType = "application/json";
 		$content = new stdClass;
 		$content->main = new stdClass;
+		$meta = "";
 		if (count($this->fields)) {
 			$content->main->fields = new stdClass;
+			$meta = "{?";
+			$i = 0;
 			foreach ($this->fields as $name => $field) {
+				if ($i++) $meta.= ",";
+				$meta.= $name;
 				$content->main->fields->$name = new stdClass;
 				$content->main->fields->$name->type = $field["type"];
 				if ($field["meta"]??false) {
@@ -918,8 +814,14 @@ EOD
 					$content->main->fields->$name->value = $field["value"];
 				}
 			}
+			$meta.= "}";
 		}
 		$content->main->links = new stdClass;
+		$content->main->links->self = new stdClass;
+		$content->main->links->self->href = $this->basePath . $this->_journalId . '/' . $this->class . $meta;
+		if ($meta) {
+			$content->main->links->self->templated = true;
+		}
 		$content->main->links->aside = new stdClass;
 		$content->main->links->aside->href = $this->basePath . $this->_journalId . '/' . $this->classes[0] . '?name=Foo{&streetName}';
 		$content->main->links->aside->templated = true;
@@ -928,6 +830,10 @@ EOD
 		$content->aside->fields = new stdClass;
 		$content->aside->fields->name = $this->attachmentFields[$this->classes[0]]["name"];
 		$content->aside->fields->streetName = $this->attachmentFields[$this->classes[0]]["streetName"];
+		$content->aside->links = new stdClass;
+		$content->aside->links->self = new stdClass;
+		$content->aside->links->self->href = $this->basePath . $this->_journalId . '/' . $this->classes[0] . '{?name,streetName}';
+		$content->aside->links->self->templated = true;
 
 
 		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);

@@ -19,11 +19,8 @@ abstract class Verb extends Taggable
 
 	private $method;
 	private $description;
+	private $flags;
 	private $location;
-	private $status = self::OK;
-	private $self = true;
-	private $data = true;
-	private $root = false;
 
 	/**
 	 * Constructor
@@ -32,6 +29,7 @@ abstract class Verb extends Taggable
 	 */
 	public function __construct(array $values = null)
 	{
+		$this->flags = new VerbFlags();
 		if (isset($values["value"])) {
 			$this->parse($values["value"]);
 		}
@@ -43,6 +41,28 @@ abstract class Verb extends Taggable
 	 * @return string
 	 */
 	abstract public function getName(): string;
+
+	/**
+	 * Set method
+	 *
+	 * @param string $method
+	 * @return self
+	 */
+	public function setMethod(string $method): self
+	{
+		$this->method = $method;
+		return $this;
+	}
+
+	/**
+	 * Get method
+	 *
+	 * @return string
+	 */
+	public function getMethod(): string
+	{
+		return $this->method;
+	}
 
 	/**
 	 * Set description
@@ -67,114 +87,25 @@ abstract class Verb extends Taggable
 	}
 
 	/**
-	 * Set the class method
+	 * Set flags
 	 *
-	 * @param string $method
+	 * @param VerbFlags $flags
 	 * @return self
 	 */
-	public function setMethod(string $method): self
+	public function setFlags(VerbFlags $flags): self
 	{
-		$this->method = $method;
+		$this->flags = $flags;
 		return $this;
 	}
 
 	/**
-	 * Get the class method
+	 * Get flags
 	 *
-	 * @return string
+	 * @return VerbFlags
 	 */
-	public function getMethod(): string
+	public function getFlags(): VerbFlags
 	{
-		return $this->method;
-	}
-
-	/**
-	 * Set the status to return when the request is done.
-	 *
-	 * @param int $status
-	 * @return self
-	 */
-	public function setStatus(int $status): self
-	{
-		assert(in_array($status, [self::OK, self::CREATED, self::ACCEPTED, self::NO_CONTENT]), new InvalidArgumentException("Status should be on of the class constants."));
-		$this->status = $status;
-		return $this;
-	}
-
-	/**
-	 * Get the status to return when the request is done.
-	 *
-	 * @return int
-	 */
-	public function getStatus(): int
-	{
-		return $this->status;
-	}
-
-	/**
-	 * Set whether to include self in output
-	 *
-	 * @param bool $self
-	 * @return self
-	 */
-	public function setSelf(bool $self): self
-	{
-		$this->self = $self;
-		return $this;
-	}
-
-	/**
-	 * Get whether to include self in output
-	 *
-	 * @return bool
-	 */
-	public function getSelf(): bool
-	{
-		return $this->self;
-	}
-
-	/**
-	 * Set root
-	 *
-	 * @param bool $root
-	 * @return self
-	 */
-	public function setRoot(bool $root): self
-	{
-		$this->root = $root;
-		return $this;
-	}
-
-	/**
-	 * Get root
-	 *
-	 * @return bool
-	 */
-	public function getRoot(): bool
-	{
-		return $this->root;
-	}
-
-	/**
-	 * Set data
-	 *
-	 * @param bool $data
-	 * @return self
-	 */
-	public function setData(bool $data): self
-	{
-		$this->data = $data;
-		return $this;
-	}
-
-	/**
-	 * Get data
-	 *
-	 * @return bool
-	 */
-	public function getData(): bool
-	{
-		return $this->data;
+		return $this->flags;
 	}
 
 	/**
@@ -211,28 +142,32 @@ abstract class Verb extends Taggable
 		do {
 			switch ($token) {
 				case "creates":
-					$this->status = self::CREATED;
+					$this->flags->setStatus(self::CREATED);
 					$this->location = strtok(")");
 					break;
 
 				case "accepts":
-					$this->status = self::ACCEPTED;
+					$this->flags->setStatus(self::ACCEPTED);
 					break;
 
 				case "no-content":
-					$this->status = self::NO_CONTENT;
+					$this->flags->setStatus(self::NO_CONTENT);
 					break;
 
-				case "no-self":
-					$this->self = false;
+				case "hidden":
+					$this->flags->setHidden();
 					break;
 
-				case "no-data":
-					$this->data = false;
+				case "links":
+					$this->flags->useLinks();
+					break;
+
+				case "fields":
+					$this->flags->useFields();
 					break;
 
 				case "root":
-					$this->root = true;
+					$this->flags->setRoot(true);
 					break;
 
 				default:
@@ -259,7 +194,7 @@ abstract class Verb extends Taggable
 	public function __toString(): string
 	{
 		$text = "";
-		switch ($this->status) {
+		switch ($this->flags->getStatus()) {
 			case self::OK:
 				break;
 
@@ -275,13 +210,16 @@ abstract class Verb extends Taggable
 				$text.= "no-content ";
 				break;
 		}
-		if (!$this->self) {
-			$text.= "no-self ";
+		if (!$this->flags->hasData()) {
+			if ($this->flags->hasFields()) {
+				$text.= "fields ";
+			} elseif ($this->flags->hasLinks()) {
+				$text.= "links ";
+			} elseif ($this->flags->isHidden()) {
+				$text.= "hidden ";
+			}
 		}
-		if (!$this->data) {
-			$text.= "no-data ";
-		}
-		if ($this->root) {
+		if ($this->flags->getRoot()) {
 			$text.= "root ";
 		}
 		$text.= parent::__toString();

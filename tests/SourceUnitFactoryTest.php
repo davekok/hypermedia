@@ -57,7 +57,7 @@ class SourceUnitFactoryTest extends TestCase
 			$taggables[$taggable->getName()] = (string)$taggable;
 		}
 		$this->assertEquals([
-			"name" => "string required",
+			"name" => "required string",
 			"GET" => "",
 			"POST" => "no-content",
 		], $taggables, "taggables");

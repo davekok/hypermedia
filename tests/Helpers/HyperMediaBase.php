@@ -15,7 +15,8 @@ use Sturdy\Activity\Response;
 use Sturdy\Activity\Meta\{
 	CacheItem_Resource,
 	FieldFlags,
-	Verb
+	Verb,
+	VerbFlags
 };
 use PHPUnit\Framework\TestCase;
 use Prophecy\{
@@ -48,7 +49,8 @@ class HyperMediaBase extends TestCase
 	protected $root;
 	protected $journalId;
 	protected $_journalId;
-	protected $fields;
+	protected $fields = [];
+	protected $data = [];
 	protected $requestContent;
 
 	// response
@@ -71,21 +73,9 @@ class HyperMediaBase extends TestCase
 			->setClass($this->class)
 			->setSection($this->section)
 			->setTags($this->tags);
-		switch ($this->statusCode) {
-			default:
-			case Verb::OK:
-				$resource->setVerb($this->verb, $this->method, Verb::OK);
-				break;
-			case Verb::NO_CONTENT:
-				$resource->setVerb($this->verb, $this->method, Verb::NO_CONTENT);
-				break;
-			case Verb::ACCEPTED:
-				$resource->setVerb($this->verb, $this->method, Verb::ACCEPTED);
-				break;
-			case Verb::CREATED:
-				$resource->setVerb($this->verb, $this->method, Verb::CREATED, $this->location);
-				break;
-		}
+		$flags = new VerbFlags();
+		$flags->setStatus($this->statusCode);
+		$resource->setVerb($this->verb, $this->method, $flags->toInt(), $this->location);
 
 		foreach ($this->fields as $name => $descriptor) {
 			$type = $descriptor["type"] . ":,,";
@@ -103,15 +93,17 @@ class HyperMediaBase extends TestCase
 		$cache = $this->prophet->prophesize();
 		$cache->willImplement(Cache::class);
 		$cache->getResource($this->sourceUnit, $this->class, $this->tags)
-			->shouldBeCalledTimes(1)
+			->shouldBeCalled()
 			->willReturn($resource);
 
 		if (isset($this->classes)) {
 			foreach($this->classes as $class){
 				$resource = (new CacheItem_Resource())->setClass($class)->setTags($this->tags);
-				$resource->setVerb('GET', 'foo', Verb::OK);
+				$flags = new VerbFlags();
+				$flags->setStatus(Verb::OK);
+				$resource->setVerb('GET', 'foo', $flags->toInt());
 				$cache->getResource($this->sourceUnit, $class, $this->tags)
-					->shouldBeCalledTimes(2)
+					->shouldBeCalled()
 					->willReturn($resource);
 
 				foreach ($this->attachmentFields[$class]??[] as $name => $descriptor) {
@@ -163,9 +155,8 @@ CLASS
 			$this->requestContentType = "application/json";
 			$this->requestContent = [];
 			foreach ($this->fields as $name => &$field) {
-				if (!($field["meta"] ?? false) && array_key_exists('value',$field)) {
-					$this->requestContent[$name] = $field['value'];
-					unset($field['value']);
+				if (array_key_exists($name, $this->data)) {
+					$this->requestContent[$name] = $this->data[$name];
 				}
 			}
 			$this->requestContent = json_encode($this->requestContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -175,54 +166,80 @@ CLASS
 		}
 	}
 
-	public function initContent(array $fields = [], array $links = null): stdClass
+	public function setContent(string $resource, string $class, array $fields = [], $data = null, array $links = []): void
 	{
-		$content = new stdClass;
-		if (count($this->fields)) {
-			$content->fields = new stdClass;
+		if (!isset($this->content)) {
+			$this->content = new stdClass;
+		}
+		$this->content->$resource = new stdClass;
+		$this->content->$resource->links = new stdClass;
+		$haveData = false;
+		$meta = "";
+		if (count($fields)) {
+			$this->content->$resource->fields = new stdClass;
+			$i = 0;
 			foreach ($fields as $name => $field) {
-				$content->fields->$name = new stdClass;
-				$content->fields->$name->type = $field["type"];
-				if ($field["required"]??false) {
-					$content->fields->$name->required = true;
-				}
-				if ($field["array"]??false) {
-					$content->fields->$name->{"array"} = true;
-				}
-				if ($field["multiple"]??false) {
-					$content->fields->$name->multiple = true;
-				}
-				if ($field["readonly"]??false) {
-					$content->fields->$name->readonly = true;
-				}
-				if ($field["disabled"]??false) {
-					$content->fields->$name->disabled = true;
-				}
-				if ($field["data"]??false) {
-					$content->fields->$name->data = true;
-					if (isset($field["value"])) {
-						$content->data = $field["value"];
-					}
-				}
+				$this->content->$resource->fields->$name = new stdClass;
 				if ($field["meta"]??false) {
-					$content->fields->$name->meta = true;
 					if (isset($field["value"])) {
-						$content->fields->$name->value = $field["value"];
+						$this->content->$resource->fields->$name->value = $field["value"];
+					}
+					$this->content->$resource->fields->$name->meta = true;
+					if (!(($field["disabled"]??false) || ($field["readonly"]??false))) {
+						if ($i++) $meta.= ","; else $meta = "{?";
+						$meta.= $name;
 					}
 				} else {
-					if (isset($field["value"])) {
-						if (!isset($content->data)) {
-							$content->data = new stdClass;
-						}
-						$content->data->$name = $field["value"];
-					}
+					$haveData = true;
+					// if (isset($field["value"])) {
+					// 	if (!isset($this->content->$resource->data)) {
+					// 		$this->content->$resource->data = new stdClass;
+					// 	}
+					// 	$this->content->$resource->data->$name = $field["value"];
+					// }
+				}
+				$this->content->$resource->fields->$name->type = $field["type"];
+				if ($field["required"]??false) {
+					$this->content->$resource->fields->$name->required = true;
+				}
+				if ($field["array"]??false) {
+					$this->content->$resource->fields->$name->{"array"} = true;
+				}
+				if ($field["multiple"]??false) {
+					$this->content->$resource->fields->$name->multiple = true;
+				}
+				if ($field["readonly"]??false) {
+					$this->content->$resource->fields->$name->readonly = true;
+				}
+				if ($field["disabled"]??false) {
+					$this->content->$resource->fields->$name->disabled = true;
+				}
+				if ($field["data"]??false) {
+					$haveData = true;
+					$this->content->$resource->fields->$name->data = true;
+					// if (isset($field["value"])) {
+					// 	$this->content->$resource->data = $field["value"];
+					// }
 				}
 			}
+			if ($i) $meta.= "}";
 		}
-		/* TODO: links */
-		return $content;
+		$this->content->$resource->links->self = new stdClass;
+		$this->content->$resource->links->self->href = $this->basePath . $this->_journalId . '/' . $class . $meta;
+		if ($meta) {
+			$this->content->$resource->links->self->templated = true;
+		}
+		foreach ($links as $name => [$class, $meta]) {
+			$this->content->$resource->links->$name = new stdClass;
+			$this->content->$resource->links->$name->href = $this->basePath . $this->_journalId . '/' . $class . $meta;
+			if ($meta) {
+				$this->content->$resource->links->$name->templated = true;
+			}
+		}
+		if ($haveData) {
+			$this->content->$resource->data = $data;
+		}
 	}
-
 
 	public function createJournalBranchEntry(): JournalEntry
 	{
@@ -396,20 +413,23 @@ CLASS
 		if ($response instanceof Response\Error && $this->statusCode !== $response->getStatusCode()) {
 			throw $response; // some error occured
 		}
-		$this->assertEquals($this->protocolVersion, $response->getProtocolVersion(), "protocol version");
-		$this->assertEquals($this->statusCode, $response->getStatusCode(), "status code");
-		$this->assertEquals($this->statusText, $response->getStatusText(), "status text");
+		$this->assertEquals($response->getProtocolVersion(), $this->protocolVersion, "protocol version");
+		$this->assertEquals($response->getStatusCode(), $this->statusCode, "status code");
+		$this->assertEquals($response->getStatusText(), $this->statusText, "status text");
 		if ($this->location !== null) {
-			$this->assertEquals($this->location, $response->getLocation(), "location");
+			$this->assertEquals($response->getLocation(), $this->location, "location");
 		} else {
 			$this->assertNull($response->getLocation(), "location");
 		}
 		if ($this->contentType !== null) {
-			$this->assertEquals($this->contentType, $response->getContentType(), "content type");
+			$this->assertEquals($response->getContentType(), $this->contentType, "content type");
 		} else {
 			$this->assertNull($response->getContentType(), "content type");
 		}
 		if ($this->content !== null) {
+			if (is_object($this->content)) {
+				$this->content = json_encode($this->content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+			}
 			$this->assertJsonStringEqualsJsonString($response->getContent(), $this->content, "content");
 		} else {
 			$this->assertNull($response->getContent(), "content");
