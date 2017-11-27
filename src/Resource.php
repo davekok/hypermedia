@@ -146,7 +146,7 @@ final class Resource
 		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
 			// flags check
 			$flags = new FieldFlags($flags);
-			if ($flags->isRequired() && !isset($values[$name]) && ($flags->isMeta() || $this->verb === "POST")) {
+			if ($flags->isRequired() && !isset($values[$name]) && ($flags->isMeta() || $flags->isState() || $this->verb === "POST")) {
 				$badRequest->addMessage("$name is required");
 			}
 			if ($flags->isReadonly() && isset($values[$name])) {

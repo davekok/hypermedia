@@ -151,4 +151,18 @@ final class OK implements Response
 			$this->part = $previous;
 		}
 	}
+
+	/**
+	 * Get a link to another resource.
+	 *
+	 * @param  string $class   the class of the resource
+	 * @param  array  $values  the values in case the resource has uri fields
+	 * @return array  the link
+	 */
+	public function getLink(string $class, array $values = [], bool $attach = false): array
+	{
+		$link = $this->resource->createLink($class, $values);
+		if ($link === null) return [];
+		return $link->toArray();
+	}
 }
