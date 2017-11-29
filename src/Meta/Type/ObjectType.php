@@ -40,7 +40,9 @@ final class ObjectType extends Type
 		$meta->fields = new stdClass;
 		foreach ($this->fieldDescriptors as $name => [$type, $defaultValue, $flags, $autocomplete, $label]) {
 			$submeta = new stdClass;
-			$meta->label = $label;
+			if ($label) {
+				$submeta->label = $label;
+			}
 			Type::createType($type)->meta($submeta);
 			(new FieldFlags($flags))->meta($submeta);
 			if ($defaultValue !== null) {

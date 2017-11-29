@@ -228,6 +228,7 @@ final class Resource
 							}
 						}
 					};
+					$recursiveTranslate($field);
 				}
 			}
 			if ($this->verbflags->hasSelfLink()) {
