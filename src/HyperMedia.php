@@ -19,6 +19,7 @@ final class HyperMedia
 	// dependencies/configuration
 	private $cache;
 	private $journaling;
+	private $translator;
 	private $sourceUnit;
 	private $basePath;
 	private $di;
@@ -28,6 +29,7 @@ final class HyperMedia
 	 *
 	 * @param Cache             $cache              the cache provider
 	 * @param JournalRepository $journalRepository  the journal repository
+	 * @param Translator        $translator         the translator
 	 * @param string            $sourceUnit         the source unit to use
 	 * @param string            $basePath           the prefix to remove from the path before processing
 	 *                                              and appended for generating links
@@ -37,12 +39,14 @@ final class HyperMedia
 	public function __construct(
 		Cache $cache,
 		JournalRepository $journalRepository,
+		Translator $translator,
 		string $sourceUnit,
 		string $basePath,
 		/*object*/ $di)
 	{
 		$this->cache = $cache;
 		$this->journaling = new Journaling($journalRepository);
+		$this->translator = $translator;
 		$this->sourceUnit = $sourceUnit;
 		$this->basePath = rtrim($basePath, "/");
 		$this->di = $di;
@@ -129,7 +133,7 @@ final class HyperMedia
 					$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
 				}
 				$this->basePath.= "/".$this->journaling->getId()."/";
-				$resource = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
+				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->di))
 					->createRootResource($request->getVerb());
 				$response = $resource->call($this->getValues($request));
 			} else { // if normal resource
@@ -141,7 +145,7 @@ final class HyperMedia
 				}
 				$this->basePath.= "/".$this->journaling->getId()."/";
 				$class = strtr(trim($path, "/"), "/", "\\");
-				$resource = (new Resource($this->cache, $this->sourceUnit, $tags, $this->basePath, $this->di))
+				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->di))
 					->createResource($class, $request->getVerb());
 				$response = $resource->call($this->getValues($request));
 			}

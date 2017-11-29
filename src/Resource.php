@@ -25,6 +25,7 @@ use Sturdy\Activity\Response\{
 final class Resource
 {
 	private $cache;
+	private $translator;
 	private $sourceUnit;
 	private $tags;
 	private $basePath;
@@ -33,7 +34,7 @@ final class Resource
 	private $response;
 
 	private $verb;
-	private $section;
+	private $hints;
 	private $fields;
 	private $class;
 	private $object;
@@ -41,9 +42,10 @@ final class Resource
 	private $verbflags;
 	private $location;
 
-	public function __construct(Cache $cache, string $sourceUnit, array $tags, string $basePath, $di)
+	public function __construct(Cache $cache, Translator $translator, string $sourceUnit, array $tags, string $basePath, $di)
 	{
 		$this->cache = $cache;
+		$this->translator = $translator;
 		$this->sourceUnit = $sourceUnit;
 		$this->tags = $tags;
 		$this->basePath = $basePath;
@@ -55,7 +57,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
 		$resource = $self->cache->getRootResource($self->sourceUnit, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
@@ -70,7 +72,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -82,7 +84,7 @@ final class Resource
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -99,7 +101,7 @@ final class Resource
 	{
 		$this->class = $resource->getClass();
 		$this->verb = $verb;
-		$this->section = $resource->getSection();
+		$this->hints = $resource->getHints();
 		$this->fields = $resource->getFields()??[];
 		$this->object = new $this->class;
 		[$this->method, $this->verbflags, $this->location] = $resource->getVerb($verb);
@@ -143,6 +145,7 @@ final class Resource
 	public function call(array $values): Response
 	{
 		$badRequest = new BadRequest();
+		$badRequest->setResource($this->class);
 		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
 			// flags check
 			$flags = new FieldFlags($flags);
@@ -191,10 +194,14 @@ final class Resource
 		$this->object->{$this->method}($this->response, $this->di);
 
 		if ($this->verbflags->hasFields() && $this->verbflags->getStatus() === Meta\Verb::OK) {
-			$this->response->section($this->section);
+			$parameters = get_object_vars($this->object);
+			if (isset($this->hints[0])) {
+				$this->hints[0] = ($this->translator)($this->hints[0], $parameters);
+			}
+			$this->response->hints(...$this->hints);
 			$fields = [];
 			$state = [];
-			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
+			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete, $label]) {
 				$flags = new FieldFlags($flags);
 				if ($flags->isState()) {
 					if (isset($this->object->$name)) {
@@ -202,12 +209,25 @@ final class Resource
 					}
 				} else {
 					$field = new stdClass;
+					if (isset($label)) {
+						$field->label = $label;
+					}
 					if (isset($this->object->$name)) $field->value = $this->object->$name;
 					Type::createType($type)->meta($field);
 					if ($defaultValue !== null) $field->defaultValue = $defaultValue;
 					$flags->meta($field);
 					if ($autocomplete) $field->autocomplete = $autocomplete;
 					$fields[$name] = $field;
+					$recursiveTranslate = function($field)use(&$recursiveTranslate, $parameters) {
+						if (isset($field->label)) {
+							$field->label = ($this->translator)($field->label, $parameters);
+						}
+						if (isset($field->fields)) {
+							foreach ($field->fields as $field) {
+								$recursiveTranslate($field);
+							}
+						}
+					};
 				}
 			}
 			if ($this->verbflags->hasSelfLink()) {

@@ -51,12 +51,19 @@ final class FieldParser
 	private $maxlengthToken;
 	private $patternToken;
 	private $tagToken;
+	private $equalsToken;
+	private $valueToken;
 	private $optionToken;
 	private $autocompleteToken;
 	private $autocompleteOption;
+	private $labelToken;
 	private $listStartToken;
 	private $listDelimiterToken;
 	private $listEndToken;
+	private $listEscapeEndToken;
+	private $quotedString;
+	private $quote;
+	private $escapedQuote;
 
 	private $field;
 	private $text;
@@ -117,9 +124,15 @@ final class FieldParser
 		$this->autocompleteToken  = "/^autocomplete/";
 		$this->autocompleteOption = "/^[^\S\*\(\)]+/";
 
+		$this->labelToken         = "/^label/";
+		$this->quotedString       = "/^([^']+)/";
+		$this->quote              = "/^'/";
+		$this->escapedQuote       = "/^''/";
+
 		$this->listStartToken     = "/^\(/";
 		$this->listDelimiterToken = "/^,/";
 		$this->listEndToken       = "/^\)/";
+		$this->listEscapeEndToken = "/^\\)/";
 
 		$this->defaultValueToken  = "/^default=(\"[^\v\"]*\"|\'[^\v\']*\'|[1-9][0-9]*(?=\.[0-9]+)?|0\.[0-9]+|true|false)/";
 		$this->descriptionToken   = "/^(\"[^\v\"]*\"|\'[^\v\']*\')/";
@@ -208,6 +221,7 @@ final class FieldParser
 		// bit 12: default value token
 		// bit 13: description token
 		// bit 14: object type allowed
+		// bit 15: label token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -398,6 +412,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 11) && $this->match('autocompleteToken')) {
 				$this->clearbit($mask, 11);
 				$this->parseAutocomplete($field);
+			} elseif ($this->isbitset($mask, 15) && $this->match('labelToken')) {
+				$this->clearbit($mask, 15);
+				$this->parseLabel($field);
 			} elseif ($subfield && $this->isbitset($mask, 12) && $this->match('defaultValueToken', $defaultValue)) {
 				$this->clearbit($mask, 12);
 				if ($defaultValue === "true") {
@@ -467,7 +484,7 @@ final class FieldParser
 		}
 	}
 
-	private function parseTag(Field $field, string $tag): void
+	private function parseTag(Taggable $taggable, string $tag): void
 	{
 		$sequence = 0;
 		while ($this->valid()) {
@@ -481,13 +498,13 @@ final class FieldParser
 		}
 		switch ($sequence) {
 			case 0:
-				$field->needsTag($tag);
+				$taggable->needsTag($tag);
 				return;
 			case 1:
-				$field->matchTagValue($tag, "");
+				$taggable->matchTagValue($tag, "");
 				return;
 			case 2:
-				$field->matchTagValue($tag, $value);
+				$taggable->matchTagValue($tag, $value);
 				return;
 		}
 	}
@@ -579,6 +596,63 @@ final class FieldParser
 			throw new ParserError($this->parseError("Expected options"));
 		}
 		$field->setAutocomplete(trim($autocomplete));
+	}
+
+	private function parseLabel(Field $field)
+	{
+		$field->setLabel($this->parseQuotedString());
+	}
+
+	private function parseQuotedString(): string
+	{
+		$sequence = 0;
+		$string = "";
+		while ($this->valid()) {
+			switch ($sequence) {
+				case 0:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('listStartToken')) {
+						++$sequence;
+					} else {
+						throw new ParserError($this->parseError("expected space or list start"));
+					}
+					break;
+
+				case 1:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('quote')) {
+						++$sequence;
+					} else {
+						throw new ParserError($this->parseError("expected space or quote"));
+					}
+					break;
+
+				case 2:
+					if ($this->match('quotedString', $text)) {
+						$string.= $text;
+					} elseif ($this->match('escapedQuote')) {
+						$string.= "'";
+					} elseif ($this->match('quote')) {
+						++$sequence;
+					} else {
+						throw new ParserError($this->parseError("expected text, escaped quoted or quote"));
+					}
+					break;
+
+				case 3:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('listEndToken')) {
+						break 2;
+					} else {
+						throw new ParserError($this->parseError("expected list end"));
+					}
+					break;
+				}
+		}
+		return $string;
 	}
 
 	private function parseError(string $msg): string

@@ -146,13 +146,16 @@ class HyperMediaTest extends HyperMediaBase
 		$this->handle($this->createHyperMediaWithErrorCache(), $this->createErrorRequest());
 	}
 
-	public function testGetOKResourceWithSection()
+	public function testGetOKResourceWithHints()
 	{
 		// resource
 		$this->initResource("TestUnit1", $this->faker->unique()->word, "foo", [], "OK");
 
 		// request
-		$this->section = "main";
+		$this->label = $this->faker->word;
+		$this->section = $this->faker->word;
+		$this->component = $this->faker->word;
+		$this->layout = $this->faker->word;
 		$this->initRequest("1.1", "GET");
 
 		$this->requestContentType = null;
@@ -165,7 +168,11 @@ class HyperMediaTest extends HyperMediaBase
 		$this->location = null;
 		$this->contentType = "application/json";
 		$this->setContent("main", $this->class);
-		$this->content->main->section = "main";
+		$this->content->main->hints = new stdClass;
+		$this->content->main->hints->label = $this->label;
+		$this->content->main->hints->section = $this->section;
+		$this->content->main->hints->component = $this->component;
+		$this->content->main->hints->layout = $this->layout;
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -280,6 +287,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->content = new stdClass;
 		$this->content->error = new stdClass;
 		$this->content->error->message = "Expected type of testArray is array, string found.";
+		$this->content->error->resource = $this->class;
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -345,6 +353,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->content = new stdClass;
 		$this->content->error = new stdClass;
 		$this->content->error->message = "testRequired is required";
+		$this->content->error->resource = $this->class;
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -369,6 +378,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->content = new stdClass;
 		$this->content->error = new stdClass;
 		$this->content->error->messages = ["testRequiredNull is required","testRequiredMissing is required"];
+		$this->content->error->resource = $this->class;
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -418,6 +428,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->content = new stdClass;
 		$this->content->error = new stdClass;
 		$this->content->error->message = "name is readonly";
+		$this->content->error->resource = $this->class;
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -466,6 +477,7 @@ class HyperMediaTest extends HyperMediaBase
 		$this->content = new stdClass;
 		$this->content->error = new stdClass;
 		$this->content->error->message = "name is disabled";
+		$this->content->error->resource = $this->class;
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}

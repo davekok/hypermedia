@@ -36,7 +36,10 @@ class HyperMediaBase extends TestCase
 	protected $sourceUnit;
 	protected $basePath;
 	protected $class;
+	protected $label;
 	protected $section;
+	protected $component;
+	protected $layout;
 	protected $classes;
 	protected $attachmentFields;
 
@@ -71,7 +74,7 @@ class HyperMediaBase extends TestCase
 	{
 		$resource = (new CacheItem_Resource())
 			->setClass($this->class)
-			->setSection($this->section)
+			->setHints($this->label, $this->section, $this->component, $this->layout)
 			->setTags($this->tags);
 		$flags = new VerbFlags();
 		$flags->setStatus($this->statusCode);

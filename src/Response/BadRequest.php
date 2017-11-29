@@ -6,7 +6,6 @@ use Throwable;
 
 class BadRequest extends Error
 {
-	private $messages;
 	/**
 	 * Get the response status code
 	 *

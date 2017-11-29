@@ -69,14 +69,29 @@ final class OK implements Response
 	}
 
 	/**
-	 * Set section
+	 * Set hints
 	 *
+	 * @param ?string $label
 	 * @param ?string $section
+	 * @param ?string $component
+	 * @param ?string $layout
 	 */
-	public function section(?string $section): void
+	public function hints(?string $label, ?string $section, ?string $component, ?string $layout): void
 	{
-		if ($section !== null) {
-			$this->part->section = $section;
+		if ($label !== null || $section !== null || $component !== null || $layout !== null) {
+			$this->part->hints = new stdClass;
+			if ($label !== null) {
+				$this->part->hints->label = $label;
+			}
+			if ($section !== null) {
+				$this->part->hints->section = $section;
+			}
+			if ($component !== null) {
+				$this->part->hints->component = $component;
+			}
+			if ($layout !== null) {
+				$this->part->hints->layout = $layout;
+			}
 		}
 	}
 

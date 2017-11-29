@@ -24,6 +24,7 @@ final class Field extends Taggable
 	private $defaultValue; // the default value
 	private $flags;        // bitmask of the above constants
 	private $autocomplete; // autocomplete expression, see HTML 5 autofill documentation
+	private $label;        // label
 
 	/**
 	 * Constructor
@@ -38,7 +39,12 @@ final class Field extends Taggable
 		}
 	}
 
-	public function parse(string $text)
+	/**
+	 * Parse text
+	 *
+	 * @param  string $text  the text
+	 */
+	public function parse(string $text): void
 	{
 		(new FieldParser)->parse($this, $text);
 	}
@@ -176,6 +182,26 @@ final class Field extends Taggable
 	}
 
 	/**
+	 * Set label
+	 *
+	 * @param ?string $label
+	 */
+	public function setLabel(?string $label): void
+	{
+		$this->label = $label;
+	}
+
+	/**
+	 * Get label
+	 *
+	 * @return string
+	 */
+	public function getLabel(): ?string
+	{
+		return $this->label;
+	}
+
+	/**
 	 * To string
 	 *
 	 * @return string  text representation of object
@@ -194,6 +220,7 @@ final class Field extends Taggable
 		if ($this->flags->isArray()) $text.= "[]";
 		$text.= " ";
 		if ($this->autocomplete) $text.= "autocomplete({$this->autocomplete}) ";
+		if ($this->label) $text.= "label('" . str_replace("'", "''", $this->label) . "') ";
 		if (method_exists($this->type, "getMinimumRange") && $min = $this->type->getMinimumRange()) {
 			$text.= " min($min)";
 		}

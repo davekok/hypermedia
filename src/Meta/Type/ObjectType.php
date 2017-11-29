@@ -5,6 +5,7 @@ namespace Sturdy\Activity\Meta\Type;
 use stdClass;
 use Sturdy\Activity\Meta\Field;
 use Sturdy\Activity\Meta\FieldFlags;
+use Sturdy\Activity\Translator;
 
 /**
  * String type
@@ -37,8 +38,9 @@ final class ObjectType extends Type
 	{
 		$meta->type = self::type;
 		$meta->fields = new stdClass;
-		foreach ($this->fieldDescriptors as $name => [$type, $defaultValue, $flags, $autocomplete]) {
+		foreach ($this->fieldDescriptors as $name => [$type, $defaultValue, $flags, $autocomplete, $label]) {
 			$submeta = new stdClass;
+			$meta->label = $label;
 			Type::createType($type)->meta($submeta);
 			(new FieldFlags($flags))->meta($submeta);
 			if ($defaultValue !== null) {
@@ -69,10 +71,11 @@ final class ObjectType extends Type
 	 * @param mixed  $defaultValue  the default value
 	 * @param int    $flags         field flags
 	 * @param string $autocomplete  autocomplete expression
+	 * @param string $label         label
 	 */
-	public function setFieldDescriptor(string $name, string $type, $defaultValue, int $flags, ?string $autocomplete): self
+	public function setFieldDescriptor(string $name, string $type, $defaultValue, int $flags, ?string $autocomplete, ?string $label): self
 	{
-		$this->fieldDescriptors[$name] = [$type, $defaultValue, $flags, $autocomplete];
+		$this->fieldDescriptors[$name] = [$type, $defaultValue, $flags, $autocomplete, $label];
 		return $this;
 	}
 

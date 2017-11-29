@@ -17,7 +17,10 @@ class Resource
 {
 	private $class;
 	private $description;
-	private $sections;
+	private $hints;
+	private $labels;
+	private $components;
+	private $layouts;
 	private $object;
 	private $verbs;
 
@@ -30,7 +33,10 @@ class Resource
 	{
 		$this->class = $class;
 		$this->description = $description;
-		$this->sections = [];
+		$this->hints = [];
+		$this->labels = [];
+		$this->components = [];
+		$this->layouts = [];
 		$this->object = new Type\ObjectType;
 		$this->verbs = [];
 	}
@@ -90,23 +96,23 @@ class Resource
 	}
 
 	/**
-	 * Add section
+	 * Add hints
 	 *
-	 * @param Section $section
+	 * @param Hints $hints
 	 */
-	public function addSection(Section $section): void
+	public function addHints(Hints $hints): void
 	{
-		$this->sections[] = $section;
+		$this->hints[] = $hints;
 	}
 
 	/**
-	 * Get section
+	 * Get collection of hints
 	 *
 	 * @return iterable
 	 */
-	public function getSections(): iterable
+	public function getHints(): iterable
 	{
-		return $this->sections;
+		return $this->hints;
 	}
 
 	/**
@@ -160,8 +166,8 @@ class Resource
 	 */
 	public function getTaggables(): iterable
 	{
-		foreach ($this->sections??[] as $section) {
-			yield $section;
+		foreach ($this->hints??[] as $hints) {
+			yield $hints;
 		}
 		yield from $this->object->getTaggables();
 		foreach ($this->verbs??[] as $key => $variants) {

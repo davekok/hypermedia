@@ -9,7 +9,10 @@ namespace Sturdy\Activity\Meta;
  */
 class CacheItem_Resource extends CacheItem_UnitItem
 {
+	private $label;
 	private $section;
+	private $component;
+	private $layout;
 	private $fields;
 	private $verbs;
 
@@ -18,20 +21,23 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 *
 	 * @param ?string $section
 	 */
-	public function setSection(?string $section): self
+	public function setHints(?string $label, ?string $section, ?string $component, ?string $layout): self
 	{
+		$this->label = $label;
 		$this->section = $section;
+		$this->component = $component;
+		$this->layout = $layout;
 		return $this;
 	}
 
 	/**
 	 * Get section
 	 *
-	 * @return ?string
+	 * @return [?$label, ?$section, ?$component, ?$layout]
 	 */
-	public function getSection(): ?string
+	public function getHints(): array
 	{
-		return $this->section;
+		return [$this->label, $this->section, $this->component, $this->layout];
 	}
 
 	/**
@@ -39,16 +45,16 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 *
 	 * @return $this
 	 */
-	public function setField(string $key, string $type, $default, int $flags = 0, ?string $autocomplete = null): self
+	public function setField(string $key, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $label = null): self
 	{
-		$this->fields[$key] = [$type, $default, $flags, $autocomplete];
+		$this->fields[$key] = [$type, $default, $flags, $autocomplete, $label];
 		return $this;
 	}
 
 	/**
 	 * Get fields
 	 *
-	 * @return [string $key => [string $type, int $flags, ?string $autocomplete, string $validation, string $link]]
+	 * @return [string $key => [string $type, $default, int $flags, ?string $autocomplete, string $label]]
 	 */
 	public function getFields()
 	{
