@@ -8,7 +8,8 @@ use Sturdy\Activity\{
 	Journal,
 	JournalBranch,
 	JournalEntry,
-	JournalRepository
+	JournalRepository,
+	Translator
 };
 use Sturdy\Activity\Request\Request;
 use Sturdy\Activity\Response;
@@ -90,7 +91,7 @@ class HyperMediaBase extends TestCase
 			if ($descriptor["multiple"] ?? false) $flags |= FieldFlags::multiple;
 			if ($descriptor["readonly"] ?? false) $flags |= FieldFlags::readonly;
 			if ($descriptor["disabled"] ?? false) $flags |= FieldFlags::disabled;
-			$resource->setField($name, $type, $descriptor["defaultValue"] ?? null, $flags);
+			$resource->addField($name, $type, $descriptor["defaultValue"] ?? null, $flags);
 		}
 
 		$cache = $this->prophet->prophesize();
@@ -114,7 +115,7 @@ class HyperMediaBase extends TestCase
 					$flags = 0;
 					if ($descriptor["required"] ?? false) $flags |= FieldFlags::required;
 					if ($descriptor["meta"] ?? false) $flags |= FieldFlags::meta;
-					$resource->setField($name, $type, $descriptor["defaultValue"] ?? null, $flags);
+					$resource->addField($name, $type, $descriptor["defaultValue"] ?? null, $flags);
 				}
 			}
 		}
@@ -154,7 +155,7 @@ CLASS
 		$this->journalId = $this->faker->boolean ? null : rand();
 		$this->fields = $fields;
 
-		if($verb === "POST") {
+		if ($verb === "POST") {
 			$this->requestContentType = "application/json";
 			$this->requestContent = [];
 			foreach ($this->fields as $name => &$field) {
@@ -179,15 +180,16 @@ CLASS
 		$haveData = false;
 		$meta = "";
 		if (count($fields)) {
-			$this->content->$resource->fields = new stdClass;
+			$this->content->$resource->fields = [];
 			$i = 0;
 			foreach ($fields as $name => $field) {
-				$this->content->$resource->fields->$name = new stdClass;
+				$this->content->$resource->fields[] = $entry = new stdClass;
+				$entry->name = $name;
 				if ($field["meta"]??false) {
 					if (isset($field["value"])) {
-						$this->content->$resource->fields->$name->value = $field["value"];
+						$entry->value = $field["value"];
 					}
-					$this->content->$resource->fields->$name->meta = true;
+					$entry->meta = true;
 					if (!(($field["disabled"]??false) || ($field["readonly"]??false))) {
 						if ($i++) $meta.= ","; else $meta = "{?";
 						$meta.= $name;
@@ -201,25 +203,25 @@ CLASS
 					// 	$this->content->$resource->data->$name = $field["value"];
 					// }
 				}
-				$this->content->$resource->fields->$name->type = $field["type"];
+				$entry->type = $field["type"];
 				if ($field["required"]??false) {
-					$this->content->$resource->fields->$name->required = true;
+					$entry->required = true;
 				}
 				if ($field["array"]??false) {
-					$this->content->$resource->fields->$name->{"array"} = true;
+					$entry->{"array"} = true;
 				}
 				if ($field["multiple"]??false) {
-					$this->content->$resource->fields->$name->multiple = true;
+					$entry->multiple = true;
 				}
 				if ($field["readonly"]??false) {
-					$this->content->$resource->fields->$name->readonly = true;
+					$entry->readonly = true;
 				}
 				if ($field["disabled"]??false) {
-					$this->content->$resource->fields->$name->disabled = true;
+					$entry->disabled = true;
 				}
 				if ($field["data"]??false) {
 					$haveData = true;
-					$this->content->$resource->fields->$name->data = true;
+					$entry->data = true;
 					// if (isset($field["value"])) {
 					// 	$this->content->$resource->data = $field["value"];
 					// }
@@ -227,17 +229,17 @@ CLASS
 			}
 			if ($i) $meta.= "}";
 		}
+		foreach ($links as $name => [$otherclass, $othermeta]) {
+			$this->content->$resource->links->$name = new stdClass;
+			$this->content->$resource->links->$name->href = $this->basePath . $this->_journalId . '/' . $otherclass . $othermeta;
+			if ($othermeta) {
+				$this->content->$resource->links->$name->templated = true;
+			}
+		}
 		$this->content->$resource->links->self = new stdClass;
 		$this->content->$resource->links->self->href = $this->basePath . $this->_journalId . '/' . $class . $meta;
 		if ($meta) {
 			$this->content->$resource->links->self->templated = true;
-		}
-		foreach ($links as $name => [$class, $meta]) {
-			$this->content->$resource->links->$name = new stdClass;
-			$this->content->$resource->links->$name->href = $this->basePath . $this->_journalId . '/' . $class . $meta;
-			if ($meta) {
-				$this->content->$resource->links->$name->templated = true;
-			}
 		}
 		if ($haveData) {
 			$this->content->$resource->data = $data;
@@ -387,9 +389,19 @@ CLASS
 		return $request->reveal();
 	}
 
+	public function createTranslator(): Translator
+	{
+		$translator = $this->prophet->prophesize();
+		$translator->willImplement(Translator::class);
+		$translator->__invoke(Argument::type('string'), Argument::any())->will(function($args){
+			return $args[0];
+		});
+		return $translator->reveal();
+	}
+
 	public function createHyperMedia(): HyperMedia
 	{
-		return new HyperMedia($this->createCache(), $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);
+		return new HyperMedia($this->createCache(), $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, new stdClass);
 	}
 
 	public function createHyperMediaWithNullCache(): HyperMedia
@@ -402,12 +414,12 @@ CLASS
 
 		$cache = $cache->reveal();
 
-		return new HyperMedia($cache, $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);
+		return new HyperMedia($cache, $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, new stdClass);
 	}
 
 	public function createHyperMediaWithErrorCache(): HyperMedia
 	{
-		return new HyperMedia($this->prophet->prophesize()->willImplement(Cache::class)->reveal(), $this->createJournalRepository(), $this->sourceUnit, $this->basePath, new stdClass);
+		return new HyperMedia($this->prophet->prophesize()->willImplement(Cache::class)->reveal(), $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, new stdClass);
 	}
 
 	public function handle(HyperMedia $hm, Request $request)

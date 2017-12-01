@@ -37,9 +37,10 @@ final class ObjectType extends Type
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		$meta->fields = new stdClass;
-		foreach ($this->fieldDescriptors as $name => [$type, $defaultValue, $flags, $autocomplete, $label]) {
+		$meta->fields = [];
+		foreach ($this->fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label]) {
 			$submeta = new stdClass;
+			$submeta->name = $name;
 			if ($label) {
 				$submeta->label = $label;
 			}
@@ -51,7 +52,7 @@ final class ObjectType extends Type
 			if ($autocomplete !== null) {
 				$submeta->autocomplete = $autocomplete;
 			}
-			$meta->fields->$name = $submeta;
+			$meta->fields[] = $submeta;
 		}
 	}
 
@@ -66,7 +67,7 @@ final class ObjectType extends Type
 	}
 
 	/**
-	 * Set field descriptor
+	 * Add field descriptor
 	 *
 	 * @param string $name          the name of the field
 	 * @param string $type          the type descriptor
@@ -75,9 +76,9 @@ final class ObjectType extends Type
 	 * @param string $autocomplete  autocomplete expression
 	 * @param string $label         label
 	 */
-	public function setFieldDescriptor(string $name, string $type, $defaultValue, int $flags, ?string $autocomplete, ?string $label): self
+	public function addFieldDescriptor(string $name, string $type, $defaultValue, int $flags, ?string $autocomplete, ?string $label): self
 	{
-		$this->fieldDescriptors[$name] = [$type, $defaultValue, $flags, $autocomplete, $label];
+		$this->fieldDescriptors[] = [$name, $type, $defaultValue, $flags, $autocomplete, $label];
 		return $this;
 	}
 

@@ -41,20 +41,20 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	}
 
 	/**
-	 * Set field
+	 * Add field
 	 *
 	 * @return $this
 	 */
-	public function setField(string $key, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $label = null): self
+	public function addField(string $name, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $label = null): self
 	{
-		$this->fields[$key] = [$type, $default, $flags, $autocomplete, $label];
+		$this->fields[] = [$name, $type, $default, $flags, $autocomplete, $label];
 		return $this;
 	}
 
 	/**
 	 * Get fields
 	 *
-	 * @return [string $key => [string $type, $default, int $flags, ?string $autocomplete, string $label]]
+	 * @return [string $name, string $type, $default, int $flags, ?string $autocomplete, string $label]
 	 */
 	public function getFields()
 	{
@@ -66,16 +66,16 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 *
 	 * @return $this
 	 */
-	public function setVerb(string $key, string $method, int $flags, ?string $location = null): self
+	public function setVerb(string $key, string $method, int $flags): self
 	{
-		$this->verbs[$key] = [$method, $flags, $location];
+		$this->verbs[$key] = [$method, $flags];
 		return $this;
 	}
 
 	/**
 	 * Get verb
 	 *
-	 * @return [string $method, int $flags, ?string $location]
+	 * @return [string $method, int $flags]
 	 */
 	public function getVerb(string $key): array
 	{

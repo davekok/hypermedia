@@ -19,6 +19,7 @@ use Sturdy\Activity\Response\{
 	NoContent,
 	OK,
 	Response,
+	SeeOther,
 	UnsupportedMediaType
 };
 
@@ -40,7 +41,6 @@ final class Resource
 	private $object;
 	private $method;
 	private $verbflags;
-	private $location;
 
 	public function __construct(Cache $cache, Translator $translator, string $sourceUnit, array $tags, string $basePath, $di)
 	{
@@ -104,7 +104,7 @@ final class Resource
 		$this->hints = $resource->getHints();
 		$this->fields = $resource->getFields()??[];
 		$this->object = new $this->class;
-		[$this->method, $this->verbflags, $this->location] = $resource->getVerb($verb);
+		[$this->method, $this->verbflags] = $resource->getVerb($verb);
 		$this->verbflags = new Meta\VerbFlags($this->verbflags);
 	}
 
@@ -115,16 +115,12 @@ final class Resource
 				$this->response = new OK($this);
 				break;
 
-			case Meta\Verb::CREATED:
-				$this->response = new Created($this->location);
-				break;
-
-			case Meta\Verb::ACCEPTED:
-				$this->response = new Accepted();
-				break;
-
 			case Meta\Verb::NO_CONTENT:
 				$this->response = new NoContent();
+				break;
+
+			case Meta\Verb::SEE_OTHER:
+				$this->response = new SeeOther($this);
 				break;
 
 			default:
@@ -146,7 +142,7 @@ final class Resource
 	{
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
-		foreach ($this->fields as $name => [$type, $default, $flags, $autocomplete]) {
+		foreach ($this->fields as [$name, $type, $default, $flags, $autocomplete]) {
 			// flags check
 			$flags = new FieldFlags($flags);
 			if ($flags->isRequired() && !isset($values[$name]) && ($flags->isMeta() || $flags->isState() || $this->verb === "POST")) {
@@ -193,15 +189,20 @@ final class Resource
 
 		$this->object->{$this->method}($this->response, $this->di);
 
-		if ($this->verbflags->hasFields() && $this->verbflags->getStatus() === Meta\Verb::OK) {
+		if ($this->verbflags->hasFields() && $this->response instanceof OK) {
 			$parameters = get_object_vars($this->object);
+			foreach ($parameters as $key => $parameter) {
+				if (!is_scalar($parameter)) {
+					unset($parameters[$key]);
+				}
+			}
 			if (isset($this->hints[0])) {
 				$this->hints[0] = ($this->translator)($this->hints[0], $parameters);
 			}
 			$this->response->hints(...$this->hints);
 			$fields = [];
 			$state = [];
-			foreach ($this->fields as $name => [$type, $defaultValue, $flags, $autocomplete, $label]) {
+			foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label]) {
 				$flags = new FieldFlags($flags);
 				if ($flags->isState()) {
 					if (isset($this->object->$name)) {
@@ -209,6 +210,7 @@ final class Resource
 					}
 				} else {
 					$field = new stdClass;
+					$field->name = $name;
 					if (isset($label)) {
 						$field->label = $label;
 					}
@@ -217,7 +219,7 @@ final class Resource
 					if ($defaultValue !== null) $field->defaultValue = $defaultValue;
 					$flags->meta($field);
 					if ($autocomplete) $field->autocomplete = $autocomplete;
-					$fields[$name] = $field;
+					$fields[] = $field;
 					$recursiveTranslate = function($field)use(&$recursiveTranslate, $parameters) {
 						if (isset($field->label)) {
 							$field->label = ($this->translator)($field->label, $parameters);
@@ -259,7 +261,7 @@ final class Resource
 		$href = rtrim($this->basePath, "/") . "/" . trim(strtr($class, "\\", "/"), "/");
 		$known = "";
 		$unknown = "";
-		foreach ($fields as $name => [$type, $defaultValue, $flags, $autocomplete]) {
+		foreach ($fields as [$name, $type, $defaultValue, $flags, $autocomplete]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isMeta()) {
 				if ($flags->isReadonly() || $flags->isDisabled()) continue;

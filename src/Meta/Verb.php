@@ -13,14 +13,12 @@ use InvalidArgumentException;
 abstract class Verb extends Taggable
 {
 	const OK = 200;
-	const CREATED = 201;
-	const ACCEPTED = 202;
 	const NO_CONTENT = 204;
+	const SEE_OTHER = 303;
 
 	private $method;
 	private $description;
 	private $flags;
-	private $location;
 
 	/**
 	 * Constructor
@@ -109,28 +107,6 @@ abstract class Verb extends Taggable
 	}
 
 	/**
-	 * Set location
-	 *
-	 * @param string $location
-	 * @return self
-	 */
-	public function setLocation(string $location): self
-	{
-		$this->location = $location;
-		return $this;
-	}
-
-	/**
-	 * Get location
-	 *
-	 * @return string
-	 */
-	public function getLocation(): ?string
-	{
-		return $this->location;
-	}
-
-	/**
 	 * Parse annotation text
 	 *
 	 * @param  string $text  the annotation text
@@ -141,17 +117,12 @@ abstract class Verb extends Taggable
 		$token = strtok($text, $delimiters);
 		do {
 			switch ($token) {
-				case "creates":
-					$this->flags->setStatus(self::CREATED);
-					$this->location = strtok(")");
-					break;
-
-				case "accepts":
-					$this->flags->setStatus(self::ACCEPTED);
-					break;
-
 				case "no-content":
 					$this->flags->setStatus(self::NO_CONTENT);
+					break;
+
+				case "see-other":
+					$this->flags->setStatus(self::SEE_OTHER);
 					break;
 
 				case "hidden":
@@ -198,16 +169,12 @@ abstract class Verb extends Taggable
 			case self::OK:
 				break;
 
-			case self::CREATED:
-				$text.= "creates({$this->location}) ";
-				break;
-
-			case self::ACCEPTED:
-				$text.= "accepts ";
-				break;
-
 			case self::NO_CONTENT:
 				$text.= "no-content ";
+				break;
+
+			case self::SEE_OTHER:
+				$text.= "see-other ";
 				break;
 		}
 		if (!$this->flags->hasData()) {

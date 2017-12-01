@@ -608,53 +608,53 @@ class HyperMediaTest extends HyperMediaBase
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
 
-	public function testPostAcceptedResource()
-	{
-		// resource
-		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[], "Accepted");
+	// public function testPostAcceptedResource()
+	// {
+	// 	// resource
+	// 	$this->initResource("TestUnit1",$this->faker->unique()->word,"bar",[], "Accepted");
 
-		// request
-		$this->fields["name"] = ["type"=>"string","required"=>$this->faker->boolean];
-		$this->fields["streetName"] = ["type"=>"string","required"=>$this->faker->boolean];
-		$this->fields["postcode"] = ["type"=>"string","required"=>$this->faker->boolean];
-		$this->fields["country"] = ["type"=>"string","required"=>$this->faker->boolean];
-		$this->data = ["name"=>$this->faker->name,"streetName"=>$this->faker->streetName,"postcode"=>$this->faker->postcode,"country"=>$this->faker->country];
-		$this->initRequest("1.1","POST",false, $this->fields);
+	// 	// request
+	// 	$this->fields["name"] = ["type"=>"string","required"=>$this->faker->boolean];
+	// 	$this->fields["streetName"] = ["type"=>"string","required"=>$this->faker->boolean];
+	// 	$this->fields["postcode"] = ["type"=>"string","required"=>$this->faker->boolean];
+	// 	$this->fields["country"] = ["type"=>"string","required"=>$this->faker->boolean];
+	// 	$this->data = ["name"=>$this->faker->name,"streetName"=>$this->faker->streetName,"postcode"=>$this->faker->postcode,"country"=>$this->faker->country];
+	// 	$this->initRequest("1.1","POST",false, $this->fields);
 
-		// response
-		$this->_journalId = $this->journalId??rand();
-		$this->statusCode = 202;
-		$this->statusText = "Accepted";
-		$this->location = null;
-		$this->contentType = null;
-		$this->content = null;
+	// 	// response
+	// 	$this->_journalId = $this->journalId??rand();
+	// 	$this->statusCode = 202;
+	// 	$this->statusText = "Accepted";
+	// 	$this->location = null;
+	// 	$this->contentType = null;
+	// 	$this->content = null;
 
-		$this->handle($this->createHyperMedia(), $this->createRequest());
-	}
+	// 	$this->handle($this->createHyperMedia(), $this->createRequest());
+	// }
 
-	public function testPostCreatedResource()
-	{
-		// resource
-		$this->initResource("TestUnit1",$this->faker->unique()->word,"bar", [], "Created");
+	// public function testPostCreatedResource()
+	// {
+	// 	// resource
+	// 	$this->initResource("TestUnit1",$this->faker->unique()->word,"bar", [], "Created");
 
-		// request
-		$this->fields["name"] = ["type"=>"string", "required"=>$this->faker->boolean];
-		$this->fields["streetName"] = ["type"=>"string", "required"=>$this->faker->boolean];
-		$this->fields["postcode"] = ["type"=>"string", "required"=>$this->faker->boolean];
-		$this->fields["country"] = ["type"=>"string", "required"=>$this->faker->boolean];
-		$this->data = ["name"=>$this->faker->name,"streetName"=>$this->faker->streetName,"postcode"=>$this->faker->postcode,"country"=>$this->faker->country];
-		$this->initRequest("1.1","POST",false, $this->fields);
+	// 	// request
+	// 	$this->fields["name"] = ["type"=>"string", "required"=>$this->faker->boolean];
+	// 	$this->fields["streetName"] = ["type"=>"string", "required"=>$this->faker->boolean];
+	// 	$this->fields["postcode"] = ["type"=>"string", "required"=>$this->faker->boolean];
+	// 	$this->fields["country"] = ["type"=>"string", "required"=>$this->faker->boolean];
+	// 	$this->data = ["name"=>$this->faker->name,"streetName"=>$this->faker->streetName,"postcode"=>$this->faker->postcode,"country"=>$this->faker->country];
+	// 	$this->initRequest("1.1","POST",false, $this->fields);
 
-		// response
-		$this->_journalId = $this->journalId??rand();
-		$this->statusCode = 201;
-		$this->statusText = "Created";
-		$this->location = $this->faker->url;
-		$this->contentType = null;
-		$this->content = null;
+	// 	// response
+	// 	$this->_journalId = $this->journalId??rand();
+	// 	$this->statusCode = 201;
+	// 	$this->statusText = "Created";
+	// 	$this->location = $this->faker->url;
+	// 	$this->contentType = null;
+	// 	$this->content = null;
 
-		$this->handle($this->createHyperMedia(), $this->createRequest());
-	}
+	// 	$this->handle($this->createHyperMedia(), $this->createRequest());
+	// }
 
 	public function testGetOKResourceWithAttachment()
 	{
@@ -691,12 +691,13 @@ EOD
 		$this->tags = [];
 
 		// request
-		$fields = [];
-		$fields["name"] = ["type"=>"string","value"=>$this->faker->name,"meta"=>true];
-		$fields["streetName"] = ["type"=>"string","meta"=>true];
-		$fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"meta"=>true];
-		$fields["country"] = ["type"=>"string","value"=>$this->faker->country,"meta"=>true];
-		$this->initRequest("1.1","GET",false, $fields);
+		$this->fields = [];
+		$this->fields["name"] = ["type"=>"string","value"=>$this->faker->name,"meta"=>true];
+		$this->fields["streetName"] = ["type"=>"string","meta"=>true];
+		$this->fields["postcode"] = ["type"=>"string","value"=>$this->faker->postcode,"meta"=>true];
+		$this->fields["country"] = ["type"=>"string","value"=>$this->faker->country,"meta"=>true];
+		$this->data = null;
+		$this->initRequest("1.1","GET",false, $this->fields);
 
 		// response
 		$this->_journalId = $this->journalId??rand();
@@ -704,44 +705,8 @@ EOD
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		$meta = "";
-		if (count($this->fields)) {
-			$content->main->fields = new stdClass;
-			$meta = "{?";
-			$i = 0;
-			foreach ($this->fields as $name => $field) {
-				if ($i++) $meta.= ",";
-				$meta.= $name;
-				$content->main->fields->$name = new stdClass;
-				$content->main->fields->$name->type = $field["type"];
-				if ($field["meta"]??false) {
-					$content->main->fields->$name->meta = true;
-				}
-				if ($field["required"]??false) {
-					$content->main->fields->$name->required = true;
-				}
-				if (isset($field["value"])) {
-					$content->main->fields->$name->value = $field["value"];
-				}
-			}
-			$meta.= "}";
-		}
-		$content->main->links = new stdClass;
-		$content->main->links->aside = new stdClass;
-		$content->main->links->aside->href = $this->basePath . $this->_journalId . '/' . $this->classes[0];
-		$content->main->links->self = new stdClass;
-		$content->main->links->self->href = $this->basePath . $this->_journalId . '/' . $this->class . $meta;
-		if ($meta) {
-			$content->main->links->self->templated = true;
-		}
-		$content->aside = new stdClass;
-		$content->aside->links = new stdClass;
-		$content->aside->links->self = new stdClass;
-		$content->aside->links->self->href = $this->basePath . $this->_journalId . '/' . $this->classes[0];
-
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$this->setContent("main", $this->class, $this->fields, $this->data, ["aside" => [$this->classes[0], null]]);
+		$this->setContent("aside", $this->classes[0]);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}
@@ -804,51 +769,55 @@ EOD
 		$this->statusText = "OK";
 		$this->location = null;
 		$this->contentType = "application/json";
-		$content = new stdClass;
-		$content->main = new stdClass;
-		$meta = "";
-		if (count($this->fields)) {
-			$content->main->fields = new stdClass;
-			$meta = "{?";
-			$i = 0;
-			foreach ($this->fields as $name => $field) {
-				if ($i++) $meta.= ",";
-				$meta.= $name;
-				$content->main->fields->$name = new stdClass;
-				$content->main->fields->$name->type = $field["type"];
-				if ($field["meta"]??false) {
-					$content->main->fields->$name->meta = true;
-				}
-				if ($field["required"]??false) {
-					$content->main->fields->$name->required = true;
-				}
-				if (isset($field["value"])) {
-					$content->main->fields->$name->value = $field["value"];
-				}
-			}
-			$meta.= "}";
-		}
-		$content->main->links = new stdClass;
-		$content->main->links->self = new stdClass;
-		$content->main->links->self->href = $this->basePath . $this->_journalId . '/' . $this->class . $meta;
-		if ($meta) {
-			$content->main->links->self->templated = true;
-		}
-		$content->main->links->aside = new stdClass;
-		$content->main->links->aside->href = $this->basePath . $this->_journalId . '/' . $this->classes[0] . '?name=Foo{&streetName}';
-		$content->main->links->aside->templated = true;
 
-		$content->aside = new stdClass;
-		$content->aside->fields = new stdClass;
-		$content->aside->fields->name = $this->attachmentFields[$this->classes[0]]["name"];
-		$content->aside->fields->streetName = $this->attachmentFields[$this->classes[0]]["streetName"];
-		$content->aside->links = new stdClass;
-		$content->aside->links->self = new stdClass;
-		$content->aside->links->self->href = $this->basePath . $this->_journalId . '/' . $this->classes[0] . '{?name,streetName}';
-		$content->aside->links->self->templated = true;
+		$this->setContent("main", $this->class, $this->fields, $this->data, ["aside" => [$this->classes[0], "?name=Foo{&streetName}"]]);
+		$this->setContent("aside", $this->classes[0], $this->attachmentFields[$this->classes[0]]);
+
+		// $content = new stdClass;
+		// $content->main = new stdClass;
+		// $meta = "";
+		// if (count($this->fields)) {
+		// 	$content->main->fields = new stdClass;
+		// 	$meta = "{?";
+		// 	$i = 0;
+		// 	foreach ($this->fields as $name => $field) {
+		// 		if ($i++) $meta.= ",";
+		// 		$meta.= $name;
+		// 		$content->main->fields->$name = new stdClass;
+		// 		$content->main->fields->$name->type = $field["type"];
+		// 		if ($field["meta"]??false) {
+		// 			$content->main->fields->$name->meta = true;
+		// 		}
+		// 		if ($field["required"]??false) {
+		// 			$content->main->fields->$name->required = true;
+		// 		}
+		// 		if (isset($field["value"])) {
+		// 			$content->main->fields->$name->value = $field["value"];
+		// 		}
+		// 	}
+		// 	$meta.= "}";
+		// }
+		// $content->main->links = new stdClass;
+		// $content->main->links->self = new stdClass;
+		// $content->main->links->self->href = $this->basePath . $this->_journalId . '/' . $this->class . $meta;
+		// if ($meta) {
+		// 	$content->main->links->self->templated = true;
+		// }
+		// $content->main->links->aside = new stdClass;
+		// $content->main->links->aside->href = $this->basePath . $this->_journalId . '/' . $this->classes[0] . '?name=Foo{&streetName}';
+		// $content->main->links->aside->templated = true;
+
+		// $content->aside = new stdClass;
+		// $content->aside->fields = new stdClass;
+		// $content->aside->fields->name = $this->attachmentFields[$this->classes[0]]["name"];
+		// $content->aside->fields->streetName = $this->attachmentFields[$this->classes[0]]["streetName"];
+		// $content->aside->links = new stdClass;
+		// $content->aside->links->self = new stdClass;
+		// $content->aside->links->self->href = $this->basePath . $this->_journalId . '/' . $this->classes[0] . '{?name,streetName}';
+		// $content->aside->links->self->templated = true;
 
 
-		$this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		// $this->content = json_encode($content, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 
 		$this->handle($this->createHyperMedia(), $this->createRequest());
 	}

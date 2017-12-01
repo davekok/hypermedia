@@ -10,9 +10,9 @@ use InvalidArgumentException;
 class VerbFlags
 {
 	private const ok = 0;
-	private const created = 1;
-	private const accepted = 2;
-	private const noContent = 3;
+	private const noContent = 1;
+	private const seeOther = 2;
+	private const maxStatus = 15;
 
 	private const hidden = 0; // no parts are used
 	private const links = 16; // links part is used
@@ -49,19 +49,16 @@ class VerbFlags
 	 */
 	public function setStatus(int $status): void
 	{
-		$this->flags &= ~self::noContent; // clear bits
+		$this->flags &= ~self::maxStatus; // clear bits
 		switch ($status) {
 			case Verb::OK:
 				$this->flags |= self::ok;
 				break;
-			case Verb::CREATED:
-				$this->flags |= self::created;
-				break;
-			case Verb::ACCEPTED:
-				$this->flags |= self::accepted;
-				break;
 			case Verb::NO_CONTENT:
 				$this->flags |= self::noContent;
+				break;
+			case Verb::SEE_OTHER:
+				$this->flags |= self::seeOther;
 				break;
 			default:
 				new InvalidArgumentException("Unsupported status $status.");
@@ -75,11 +72,10 @@ class VerbFlags
 	 */
 	public function getStatus(): int
 	{
-		switch ($this->flags & self::noContent) {
+		switch ($this->flags & self::maxStatus) {
 			case self::ok:        return Verb::OK;
-			case self::created:   return Verb::CREATED;
-			case self::accepted:  return Verb::ACCEPTED;
 			case self::noContent: return Verb::NO_CONTENT;
+			case self::seeOther:  return Verb::SEE_OTHER;
 			default:              throw new \LogicException("unkown status");
 		}
 	}

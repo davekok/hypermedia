@@ -230,7 +230,7 @@ final class FieldParser
 		$this->clearbit($mask, 9); // max length token
 		$this->clearbit($mask, 10); // pattern token
 		$this->clearbit($mask, 11); // autocomplete token
-		$this->clearbit($mask, 14); // object type allowed
+		// $this->clearbit($mask, 14); // object type allowed
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -347,16 +347,15 @@ final class FieldParser
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\LinkType());
 				$this->parseArray($flags);
-				$this->parseLink($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('listToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
 				$field->setType($type = new Type\ListType());
 				$this->parseArray($flags);
 				$this->parseList($type);
-			} elseif ($this->isbitset($mask, 1) && $this->isbitset($mask, 14) && $this->match('objectToken')) {
+			} elseif ($this->isbitset($mask, 1) /*&& $this->isbitset($mask, 14)*/ && $this->match('objectToken')) {
 				$this->clearbit($mask, 1);
-				$this->clearbit($mask, 14);
+				// $this->clearbit($mask, 14);
 				$field->setType($type = new Type\ObjectType());
 				$this->parseArray($flags);
 				$this->parseFields($type);

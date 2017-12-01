@@ -104,23 +104,23 @@ final class OK implements Response
 	 */
 	public function fields(array $fields, bool $hasData): void
 	{
-		$this->part->fields = new stdClass;
-		foreach ($fields as $name => $field) {
+		$this->part->fields = [];
+		foreach ($fields as $field) {
 			if ($field->meta??false) {
-				$this->part->fields->$name = $field;
+				$this->part->fields[] = $field;
 			} elseif ($field->data??false) {
-				$this->part->fields->$name = $field;
+				$this->part->fields[] = $field;
 				if ($hasData) {
 					$this->part->data = $field->value??null;
 				}
 				unset($field->value);
 			} else {
-				$this->part->fields->$name = $field;
+				$this->part->fields[] = $field;
 				if ($hasData) {
 					if (!isset($this->part->data)) {
 						$this->part->data = new stdClass;
 					}
-					$this->part->data->$name = $field->value??null;
+					$this->part->data->{$field->name} = $field->value??null;
 				}
 				unset($field->value);
 			}
@@ -174,7 +174,7 @@ final class OK implements Response
 	 * @param  array  $values  the values in case the resource has uri fields
 	 * @return array  the link
 	 */
-	public function getLink(string $class, array $values = [], bool $attach = false): array
+	public function getLink(string $class, array $values = []): array
 	{
 		$link = $this->resource->createLink($class, $values);
 		if ($link === null) return [];

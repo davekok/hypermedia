@@ -13,5 +13,4 @@ trait NoLocationTrait
 	{
 		return null;
 	}
-
 }

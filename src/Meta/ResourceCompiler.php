@@ -23,7 +23,7 @@ class ResourceCompiler
 		foreach ($resource->getVerbs() as $name => $variants) {
 			$verb = $matcher->findBestMatch($variants);
 			if ($verb) {
-				$verbs[$name] = [$verb->getMethod(), $verb->getFlags()->toInt(), $verb->getLocation()];
+				$verbs[$name] = [$verb->getMethod(), $verb->getFlags()->toInt()];
 				$root = $verb->getFlags()->getRoot();
 			}
 		}
@@ -41,11 +41,11 @@ class ResourceCompiler
 			$item->setHints($hints->getLabel(), $hints->getSection(), $hints->getComponent(), $hints->getLayout());
 		}
 		$item->setTags($matcher->getTags());
-		foreach ($type->getFieldDescriptors() as $name => $descriptor) {
-			$item->setField($name, ...$descriptor);
+		foreach ($type->getFieldDescriptors() as $descriptor) {
+			$item->addField(...$descriptor);
 		}
-		foreach ($verbs as $name => [$method, $flags, $location]) {
-			$item->setVerb($name, $method, $flags, $location);
+		foreach ($verbs as $name => [$method, $flags]) {
+			$item->setVerb($name, $method, $flags);
 		}
 
 		return $item;
@@ -60,7 +60,7 @@ class ResourceCompiler
 				if ($subtype instanceof Type\ObjectType) {
 					$this->compileObjectType($subtype, $matcher);
 				}
-				$type->setFieldDescriptor(
+				$type->addFieldDescriptor(
 					$name,
 					$field->getType()->getDescriptor(),
 					$field->getDefaultValue(),

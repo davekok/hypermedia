@@ -73,9 +73,25 @@ class FieldTest extends TestCase
 		$this->assertTrue($flags->isRequired());
 		$this->assertTrue($type instanceof Type\ObjectType);
 		$fields = $type->getFieldDescriptors();
-		$this->assertTrue(isset($fields["firstName"]), "isset firstName");
-		$this->assertTrue(isset($fields["lastName"]), "isset lastName");
-		$this->assertTrue(isset($fields["emailAddress"]), "isset emailAddress");
-		$this->assertFalse(isset($fields["telephone"]), "isset telephone");
+		$this->assertFieldExists($fields, "firstName", "isset firstName");
+		$this->assertFieldExists($fields, "lastName", "isset lastName");
+		$this->assertFieldExists($fields, "emailAddress", "isset emailAddress");
+		$this->assertFieldNotExists($fields, "telephone", "isset telephone");
+	}
+
+	private function assertFieldExists($fields, $expected, $message): void
+	{
+		foreach ($fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label]) {
+			if ($name == $expected) return;
+		}
+		$this->assertTrue(false, $message);
+	}
+
+	private function assertFieldNotExists($fields, $expected, $message): void
+	{
+		foreach ($fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label]) {
+			if ($name == $expected) return;
+		}
+		$this->assertTrue(true, $message);
 	}
 }
