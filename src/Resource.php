@@ -112,7 +112,7 @@ final class Resource
 	{
 		switch ($this->verbflags->getStatus()) {
 			case Meta\Verb::OK:
-				$this->response = new OK($this);
+				$this->response = new OK($this, $this->translator);
 				break;
 
 			case Meta\Verb::NO_CONTENT:
@@ -234,7 +234,7 @@ final class Resource
 				}
 			}
 			if ($this->verbflags->hasSelfLink()) {
-				$this->response->link("self", $this->class, $state);
+				$this->response->link("self", null, $this->class, $state);
 			}
 			if (!empty($fields)) {
 				$this->response->fields($fields, $this->verbflags->hasData());

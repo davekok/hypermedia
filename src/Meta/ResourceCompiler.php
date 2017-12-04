@@ -9,6 +9,8 @@ use Exception;
  */
 class ResourceCompiler
 {
+	private $fieldDescriptors;
+
 	/**
 	 * Compile resource
 	 *
@@ -51,24 +53,35 @@ class ResourceCompiler
 		return $item;
 	}
 
-	private function compileObjectType(Type\ObjectType $type, TagMatcher $matcher)
+	private function compileObjectType(Type\ObjectType $object, TagMatcher $matcher): void
 	{
-		foreach ($type->getFields() as $name => $variants) {
+		$fieldDescriptors = [];
+		foreach ($object->getFields() as $name => $variants) {
 			$field = $matcher->findBestMatch($variants);
 			if ($field) {
-				$subtype = $field->getType();
-				if ($subtype instanceof Type\ObjectType) {
-					$this->compileObjectType($subtype, $matcher);
+				$type = $field->getType();
+				if ($type instanceof Type\ObjectType) {
+					$this->compileObjectType($type, $matcher);
 				}
-				$type->addFieldDescriptor(
+				$fieldDescriptors[] = [
 					$name,
-					$field->getType()->getDescriptor(),
+					$type->getDescriptor(),
 					$field->getDefaultValue(),
 					$field->getFlags()->toInt(),
 					$field->getAutocomplete(),
 					$field->getLabel()
-				);
+				];
 			}
 		}
+		$object->setFieldDescriptors($fieldDescriptors);
 	}
+
+	/**
+	 * @param string $name          name
+	 * @param string $type          the type descriptor
+	 * @param mixed  $defaultValue  the default value
+	 * @param int    $flags         field flags
+	 * @param string $autocomplete  autocomplete expression
+	 * @param string $label         label
+	 */
 }

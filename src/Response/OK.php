@@ -3,7 +3,7 @@
 namespace Sturdy\Activity\Response;
 
 use stdClass;
-use Sturdy\Activity\Resource;
+use Sturdy\Activity\{Resource,Translator};
 
 final class OK implements Response
 {
@@ -12,6 +12,7 @@ final class OK implements Response
 	use NoLocationTrait;
 
 	private $resource;
+	private $translator;
 	private $parts;
 	private $part;
 
@@ -20,9 +21,10 @@ final class OK implements Response
 	 *
 	 * @param Resource $resource  the resource
 	 */
-	public function __construct(Resource $resource)
+	public function __construct(Resource $resource, Translator $translator)
 	{
 		$this->resource = $resource;
+		$this->translator = $translator;
 		$this->parts = new stdClass;
 		$this->parts->main = new stdClass;
 		$this->part = $this->parts->main;
@@ -131,11 +133,12 @@ final class OK implements Response
 	 * Link to another resource.
 	 *
 	 * @param  string $name    the name of the link
+	 * @param  string $label   the label of the link
 	 * @param  string $class   the class of the resource
 	 * @param  array  $values  the values in case the resource has uri fields
 	 * @return bool  link succeeded
 	 */
-	public function link(string $name, string $class, array $values = [], bool $attach = false): bool
+	public function link(string $name, ?string $label, string $class, array $values = [], bool $attach = false): bool
 	{
 		$link = $this->resource->createLink($class, $values);
 		if ($link === null) return false;
@@ -143,6 +146,9 @@ final class OK implements Response
 			$this->part->links = new stdClass();
 		}
 		$this->part->links->$name = $link->toArray();
+		if ($label) {
+			$this->part->links->$label = ($this->translator)($label, $values);
+		}
 		return true;
 	}
 
@@ -158,7 +164,7 @@ final class OK implements Response
 	 */
 	public function attach(string $name, string $class, array $values = []): void
 	{
-		if ($this->link($name, $class, $values)) {
+		if ($this->link($name, null, $class, $values)) {
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;

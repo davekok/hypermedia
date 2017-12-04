@@ -67,18 +67,13 @@ final class ObjectType extends Type
 	}
 
 	/**
-	 * Add field descriptor
+	 * Set field descriptors
 	 *
-	 * @param string $name          the name of the field
-	 * @param string $type          the type descriptor
-	 * @param mixed  $defaultValue  the default value
-	 * @param int    $flags         field flags
-	 * @param string $autocomplete  autocomplete expression
-	 * @param string $label         label
+	 * @param array $fieldDescriptors  field descriptors
 	 */
-	public function addFieldDescriptor(string $name, string $type, $defaultValue, int $flags, ?string $autocomplete, ?string $label): self
+	public function setFieldDescriptors(array $fieldDescriptors): self
 	{
-		$this->fieldDescriptors[] = [$name, $type, $defaultValue, $flags, $autocomplete, $label];
+		$this->fieldDescriptors = $fieldDescriptors;
 		return $this;
 	}
 

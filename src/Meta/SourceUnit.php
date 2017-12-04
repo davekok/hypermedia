@@ -179,8 +179,8 @@ final class SourceUnit implements CacheSourceUnit
 	public function getCacheItems(): iterable
 	{
 		$tagMatchers = [];
-		
-		foreach([$this->activities??[], $this->resources??[]] as $items) {
+
+		foreach ([$this->activities??[], $this->resources??[]] as $items) {
 			foreach ($items as $item) {
 				foreach ($item->getTaggables() as $taggable) {
 					$taggable->setKeyOrder($this->tagorder);
@@ -193,7 +193,7 @@ final class SourceUnit implements CacheSourceUnit
 				}
 			}
 		}
-		
+
 		foreach ($tagMatchers as $tagMatcher) {
 			$compiler = new ActivityCompiler();
 			foreach ($this->activities??[] as $activity) {
@@ -230,7 +230,7 @@ final class SourceUnit implements CacheSourceUnit
 			}
 		}
 	}
-	
+
 	/**
 	 * Return all permutations of tags without duplicates.
 	 *
@@ -255,7 +255,7 @@ final class SourceUnit implements CacheSourceUnit
 			yield $this->orderTags($tags);
 		}
 	}
-	
+
 	/**
 	 * Return all permutations of tags without duplicates.
 	 *
@@ -284,7 +284,7 @@ final class SourceUnit implements CacheSourceUnit
 				}
 		}
 	}
-	
+
 	private function orderTags(array $array)
 	{
 		$tags = [];
