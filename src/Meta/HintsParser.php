@@ -33,10 +33,12 @@ final class HintsParser
 
 	public function __construct()
 	{
+		$dashedName = '[a-z][a-z0-9-]+';
 		$name = '[A-Za-z_][A-Za-z0-9_]+';
 
 		$this->spaceToken         = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
 		$this->nameToken          = "/^($name)/";
+		$this->dashedNameToken    = "/^($dashedName)/";
 		$this->tagToken           = "/^#($name)/";
 		$this->equalsToken        = "/^=/";
 		$this->valueToken         = "/^(\S*)(?=\s|\*|$)/";
@@ -118,10 +120,10 @@ final class HintsParser
 				$hints->setSection($this->parseName());
 			} elseif ($this->isbitset($mask, 3) && $this->match('componentToken')) {
 				$this->clearbit($mask, 3);
-				$hints->setComponent($this->parseName());
+				$hints->setComponent($this->parseDashedName());
 			} elseif ($this->isbitset($mask, 4) && $this->match('layoutToken')) {
 				$this->clearbit($mask, 4);
-				$hints->setLayout($this->parseName());
+				$hints->setLayout($this->parseDashedName());
 			} else {
 				throw new ParserError($this->parseError("Unexpected token"));
 			}
@@ -151,6 +153,46 @@ final class HintsParser
 				$taggable->matchTagValue($tag, $value);
 				return;
 		}
+	}
+
+	private function parseDashedName(): string
+	{
+		$sequence = 0;
+		$name = null;
+		while ($this->valid()) {
+			switch ($sequence) {
+				case 0:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('listStartToken')) {
+						++$sequence;
+					} else {
+						throw new ParserError($this->parseError("expected space or list start"));
+					}
+					break;
+
+				case 1:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('dashedNameToken', $name)) {
+						++$sequence;
+					} else {
+						throw new ParserError($this->parseError("expected space or name"));
+					}
+					break;
+
+				case 2:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('listEndToken')) {
+						break 2;
+					} else {
+						throw new ParserError($this->parseError("expected space or list end"));
+					}
+					break;
+				}
+		}
+		return $name;
 	}
 
 	private function parseName(): string
