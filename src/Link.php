@@ -68,7 +68,7 @@ final class Link
 			$obj->href.= $known;
 			if ($unknown) {
 				$unknown[0] = "&";
-				$href.= "{" . $unknown . "}";
+				$obj->href.= "{" . $unknown . "}";
 			}
 		} elseif ($unknown) {
 			$unknown[0] = "?";
