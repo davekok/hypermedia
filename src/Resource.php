@@ -112,7 +112,7 @@ final class Resource
 	{
 		switch ($this->verbflags->getStatus()) {
 			case Meta\Verb::OK:
-				$this->response = new OK($this, $this->translator);
+				$this->response = new OK($this);
 				break;
 
 			case Meta\Verb::NO_CONTENT:
@@ -246,51 +246,12 @@ final class Resource
 	/**
 	 * Create a link to be used inside the data section.
 	 *
-	 * @param  string $class           the class of the resource
-	 * @param  array  $values          the values in case the resource has meta fields
-	 * @param  bool   $mayBeTemplated  whether the like may be a templated link
-	 * @return Link                    containing the href property and possibly the templated property
+	 * @param  string $class  the class of the resource
+	 * @return ?Link          containing the href property and possibly the templated property
 	 */
-	public function createLink(string $class, array $values = [], bool $mayBeTemplated = true): ?Link
+	public function createLink(string $class): ?Link
 	{
 		$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
-		if ($resource === null) {
-			return null;
-		}
-		$fields = $resource->getFields()??[];
-		$href = rtrim($this->basePath, "/") . "/" . trim(strtr($class, "\\", "/"), "/");
-		$known = "";
-		$unknown = "";
-		foreach ($fields as [$name, $type, $defaultValue, $flags, $autocomplete]) {
-			$flags = new FieldFlags($flags);
-			if ($flags->isMeta()) {
-				if ($flags->isReadonly() || $flags->isDisabled()) continue;
-				if (array_key_exists($name, $values)) {
-					$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
-				} elseif ($mayBeTemplated) {
-					$unknown.= "," . $name;
-				} elseif ($flags->isRequired()) {
-					throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
-				}
-			} elseif ($flags->isState()) {
-				if (array_key_exists($name, $values)) {
-					$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
-				} elseif (!$mayBeTemplated && $flags->isRequired()) {
-					throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
-				}
-			}
-		}
-		if ($known) {
-			$known[0] = "?";
-			$href.= $known;
-			if ($unknown) {
-				$unknown[0] = "&";
-				$href.= "{" . $unknown . "}";
-			}
-		} elseif ($unknown) {
-			$unknown[0] = "?";
-			$href.= "{" . $unknown . "}";
-		}
-		return new Link($href, !empty($unknown));
+		return $resource ? new Link($this->translator, $this->basePath, $resource) : null;
 	}
 }

@@ -60,9 +60,9 @@ final class SeeOther implements Response
 	 */
 	public function setLocation(string $class, array $values = []): void
 	{
-		$link = $this->resource->createLink($class, $values, false);
+		$link = $this->resource->createLink($class);
 		if ($link === null) throw new InternalServerError("Resource $class not found.");
-		$this->location = $link->getHref();
+		$this->location = $link->expand($values, false)->href;
 	}
 
 	/**

@@ -12,7 +12,6 @@ final class OK implements Response
 	use NoLocationTrait;
 
 	private $resource;
-	private $translator;
 	private $parts;
 	private $part;
 
@@ -21,10 +20,9 @@ final class OK implements Response
 	 *
 	 * @param Resource $resource  the resource
 	 */
-	public function __construct(Resource $resource, Translator $translator)
+	public function __construct(Resource $resource)
 	{
 		$this->resource = $resource;
-		$this->translator = $translator;
 		$this->parts = new stdClass;
 		$this->parts->main = new stdClass;
 		$this->part = $this->parts->main;
@@ -140,15 +138,13 @@ final class OK implements Response
 	 */
 	public function link(string $name, ?string $label, string $class, array $values = [], bool $attach = false): bool
 	{
-		$link = $this->resource->createLink($class, $values);
+		$link = $this->resource->createLink($class);
 		if ($link === null) return false;
+		if ($label !== null) $link->setLabel($label, $values);
 		if (!isset($this->part->links)) {
 			$this->part->links = new stdClass();
 		}
-		$this->part->links->$name = $link->toArray();
-		if ($label) {
-			$this->part->links->$label = ($this->translator)($label, $values);
-		}
+		$this->part->links->$name = $link->expand($values);
 		return true;
 	}
 
@@ -178,12 +174,11 @@ final class OK implements Response
 	 *
 	 * @param  string $class   the class of the resource
 	 * @param  array  $values  the values in case the resource has uri fields
-	 * @return array  the link
+	 * @return object  the link
 	 */
-	public function getLink(string $class, array $values = []): array
+	public function getLink(string $class, array $values = [])/*: ?object*/
 	{
-		$link = $this->resource->createLink($class, $values);
-		if ($link === null) return [];
-		return $link->toArray();
+		$link = $this->resource->createLink($class);
+		return $link ? $link->expand($values, false) : null;
 	}
 }
