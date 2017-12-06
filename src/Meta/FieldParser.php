@@ -61,6 +61,7 @@ final class FieldParser
 	private $listDelimiterToken;
 	private $listEndToken;
 	private $listEscapeEndToken;
+	private $newline;
 	private $quotedString;
 	private $quote;
 	private $escapedQuote;
@@ -122,20 +123,21 @@ final class FieldParser
 
 		$this->optionToken        = "/^($name)/";
 		$this->autocompleteToken  = "/^autocomplete/";
-		$this->autocompleteOption = "/^[^\S\*\(\)]+/";
+		$this->autocompleteOption = '/^[^\S\*\(\)]+/';
 
-		$this->labelToken         = "/^label/";
-		$this->quotedString       = "/^([^']+)/";
-		$this->quote              = "/^'/";
-		$this->escapedQuote       = "/^''/";
+		$this->labelToken         = '/^label/';
+		$this->newline            = '/^\v+(?:\h*\*\h*)?/';
+		$this->quotedString       = '/^([^\'\v]+)/';
+		$this->quote              = '/^\'/';
+		$this->escapedQuote       = '/^\'\'/';
 
-		$this->listStartToken     = "/^\(/";
-		$this->listDelimiterToken = "/^,/";
-		$this->listEndToken       = "/^\)/";
-		$this->listEscapeEndToken = "/^\\)/";
+		$this->listStartToken     = '/^\(/';
+		$this->listDelimiterToken = '/^,/';
+		$this->listEndToken       = '/^\)/';
+		$this->listEscapeEndToken = '/^\\)/';
 
-		$this->defaultValueToken  = "/^default=(\"[^\v\"]*\"|\'[^\v\']*\'|[1-9][0-9]*(?=\.[0-9]+)?|0\.[0-9]+|true|false)/";
-		$this->descriptionToken   = "/^(\"[^\v\"]*\"|\'[^\v\']*\')/";
+		$this->defaultValueToken  = '/^default=(\"[^\v\"]*\"|\'[^\v\']*\'|[1-9][0-9]*(?=\.[0-9]+)?|0\.[0-9]+|true|false)/';
+		$this->descriptionToken   = '/^(\"[^\v\"]*\"|\'[^\v\']*\')/';
 	}
 
 	private function valid(): bool
@@ -629,7 +631,9 @@ final class FieldParser
 					break;
 
 				case 2:
-					if ($this->match('quotedString', $text)) {
+					if ($this->match('newline')) {
+						$string.= "\n";
+					} elseif ($this->match('quotedString', $text)) {
 						$string.= $text;
 					} elseif ($this->match('escapedQuote')) {
 						$string.= "'";

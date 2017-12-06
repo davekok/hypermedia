@@ -23,6 +23,7 @@ final class HintsParser
 	private $listDelimiterToken;
 	private $listEndToken;
 	private $listEscapeEndToken;
+	private $newline;
 	private $quotedString;
 	private $quote;
 	private $escapedQuote;
@@ -53,7 +54,8 @@ final class HintsParser
 		$this->listEndToken       = "/^\)/";
 		$this->listEscapeEndToken = "/^\\)/";
 
-		$this->quotedString       = "/^([^']+)/";
+		$this->newline            = '/^\v+\h+\*\h+/';
+		$this->quotedString       = '/^([^\'\v]+)/';
 		$this->quote              = "/^'/";
 		$this->escapedQuote       = "/^''/";
 	}
@@ -262,7 +264,9 @@ final class HintsParser
 					break;
 
 				case 2:
-					if ($this->match('quotedString', $text)) {
+					if ($this->match('newline')) {
+						$string.= "\n";
+					} elseif ($this->match('quotedString', $text)) {
 						$string.= $text;
 					} elseif ($this->match('escapedQuote')) {
 						$string.= "'";
