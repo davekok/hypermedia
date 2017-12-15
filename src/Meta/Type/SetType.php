@@ -23,7 +23,7 @@ final class SetType extends Type
 	{
 		$this->options = new Set;
 		if ($state !== null) {
-			$this->options->add(...explode(",", $options));
+			$this->options->add(...explode(",", $state));
 		}
 	}
 

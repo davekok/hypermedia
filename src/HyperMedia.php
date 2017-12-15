@@ -79,50 +79,11 @@ final class HyperMedia
 	 * @param array    $tags             the tags to use
 	 * @param mixed    $request          the request object
 	 * @param ?string  $responseAdaptor  the response adaptor you would like to use
-	 * @return mixed  $response
+	 * @return mixed   $response
 	 */
 	public function handle(array $tags, $request, ?string $responseAdaptor = null)
 	{
-		// adaptors
-		switch (true) {
-			case $request instanceof \Psr\Http\Message\ServerRequestInterface:
-				$request = new Request\PsrAdaptor($request);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "psr";
-				}
-				break;
-
-			case $request instanceof \Symfony\Component\HttpFoundation\Request:
-				$request = new Request\SymfonyAdaptor($request);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "symfony";
-				}
-				break;
-
-			case $request instanceof Request\Request:
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "sturdy";
-				}
-				break;
-
-			case is_array($request):
-				$request = new Request\ServerAdaptor($request);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "array";
-				}
-				break;
-
-			case $request === null:
-				$request = new Request\ServerAdaptor($_SERVER);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "echo";
-				}
-				break;
-
-			default:
-				throw new InvalidArgumentException("\$request argument is of unsupported type");
-		}
-
+		$request = $this->adaptRequest($request, $responseAdaptor);
 		// handle
 		try {
 			$path = substr($request->getPath(), strlen($this->basePath));
@@ -171,7 +132,55 @@ final class HyperMedia
 			}
 			$this->journaling->save();
 		}
+		return $this->adaptResponse($response, $responseAdaptor);
+	}
 
+	public function adaptRequest($request, ?string &$responseAdaptor): Request\Request
+	{
+		// adaptors
+		switch (true) {
+			case $request instanceof \Psr\Http\Message\ServerRequestInterface:
+				$request = new Request\PsrAdaptor($request);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "psr";
+				}
+				break;
+
+			case $request instanceof \Symfony\Component\HttpFoundation\Request:
+				$request = new Request\SymfonyAdaptor($request);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "symfony";
+				}
+				break;
+
+			case $request instanceof Request\Request:
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "sturdy";
+				}
+				break;
+
+			case is_array($request):
+				$request = new Request\ServerAdaptor($request);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "array";
+				}
+				break;
+
+			case $request === null:
+				$request = new Request\ServerAdaptor($_SERVER);
+				if ($responseAdaptor === null) {
+					$responseAdaptor = "echo";
+				}
+				break;
+
+			default:
+				throw new InvalidArgumentException("\$request argument is of unsupported type");
+		}
+		return $request;
+	}
+
+	public function adaptResponse(Response\Response $response, string $responseAdaptor)
+	{
 		// adaptors
 		switch ($responseAdaptor) {
 			case "psr":
@@ -197,7 +206,7 @@ final class HyperMedia
 					"statusCode" => $response->getStatusCode(),
 					"statusText" => $response->getStatusText(),
 					"headers" => $headers,
-					"content" => $response->getContent()
+					"content" => $response->getContent(),
 				];
 
 			case "echo":
