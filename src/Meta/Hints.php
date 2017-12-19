@@ -23,6 +23,11 @@ final class Hints extends Taggable
 	/**
 	 * @var string
 	 */
+	private $icon;
+
+	/**
+	 * @var string
+	 */
 	private $section;
 
 	/**
@@ -75,6 +80,26 @@ final class Hints extends Taggable
 	public function getLabel(): ?string
 	{
 		return $this->label;
+	}
+
+	/**
+	 * Set icon
+	 *
+	 * @param ?string $icon
+	 */
+	public function setIcon(?string $icon): void
+	{
+		$this->icon = $icon;
+	}
+
+	/**
+	 * Get icon
+	 *
+	 * @return ?string
+	 */
+	public function getIcon(): ?string
+	{
+		return $this->icon;
 	}
 
 	/**
@@ -145,6 +170,9 @@ final class Hints extends Taggable
 		$r = "";
 		if ($this->label) {
 			$r.= "label('".str_replace("'", "''", $this->label)."') ";
+		}
+		if ($this->icon) {
+			$r.= "icon({$this->icon}) ";
 		}
 		if ($this->section) {
 			$r.= "section({$this->section}) ";

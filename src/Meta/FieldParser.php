@@ -43,6 +43,7 @@ final class FieldParser
 	private $disabledToken;
 	private $multipleToken;
 	private $stateToken;
+	private $reconToken;
 	private $arrayToken;
 	private $minToken;
 	private $maxToken;
@@ -56,6 +57,7 @@ final class FieldParser
 	private $optionToken;
 	private $autocompleteToken;
 	private $autocompleteOption;
+	private $iconToken;
 	private $labelToken;
 	private $listStartToken;
 	private $listDelimiterToken;
@@ -111,6 +113,7 @@ final class FieldParser
 		$this->disabledToken      = "/^disabled/";
 		$this->multipleToken      = "/^multiple/";
 		$this->stateToken         = "/^state/";
+		$this->reconToken         = "/^recon/";
 		$this->arrayToken         = "/^\[\]/";
 
 		$this->minToken           = "/^min=($int)/";
@@ -130,6 +133,8 @@ final class FieldParser
 		$this->quotedString       = '/^([^\'\v]+)/';
 		$this->quote              = '/^\'/';
 		$this->escapedQuote       = '/^\'\'/';
+		$this->iconToken          = '/^icon/';
+		$this->name               = "/^($name)/";
 
 		$this->listStartToken     = '/^\(/';
 		$this->listDelimiterToken = '/^,/';
@@ -224,6 +229,7 @@ final class FieldParser
 		// bit 13: description token
 		// bit 14: object type allowed
 		// bit 15: label token
+		// bit 16: icon token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -375,6 +381,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 2) && $this->match('stateToken')) {
 				$this->clearbit($mask, 2);
 				$flags->setState();
+			} elseif ($this->isbitset($mask, 2) && $this->match('reconToken')) {
+				$this->clearbit($mask, 2);
+				$flags->setRecon();
 			} elseif ($this->isbitset($mask, 3) && $this->match('requiredToken')) {
 				$this->clearbit($mask, 3);
 				$this->clearbit($mask, 12);
@@ -416,6 +425,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 15) && $this->match('labelToken')) {
 				$this->clearbit($mask, 15);
 				$this->parseLabel($field);
+			} elseif ($this->isbitset($mask, 16) && $this->match('iconToken')) {
+				$this->clearbit($mask, 16);
+				$field->setIcon($this->parseNameToken());
 			} elseif ($subfield && $this->isbitset($mask, 12) && $this->match('defaultValueToken', $defaultValue)) {
 				$this->clearbit($mask, 12);
 				if ($defaultValue === "true") {
@@ -574,6 +586,28 @@ final class FieldParser
 		if (0 === $sequence) {
 			throw new ParserError($this->parseError("Expected options"));
 		}
+	}
+
+	private function parseNameToken(): string
+	{
+		$sequence = 0;
+		while ($this->valid()) {
+			if ($this->match('spaceToken')) {
+				// do nothing
+			} elseif (1 === $sequence && $this->match('name', $name)) {
+				// do nothing
+			} elseif (0 !== $sequence && $this->match('listEndToken')) {
+				break;
+			} elseif (0 === $sequence && $this->match('listStartToken')) {
+				$sequence = 1;
+			} else {
+				break;
+			}
+		}
+		if (0 === $sequence) {
+			throw new ParserError($this->parseError("Expected name"));
+		}
+		return $name;
 	}
 
 	private function parseAutocomplete(Field $field)

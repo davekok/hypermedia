@@ -72,16 +72,20 @@ final class OK implements Response
 	 * Set hints
 	 *
 	 * @param ?string $label
+	 * @param ?string $icon
 	 * @param ?string $section
 	 * @param ?string $component
 	 * @param ?string $layout
 	 */
-	public function hints(?string $label, ?string $section, ?string $component, ?string $layout): void
+	public function hints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout): void
 	{
 		if ($label !== null || $section !== null || $component !== null || $layout !== null) {
 			$this->part->hints = new stdClass;
 			if ($label !== null) {
 				$this->part->hints->label = $label;
+			}
+			if ($icon !== null) {
+				$this->part->hints->icon = $icon;
 			}
 			if ($section !== null) {
 				$this->part->hints->section = $section;
@@ -164,7 +168,7 @@ final class OK implements Response
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;
-			$resource->call($values);
+			$resource->call($values, []);
 			$this->part = $previous;
 		}
 	}

@@ -40,7 +40,7 @@ class ResourceCompiler
 		$item = $root ? new CacheItem_RootResource : new CacheItem_Resource;
 		$item->setClass($resource->getClass());
 		if ($hints) {
-			$item->setHints($hints->getLabel(), $hints->getSection(), $hints->getComponent(), $hints->getLayout());
+			$item->setHints($hints->getLabel(), $hints->getIcon(), $hints->getSection(), $hints->getComponent(), $hints->getLayout());
 		}
 		$item->setTags($matcher->getTags());
 		foreach ($type->getFieldDescriptors() as $descriptor) {
@@ -69,7 +69,8 @@ class ResourceCompiler
 					$field->getDefaultValue(),
 					$field->getFlags()->toInt(),
 					$field->getAutocomplete(),
-					$field->getLabel()
+					$field->getLabel(),
+					$field->getIcon(),
 				];
 			}
 		}

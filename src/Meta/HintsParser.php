@@ -17,6 +17,7 @@ final class HintsParser
 	private $equalsToken;
 	private $valueToken;
 	private $labelToken;
+	private $iconToken;
 	private $sectionToken;
 	private $layoutToken;
 	private $listStartToken;
@@ -45,6 +46,7 @@ final class HintsParser
 		$this->valueToken         = "/^(\S*)(?=\s|\*|$)/";
 
 		$this->labelToken         = "/^label/";
+		$this->iconToken          = "/^icon/";
 		$this->sectionToken       = "/^section/";
 		$this->layoutToken        = "/^layout/";
 		$this->componentToken     = "/^component/";
@@ -117,14 +119,17 @@ final class HintsParser
 			} elseif ($this->isbitset($mask, 1) && $this->match('labelToken')) {
 				$this->clearbit($mask, 1);
 				$hints->setLabel($this->parseQuotedString());
-			} elseif ($this->isbitset($mask, 2) && $this->match('sectionToken')) {
+			} elseif ($this->isbitset($mask, 2) && $this->match('iconToken')) {
 				$this->clearbit($mask, 2);
-				$hints->setSection($this->parseName());
-			} elseif ($this->isbitset($mask, 3) && $this->match('componentToken')) {
+				$hints->setIcon($this->parseName());
+			} elseif ($this->isbitset($mask, 3) && $this->match('sectionToken')) {
 				$this->clearbit($mask, 3);
-				$hints->setComponent($this->parseDashedName());
-			} elseif ($this->isbitset($mask, 4) && $this->match('layoutToken')) {
+				$hints->setSection($this->parseName());
+			} elseif ($this->isbitset($mask, 4) && $this->match('componentToken')) {
 				$this->clearbit($mask, 4);
+				$hints->setComponent($this->parseDashedName());
+			} elseif ($this->isbitset($mask, 5) && $this->match('layoutToken')) {
+				$this->clearbit($mask, 5);
 				$hints->setLayout($this->parseDashedName());
 			} else {
 				throw new ParserError($this->parseError("Unexpected token"));

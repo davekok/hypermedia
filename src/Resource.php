@@ -138,7 +138,7 @@ final class Resource
 		return $this->method;
 	}
 
-	public function call(array $values): Response
+	public function call(array $values, array $recons): Response
 	{
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
@@ -190,19 +190,19 @@ final class Resource
 		$this->object->{$this->method}($this->response, $this->di);
 
 		if ($this->verbflags->hasFields() && $this->response instanceof OK) {
-			$parameters = get_object_vars($this->object);
-			foreach ($parameters as $key => $parameter) {
-				if (!is_scalar($parameter)) {
-					unset($parameters[$key]);
+			$translatorParameters = get_object_vars($this->object);
+			foreach ($translatorParameters as $key => $value) {
+				if (!is_scalar($value)) {
+					unset($translatorParameters[$key]);
 				}
 			}
 			if (isset($this->hints[0])) {
-				$this->hints[0] = ($this->translator)($this->hints[0], $parameters);
+				$this->hints[0] = ($this->translator)($this->hints[0], $translatorParameters);
 			}
 			$this->response->hints(...$this->hints);
 			$fields = [];
 			$state = [];
-			foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label]) {
+			foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 				$flags = new FieldFlags($flags);
 				if ($flags->isState()) {
 					if (isset($this->object->$name)) {
@@ -214,15 +214,18 @@ final class Resource
 					if (isset($label)) {
 						$field->label = $label;
 					}
-					if (isset($this->object->$name)) $field->value = $this->object->$name;
+					if (isset($icon)) {
+						$field->icon = $icon;
+					}
+					$field->value = $recons[$name] ?? $this->object->$name ?? null;
 					Type::createType($type)->meta($field);
 					if ($defaultValue !== null) $field->defaultValue = $defaultValue;
 					$flags->meta($field);
 					if ($autocomplete) $field->autocomplete = $autocomplete;
 					$fields[] = $field;
-					$recursiveTranslate = function($field)use(&$recursiveTranslate, $parameters) {
+					$recursiveTranslate = function($field)use(&$recursiveTranslate, $translatorParameters) {
 						if (isset($field->label)) {
-							$field->label = ($this->translator)($field->label, $parameters);
+							$field->label = ($this->translator)($field->label, $translatorParameters);
 						}
 						if (isset($field->fields)) {
 							foreach ($field->fields as $field) {

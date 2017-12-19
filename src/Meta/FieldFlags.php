@@ -20,6 +20,9 @@ final class FieldFlags
 	                        // be put in the data section and all other fields must have the meta flag
 	const state    = 128;   // whether the field is a state field, state fields are hidden from the client
 	                        // state fields can be used to embed data in the URL without the client knowing about it
+	const recon    = 256;   // whether the field is a recon field, whenever the value of a recon field changes the
+	                        // client should send a RECON request to the server in which case the resource is
+	                        // reconditioned, depending on changing state
 
 	private $flags;         // bitmask of the above constants
 
@@ -169,6 +172,23 @@ final class FieldFlags
 		return (bool)($this->flags & self::state);
 	}
 
+	public function setRecon(): self
+	{
+		$this->flags |= self::recon;
+		return $this;
+	}
+
+	public function clearRecon(): self
+	{
+		$this->flags &= ~self::recon;
+		return $this;
+	}
+
+	public function isRecon(): bool
+	{
+		return (bool)($this->flags & self::recon);
+	}
+
 	public function toInt(): int
 	{
 		return $this->flags;
@@ -183,8 +203,9 @@ final class FieldFlags
 		if ($this->isReadonly()) $meta->readonly = true;
 		if ($this->isDisabled()) $meta->disabled = true;
 		if ($this->isMultiple()) $meta->multiple = true;
-		if ($this->isArray()) $meta->{"array"} = true;
-		if ($this->isMeta()) $meta->meta = true;
-		if ($this->isData()) $meta->data = true;
+		if ($this->isArray   ()) $meta->{"array"} = true;
+		if ($this->isMeta    ()) $meta->meta = true;
+		if ($this->isData    ()) $meta->data = true;
+		if ($this->isRecon   ()) $meta->recon = true;
 	}
 }

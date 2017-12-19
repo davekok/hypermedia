@@ -38,11 +38,14 @@ final class ObjectType extends Type
 	{
 		$meta->type = self::type;
 		$meta->fields = [];
-		foreach ($this->fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label]) {
+		foreach ($this->fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 			$submeta = new stdClass;
 			$submeta->name = $name;
 			if ($label) {
 				$submeta->label = $label;
+			}
+			if ($icon) {
+				$submeta->icon = $icon;
 			}
 			Type::createType($type)->meta($submeta);
 			(new FieldFlags($flags))->meta($submeta);

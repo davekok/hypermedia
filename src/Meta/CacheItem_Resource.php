@@ -10,6 +10,7 @@ namespace Sturdy\Activity\Meta;
 class CacheItem_Resource extends CacheItem_UnitItem
 {
 	private $label;
+	private $icon;
 	private $section;
 	private $component;
 	private $layout;
@@ -17,13 +18,18 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	private $verbs;
 
 	/**
-	 * Set section
+	 * Set hints
 	 *
+	 * @param ?string $label
+	 * @param ?string $icon
 	 * @param ?string $section
+	 * @param ?string $component
+	 * @param ?string $layout
 	 */
-	public function setHints(?string $label, ?string $section, ?string $component, ?string $layout): self
+	public function setHints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout): self
 	{
 		$this->label = $label;
+		$this->icon = $icon;
 		$this->section = $section;
 		$this->component = $component;
 		$this->layout = $layout;
@@ -31,13 +37,13 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	}
 
 	/**
-	 * Get section
+	 * Get layout
 	 *
-	 * @return [?$label, ?$section, ?$component, ?$layout]
+	 * @return [?$label, ?$icon, ?$section, ?$component, ?$layout]
 	 */
 	public function getHints(): array
 	{
-		return [$this->label, $this->section, $this->component, $this->layout];
+		return [$this->label, $this->icon, $this->section, $this->component, $this->layout];
 	}
 
 	/**
@@ -45,9 +51,9 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 *
 	 * @return $this
 	 */
-	public function addField(string $name, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $label = null): self
+	public function addField(string $name, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $label = null, ?string $icon = null): self
 	{
-		$this->fields[] = [$name, $type, $default, $flags, $autocomplete, $label];
+		$this->fields[] = [$name, $type, $default, $flags, $autocomplete, $label, $icon];
 		return $this;
 	}
 

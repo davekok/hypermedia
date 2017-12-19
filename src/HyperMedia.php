@@ -84,19 +84,58 @@ final class HyperMedia
 	public function handle(array $tags, $request, ?string $responseAdaptor = null)
 	{
 		$request = $this->adaptRequest($request, $responseAdaptor);
-		// handle
+		$verb = $request->getVerb();
+		$path = $request->getPath();
+		switch ($verb) {
+			case "GET":
+				$values = $this->getQuery($request);
+				$response = $this->call($verb, $path, $values, $tags);
+				break;
+
+			case "POST":
+				$values = array_merge($this->getBody($request), $this->getQuery($request));
+				$response = $this->call($verb, $path, $values, $tags);
+				break;
+
+			case "RECON":
+				$verb = "GET";
+				$recons = $this->getBody($request);
+				$tags = array_merge($recons, $tags);
+				$values = array_merge($this->getQuery($request), $recons);
+				$response = $this->call($verb, $path, $values, $tags, $recons);
+				break;
+
+			default:
+				return new MethodNotAllowed();
+		}
+		$response->setProtocolVersion($request->getProtocolVersion());
+		return $this->adaptResponse($response, $responseAdaptor);
+	}
+
+	/**
+	 * Call the resource
+	 *
+	 * @param  string $verb       the verb to use on the resource
+	 * @param  string $path       the path of the resouce
+	 * @param  array  $values     the input values
+	 * @param  array  $tags       tags
+	 * @param  array  $recons     recons field values
+	 * @return Response\Response  the response
+	 */
+	private function call(string $verb, string $path, array $values, array $tags, array $recons = []): Response\Response
+	{
 		try {
-			$path = substr($request->getPath(), strlen($this->basePath));
+			$path = substr($path, strlen($this->basePath));
 			if ($path === "" || $path === "/" || preg_match("|^/([0-9]+)/$|", $path, $matches)) { // if root resource
 				if (isset($matches[1])) {
 					$this->journaling->resume((int)$matches[1]);
 				} else {
 					$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
 				}
-				$this->basePath.= "/".$this->journaling->getId()."/";
+				$this->basePath.= "/" . $this->journaling->getId() . "/";
 				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->di))
-					->createRootResource($request->getVerb());
-				$response = $resource->call($this->getValues($request));
+					->createRootResource($verb);
+				$response = $resource->call($values, $recons);
 			} else { // if normal resource
 				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
 					$path = substr($path, strlen($matches[0]));
@@ -104,18 +143,17 @@ final class HyperMedia
 				} else {
 					$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
 				}
-				$this->basePath.= "/".$this->journaling->getId()."/";
+				$this->basePath.= "/" . $this->journaling->getId() . "/";
 				$class = strtr(trim($path, "/"), "/", "\\");
 				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->di))
-					->createResource($class, $request->getVerb());
-				$response = $resource->call($this->getValues($request));
+					->createResource($class, $verb);
+				$response = $resource->call($values, $recons);
 			}
 		} catch (Response\Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
 			$response = new InternalServerError("Uncaught exception", 0, $e);
 		} finally {
-			$response->setProtocolVersion($request->getProtocolVersion());
 			if (!$this->journaling->hasJournal()) {
 				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
 			}
@@ -132,10 +170,60 @@ final class HyperMedia
 			}
 			$this->journaling->save();
 		}
-		return $this->adaptResponse($response, $responseAdaptor);
+		return $response;
 	}
 
-	public function adaptRequest($request, ?string &$responseAdaptor): Request\Request
+	/**
+	 * Get the body from request.
+	 *
+	 * @param  Request $request  the request
+	 * @return array  the body
+	 */
+	private function getBody(Request\Request $request): array
+	{
+		$contentType = $request->getContentType();
+		switch (true) {
+			case "application/json" === $contentType:
+			case "application/sturdy" === $contentType:
+				$values = json_decode($request->getContent() ?? "", true);
+				if (!is_array($values)) {
+					throw new BadRequest("The content is not valid JSON.");
+				}
+				return $values;
+
+			case null === $contentType:
+				return [];
+
+			default:
+				throw new UnsupportedMediaType("Expected media type 'application/json', got '" . $request->getContentType() . "'.");
+		}
+	}
+
+	/**
+	 * Get query parameters from request.
+	 *
+	 * @param  Request $request  the request
+	 * @return array  the query parameters
+	 */
+	private function getQuery(Request\Request $request): array
+	{
+		$query = $request->getQuery();
+		if ($query !== "") {
+			if ($query[0] === "?") $query = substr($query, 1);
+			parse_str($query, $query);
+			return $query;
+		}
+		return [];
+	}
+
+	/**
+	 * Adapt a request to something sturdy understands.
+	 *
+	 * @param  mixed  $request           the original request
+	 * @param  string &$responseAdaptor  if no response adaptor is set, choose a matching one
+	 * @return Request\Request           a sturdy request object
+	 */
+	private function adaptRequest($request, ?string &$responseAdaptor): Request\Request
 	{
 		// adaptors
 		switch (true) {
@@ -179,7 +267,14 @@ final class HyperMedia
 		return $request;
 	}
 
-	public function adaptResponse(Response\Response $response, string $responseAdaptor)
+	/**
+	 * Adapt a sponse to something the caller understands
+	 *
+	 * @param  mixed  $response          the original sturdy response
+	 * @param  string $responseAdaptor   the response adaptor to use
+	 * @return mixed                     the response
+	 */
+	private function adaptResponse(Response\Response $response, string $responseAdaptor)
 	{
 		// adaptors
 		switch ($responseAdaptor) {
@@ -226,33 +321,5 @@ final class HyperMedia
 			default:
 				throw new InvalidArgumentException("Unsupported response adaptor $responseAdaptor.");
 		}
-	}
-
-	/**
-	 * Get values from request.
-	 *
-	 * @param  Request $request  the request
-	 * @return array  the values
-	 */
-	private function getValues(Request\Request $request): array
-	{
-		$values = [];
-		if ($request->getVerb() === "POST") {
-			if ($request->getContentType() === "application/json") {
-				$values = json_decode($request->getContent() ?? "", true);
-				if (!is_array($values)) {
-					throw new BadRequest("The content is not valid JSON.");
-				}
-			} else {
-				throw new UnsupportedMediaType("Expected media type 'application/json', got '" . $request->getContentType() . "'.");
-			}
-		}
-		$query = $request->getQuery();
-		if ($query !== "") {
-			if ($query[0] === "?") $query = substr($query, 1);
-			parse_str($query, $query);
-			$values = array_merge($query, $values);
-		}
-		return $values;
 	}
 }

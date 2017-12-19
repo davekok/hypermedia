@@ -25,6 +25,7 @@ final class Field extends Taggable
 	private $flags;        // bitmask of the above constants
 	private $autocomplete; // autocomplete expression, see HTML 5 autofill documentation
 	private $label;        // label
+	private $icon;         // icon
 
 	/**
 	 * Constructor
@@ -202,6 +203,26 @@ final class Field extends Taggable
 	}
 
 	/**
+	 * Set icon
+	 *
+	 * @param ?string $icon
+	 */
+	public function setIcon(?string $icon): void
+	{
+		$this->icon = $icon;
+	}
+
+	/**
+	 * Get icon
+	 *
+	 * @return string
+	 */
+	public function getIcon(): ?string
+	{
+		return $this->icon;
+	}
+
+	/**
 	 * To string
 	 *
 	 * @return string  text representation of object
@@ -212,6 +233,7 @@ final class Field extends Taggable
 		if ($this->flags->isMeta()) $text.= "meta ";
 		if ($this->flags->isData()) $text.= "data ";
 		if ($this->flags->isState()) $text.= "state ";
+		if ($this->flags->isRecon()) $text.= "recon ";
 		if ($this->flags->isRequired()) $text.= "required ";
 		if ($this->flags->isReadonly()) $text.= "readonly ";
 		if ($this->flags->isDisabled()) $text.= "disabled ";
@@ -221,26 +243,27 @@ final class Field extends Taggable
 		$text.= " ";
 		if ($this->autocomplete) $text.= "autocomplete({$this->autocomplete}) ";
 		if ($this->label) $text.= "label('" . str_replace("'", "''", $this->label) . "') ";
+		if ($this->icon) $text.= "icon({$this->icon}) ";
 		if (method_exists($this->type, "getMinimumRange") && $min = $this->type->getMinimumRange()) {
-			$text.= " min($min)";
+			$text.= "min($min) ";
 		}
 		if (method_exists($this->type, "getMaximumRange") && $max = $this->type->getMaximumRange()) {
-			$text.= " max($max)";
+			$text.= "max($max) ";
 		}
 		if (method_exists($this->type, "getStep") && $step = $this->type->getStep()) {
-			$text.= " step($step)";
+			$text.= "step($step) ";
 		}
 		if (method_exists($this->type, "getMinimumLength") && $minlength = $this->type->getMinimumLength()) {
-			$text.= " minlength($minlength)";
+			$text.= "minlength($minlength) ";
 		}
 		if (method_exists($this->type, "getMaximumLength") && $maxlength = $this->type->getMaximumLength()) {
-			$text.= " maxlength($maxlength)";
+			$text.= "maxlength($maxlength) ";
 		}
 		if (method_exists($this->type, "getPatternName") && $patternName = $this->type->getPatternName()) {
-			$text.= " pattern($patternName)";
+			$text.= "pattern($patternName) ";
 		}
 		if (method_exists($this->type, "getLink") && $link = $this->type->getLink()) {
-			$text.= " link($link)";
+			$text.= "link($link) ";
 		}
 		$text.= parent::__toString();
 		return rtrim($text);
