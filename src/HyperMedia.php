@@ -33,6 +33,7 @@ final class HyperMedia
 	 * @param string            $sourceUnit         the source unit to use
 	 * @param string            $basePath           the prefix to remove from the path before processing
 	 *                                              and appended for generating links
+	 * @param string            $namespace          namespace to remove from class name
 	 * @param object            $di                 your dependency injection object, should contain all
 	 *                                              dependencies for your actions
 	 */
@@ -42,13 +43,15 @@ final class HyperMedia
 		Translator $translator,
 		string $sourceUnit,
 		string $basePath,
+		string $namespace,
 		/*object*/ $di)
 	{
 		$this->cache = $cache;
 		$this->journaling = new Journaling($journalRepository);
 		$this->translator = $translator;
 		$this->sourceUnit = $sourceUnit;
-		$this->basePath = rtrim($basePath, "/");
+		$this->basePath = rtrim($basePath, "/") . "/";
+		$this->namespace = rtrim($namespace, "\\") . "\\";
 		$this->di = $di;
 	}
 
@@ -99,10 +102,10 @@ final class HyperMedia
 
 			case "RECON":
 				$verb = "GET";
-				$recons = $this->getBody($request);
-				$tags = array_merge($recons, $tags);
-				$values = array_merge($this->getQuery($request), $recons);
-				$response = $this->call($verb, $path, $values, $tags, $recons);
+				$body = $this->getBody($request);
+				$conditions = $body['conditions'];
+				$values = array_merge($this->getQuery($request), $body['data']);
+				$response = $this->call($verb, $path, $values, $tags, $conditions, $body['data']);
 				break;
 
 			default:
@@ -115,60 +118,32 @@ final class HyperMedia
 	/**
 	 * Call the resource
 	 *
-	 * @param  string $verb       the verb to use on the resource
-	 * @param  string $path       the path of the resouce
-	 * @param  array  $values     the input values
-	 * @param  array  $tags       tags
-	 * @param  array  $recons     recons field values
-	 * @return Response\Response  the response
+	 * @param  string $verb        the verb to use on the resource
+	 * @param  string $path        the path of the resouce
+	 * @param  array  $values      the input values
+	 * @param  array  $tags        tags
+	 * @param  array  $conditions  conditions
+	 * @param  array  $preserve    preserve field values
+	 * @return Response\Response   the response
 	 */
-	private function call(string $verb, string $path, array $values, array $tags, array $recons = []): Response\Response
+	private function call(string $verb, string $path, array $values, array $tags, array $conditions = [], array $preserve = null): Response\Response
 	{
 		try {
 			$path = substr($path, strlen($this->basePath));
-			if ($path === "" || $path === "/" || preg_match("|^/([0-9]+)/$|", $path, $matches)) { // if root resource
-				if (isset($matches[1])) {
-					$this->journaling->resume((int)$matches[1]);
-				} else {
-					$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
-				}
-				$this->basePath.= "/" . $this->journaling->getId() . "/";
-				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->di))
-					->createRootResource($verb);
-				$response = $resource->call($values, $recons);
+			if ($path === "" || $path === "/") { // if root resource
+				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
+					->createRootResource($verb, $conditions);
+				$response = $resource->call($values, $preserve);
 			} else { // if normal resource
-				if (preg_match("|^/([0-9]+)/|", $path, $matches)) {
-					$path = substr($path, strlen($matches[0]));
-					$this->journaling->resume((int)$matches[1]);
-				} else {
-					$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
-				}
-				$this->basePath.= "/" . $this->journaling->getId() . "/";
-				$class = strtr(trim($path, "/"), "/", "\\");
-				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->di))
-					->createResource($class, $verb);
-				$response = $resource->call($values, $recons);
+				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
+				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
+					->createResource($class, $verb, $conditions);
+				$response = $resource->call($values, $preserve);
 			}
 		} catch (Response\Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
 			$response = new InternalServerError("Uncaught exception", 0, $e);
-		} finally {
-			if (!$this->journaling->hasJournal()) {
-				$this->journaling->create($this->sourceUnit, Journal::resource, $tags);
-			}
-			if (!isset($resource)) {
-				$content = $response->getContent();
-				if (isset($content)) {
-					$content = json_decode($content);
-					$this->journaling->getMainBranch()->addEntry($content, "exception", $response->getStatusCode(), $response->getStatusText());
-				} else {
-					$this->journaling->getMainBranch()->addEntry($response, "exception", $response->getStatusCode(), $response->getStatusText());
-				}
-			} else {
-				$this->journaling->getMainBranch()->addEntry($resource->getObject(), $resource->getMethod(), $response->getStatusCode(), $response->getStatusText());
-			}
-			$this->journaling->save();
 		}
 		return $response;
 	}

@@ -103,31 +103,27 @@ final class OK implements Response
 	 * Set the data of this response.
 	 *
 	 * @param array $fields
-	 * @param bool  $hasData
 	 * @return self
 	 */
-	public function fields(array $fields, bool $hasData): void
+	public function fields(array $fields): void
 	{
 		$this->part->fields = [];
 		foreach ($fields as $field) {
+			$this->part->fields[] = $field;
 			if ($field->meta??false) {
-				$this->part->fields[] = $field;
+				if (!isset($this->part->meta)) {
+					$this->part->meta = new stdClass;
+				}
+				$this->part->meta->{$field->name} = $field->value??null;
 			} elseif ($field->data??false) {
-				$this->part->fields[] = $field;
-				if ($hasData) {
-					$this->part->data = $field->value??null;
-				}
-				unset($field->value);
+				$this->part->data = $field->value??null;
 			} else {
-				$this->part->fields[] = $field;
-				if ($hasData) {
-					if (!isset($this->part->data)) {
-						$this->part->data = new stdClass;
-					}
-					$this->part->data->{$field->name} = $field->value??null;
+				if (!isset($this->part->data)) {
+					$this->part->data = new stdClass;
 				}
-				unset($field->value);
+				$this->part->data->{$field->name} = $field->value??null;
 			}
+			unset($field->value);
 		}
 	}
 
@@ -168,7 +164,7 @@ final class OK implements Response
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;
-			$resource->call($values, []);
+			$resource->call($values, null);
 			$this->part = $previous;
 		}
 	}

@@ -34,8 +34,8 @@ final class SourceUnitFactory
 	/**
 	 * Create a source unit from source code
 	 *
-	 * @param $unit  the unit to update
-	 * @param $dirs  the directories to scan for sources
+	 * @param $unit       the unit to update
+	 * @param $dirs       the directories to scan for sources
 	 */
 	public function createSourceUnit(string $unitName, string $dirs): SourceUnit
 	{

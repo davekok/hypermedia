@@ -8,7 +8,10 @@ use Sturdy\Activity\Meta\{
 	Field,
 	FieldFlags
 };
-use Sturdy\Activity\Meta\Type\Type;
+use Sturdy\Activity\Meta\Type\{
+	Type,
+	ObjectType
+};
 use Sturdy\Activity\Response\{
 	Accepted,
 	BadRequest,
@@ -35,6 +38,7 @@ final class Resource
 	private $response;
 
 	private $verb;
+	private $conditions;
 	private $hints;
 	private $fields;
 	private $class;
@@ -42,54 +46,67 @@ final class Resource
 	private $method;
 	private $verbflags;
 
-	public function __construct(Cache $cache, Translator $translator, string $sourceUnit, array $tags, string $basePath, $di)
+	public function __construct(Cache $cache, Translator $translator, string $sourceUnit, array $tags, string $basePath, string $namespace, $di)
 	{
 		$this->cache = $cache;
 		$this->translator = $translator;
 		$this->sourceUnit = $sourceUnit;
 		$this->tags = $tags;
 		$this->basePath = $basePath;
+		$this->namespace = $namespace;
 		$this->di = $di;
 	}
 
-	public function createRootResource(string $verb): self
+	/**
+	 * Create a link to be used inside the data section.
+	 *
+	 * @param  string $class  the class of the resource
+	 * @return ?Link          containing the href property and possibly the templated property
+	 */
+	public function createLink(string $class): ?Link
+	{
+		$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
+		return $resource ? new Link($this->translator, $this->basePath, $this->namespace, $resource) : null;
+	}
+
+	public function createRootResource(string $verb, array $conditions): self
 	{
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, array_merge($conditions, $this->tags), $this->basePath, $this->namespace, $this->di);
 		$resource = $self->cache->getRootResource($self->sourceUnit, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
 		}
-		$self->initResource($resource, $verb);
+		$self->initResource($resource, $verb, $conditions);
 		$self->initResponse();
 		return $self;
 	}
 
-	public function createResource(string $class, string $verb): self
+	public function createResource(string $class, string $verb, array $conditions): self
 	{
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, array_merge($conditions, $this->tags), $this->basePath, $this->namespace, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
 		}
-		$self->initResource($resource, $verb);
+		$self->initResource($resource, $verb, $conditions);
 		$self->initResponse();
 		return $self;
 	}
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->di);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
 		}
-		$self->initResource($resource, "GET");
+		$self->initResource($resource, "GET", []);
 		if ($self->verbflags->getStatus() !== Meta\Verb::OK) {
 			throw new InternalServerError("Attached resources must return an OK status code.");
 		}
@@ -97,10 +114,11 @@ final class Resource
 		return $self;
 	}
 
-	private function initResource(CacheItem_Resource $resource, string $verb): void
+	private function initResource(CacheItem_Resource $resource, string $verb, array $conditions): void
 	{
 		$this->class = $resource->getClass();
 		$this->verb = $verb;
+		$this->conditions = $conditions;
 		$this->hints = $resource->getHints();
 		$this->fields = $resource->getFields()??[];
 		$this->object = new $this->class;
@@ -138,7 +156,7 @@ final class Resource
 		return $this->method;
 	}
 
-	public function call(array $values, array $recons): Response
+	public function call(array $values, ?array $preserve): Response
 	{
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
@@ -189,7 +207,11 @@ final class Resource
 
 		$this->object->{$this->method}($this->response, $this->di);
 
+		file_put_contents('/srv/sales-service/var/log/sturdy.log', var_export($this->object, true) . "\n", FILE_APPEND);
+
 		if ($this->verbflags->hasFields() && $this->response instanceof OK) {
+			$this->reinit();
+
 			$translatorParameters = get_object_vars($this->object);
 			foreach ($translatorParameters as $key => $value) {
 				if (!is_scalar($value)) {
@@ -200,61 +222,103 @@ final class Resource
 				$this->hints[0] = ($this->translator)($this->hints[0], $translatorParameters);
 			}
 			$this->response->hints(...$this->hints);
-			$fields = [];
-			$state = [];
-			foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
-				$flags = new FieldFlags($flags);
-				if ($flags->isState()) {
-					if (isset($this->object->$name)) {
-						$state[$name] = $this->object->$name;
-					}
-				} else {
-					$field = new stdClass;
-					$field->name = $name;
-					if (isset($label)) {
-						$field->label = $label;
-					}
-					if (isset($icon)) {
-						$field->icon = $icon;
-					}
-					$field->value = $recons[$name] ?? $this->object->$name ?? null;
-					Type::createType($type)->meta($field);
-					if ($defaultValue !== null) $field->defaultValue = $defaultValue;
-					$flags->meta($field);
-					if ($autocomplete) $field->autocomplete = $autocomplete;
-					$fields[] = $field;
-					$recursiveTranslate = function($field)use(&$recursiveTranslate, $translatorParameters) {
-						if (isset($field->label)) {
-							$field->label = ($this->translator)($field->label, $translatorParameters);
-						}
-						if (isset($field->fields)) {
-							foreach ($field->fields as $field) {
-								$recursiveTranslate($field);
-							}
-						}
-					};
-					$recursiveTranslate($field);
-				}
-			}
+
+			[$fields, $state] = $this->recurseFields($this->fields, $translatorParameters, $preserve);
+
 			if ($this->verbflags->hasSelfLink()) {
 				$this->response->link("self", null, $this->class, $state);
 			}
 			if (!empty($fields)) {
-				$this->response->fields($fields, $this->verbflags->hasData());
+				$this->response->fields($fields);
 			}
 		}
+
 		return $this->response;
 	}
 
 	/**
-	 * Create a link to be used inside the data section.
+	 * Recurse field to configure a response.
 	 *
-	 * @param  string $class  the class of the resource
-	 * @return ?Link          containing the href property and possibly the templated property
+	 * @param  array  $fieldDescriptors      the field descriptors
+	 * @param  array  $translatorParameters  translation parameters
+	 * @param  array  $preserve              preserve values
+	 * @return [$fields, $state]
 	 */
-	public function createLink(string $class): ?Link
+	private function recurseFields(array $fieldDescriptors, array $translatorParameters, ?array $preserve, int $depth = 0): array
 	{
-		$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
-		return $resource ? new Link($this->translator, $this->basePath, $resource) : null;
+		$state = [];
+		$fields = [];
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+			$flags = new FieldFlags($flags);
+			if ($flags->isState()) {
+				if (isset($this->object->$name)) {
+					if ($depth === 0) { // only necessary at the top
+						$state[$name] = $this->object->$name;
+					}
+				}
+			} else {
+				$field = new stdClass;
+				$field->name = $name;
+				if ($label) {
+					$field->label = ($this->translator)($label, $translatorParameters);
+				}
+				if ($icon) {
+					$field->icon = $icon;
+				}
+				if ($depth === 0) { // only necessary at the top
+					$field->value = $preserve[$name] ?? $this->object->$name ?? null;
+				}
+				if ($defaultValue !== null) {
+					$field->defaultValue = $defaultValue;
+				}
+				if ($autocomplete) {
+					$field->autocomplete = $autocomplete;
+				}
+				$flags->meta($field);
+				$type = Type::createType($type);
+				$type->meta($field);
+				if ($type instanceof ObjectType) {
+					[$field->fields, $substate] = $this->recurseFields($type->getFieldDescriptors(), $translatorParameters, $preserve, ++$depth);
+					if ($substate) {
+						$state[$name] = $substate;
+					}
+				}
+				$fields[] = $field;
+			}
+		}
+		return [$fields, $state];
+	}
+
+	/**
+	 * Reinit the resource the resource in case recon fields are found.
+	 */
+	private function reinit(): void
+	{
+		$conditions = $this->reinitRecurse($this->fields, [], $this->object);
+		$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->tags));
+		if ($resource !== null) {
+			$this->class = $resource->getClass();
+			$this->hints = $resource->getHints();
+			$this->fields = $resource->getFields()??[];
+			[$this->method, $this->verbflags] = $resource->getVerb($this->verb);
+			$this->verbflags = new Meta\VerbFlags($this->verbflags);
+		}
+	}
+
+	private function reinitRecurse(array $fieldDescriptors, array $conditions, /*object*/ $object, string $prefix = ""): array
+	{
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+			$flags = new FieldFlags($flags);
+			if ($flags->isRecon() && !(isset($conditions[$name]) && $conditions[$name] === $object->$name)) {
+				$conditions[$prefix.$name] = $object->$name;
+			}
+			$type = Type::createType($type);
+			if ($type instanceof ObjectType && isset($object->$name)) {
+				if (is_object($object->$name)) {
+					$conditions = $this->reinitRecurse($type->getFieldDescriptors(), $conditions, $object->$name, $name."_");
+				}
+			}
+		}
+		return $conditions;
 	}
 }

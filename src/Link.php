@@ -14,14 +14,16 @@ final class Link
 {
 	private $translator;
 	private $basePath;
+	private $namespace;
 	private $resource;
 	private $templated;
 	private $label;
 
-	public function __construct(Translator $translator, string $basePath, CacheItem_Resource $resource)
+	public function __construct(Translator $translator, string $basePath, string $namespace, CacheItem_Resource $resource)
 	{
 		$this->translator = $translator;
 		$this->basePath = $basePath;
+		$this->namespace = $namespace;
 		$this->resource = $resource;
 		foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
 			$flags = new FieldFlags($flags);
@@ -41,7 +43,8 @@ final class Link
 	{
 		$class = $this->resource->getClass();
 		$obj = new stdClass;
-		$obj->href = rtrim($this->basePath, "/") . "/" . trim(strtr($class, "\\", "/"), "/");
+		$path = strtolower(preg_replace('/([a-zA-Z])(?=[A-Z])/', '$1-', substr($class, strlen('AppBundle\\Resource\\'))));
+		$obj->href = $this->basePath . trim(strtr($path, "\\", "/"), "/");
 		$known = "";
 		$unknown = "";
 		foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {

@@ -37,26 +37,6 @@ final class ObjectType extends Type
 	public function meta(stdClass $meta): void
 	{
 		$meta->type = self::type;
-		$meta->fields = [];
-		foreach ($this->fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
-			$submeta = new stdClass;
-			$submeta->name = $name;
-			if ($label) {
-				$submeta->label = $label;
-			}
-			if ($icon) {
-				$submeta->icon = $icon;
-			}
-			Type::createType($type)->meta($submeta);
-			(new FieldFlags($flags))->meta($submeta);
-			if ($defaultValue !== null) {
-				$submeta->defaultValue = $defaultValue;
-			}
-			if ($autocomplete !== null) {
-				$submeta->autocomplete = $autocomplete;
-			}
-			$meta->fields[] = $submeta;
-		}
 	}
 
 	/**
