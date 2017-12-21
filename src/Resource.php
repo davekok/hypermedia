@@ -160,54 +160,12 @@ final class Resource
 	{
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
-		foreach ($this->fields as [$name, $type, $default, $flags, $autocomplete]) {
-			// flags check
-			$flags = new FieldFlags($flags);
-			if ($flags->isRequired() && !isset($values[$name]) && ($flags->isMeta() || $flags->isState() || $this->verb === "POST")) {
-				$badRequest->addMessage("$name is required");
-			}
-			if ($flags->isReadonly() && isset($values[$name])) {
-				$badRequest->addMessage("$name is readonly");
-			}
-			if ($flags->isDisabled() && isset($values[$name])) {
-				$badRequest->addMessage("$name is disabled");
-			}
-			// type check
-			if (isset($values[$name])) {
-				$type = Type::createType($type);
-				if ($flags->isArray()) {
-					if (is_array($values[$name])) {
-						foreach ($values[$name] as $value) {
-							if (!$type->filter($value)) {
-								$badRequest->addMessage("$name does not have a valid value: {$value}");
-							}
-						}
-					} else {
-						$badRequest->addMessage("Expected type of $name is array, " . gettype($values[$name]) . " found.");
-					}
-				} elseif ($flags->isMultiple()) {
-					foreach (explode(",", $values[$name]) as $value) {
-						$value = trim($value);
-						if (!$type->filter($value)) {
-							$badRequest->addMessage("$name does not have a valid value: {$value}");
-						}
-					}
-				} else {
-					if (!$type->filter($values[$name])) {
-						$badRequest->addMessage("$name does not have a valid value: {$values[$name]}");
-					}
-				}
-			}
-			$this->object->$name = $values[$name] ?? null;
-		}
-
+		$this->checkFields($this->fields, $this->object, $values, $badRequest);
 		if ($badRequest->hasMessages()) {
 			throw $badRequest;
 		}
 
 		$this->object->{$this->method}($this->response, $this->di);
-
-		file_put_contents('/srv/sales-service/var/log/sturdy.log', var_export($this->object, true) . "\n", FILE_APPEND);
 
 		if ($this->verbflags->hasFields() && $this->response instanceof OK) {
 			$this->reinit();
@@ -234,6 +192,67 @@ final class Resource
 		}
 
 		return $this->response;
+	}
+
+	private function checkFields(array $fieldDescriptors, /*object*/ $object, array $values, BadRequest $badRequest, string $prefix = "")
+	{
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+			// flags check
+			$flags = new FieldFlags($flags);
+			if ($flags->isRequired() && !isset($values[$name]) && ($flags->isMeta() || $flags->isState() || $this->verb === "POST")) {
+				$badRequest->addMessage("$prefix$name is required");
+			}
+			if ($flags->isReadonly() && isset($values[$name])) {
+				$badRequest->addMessage("$prefix$name is readonly");
+			}
+			if ($flags->isDisabled() && isset($values[$name])) {
+				$badRequest->addMessage("$prefix$name is disabled");
+			}
+			// type check
+			if (isset($values[$name])) {
+				$type = Type::createType($type);
+				if ($type instanceof ObjectType) {
+					if ($flags->isArray()) {
+						if (is_array($values[$name])) {
+							$object->$name = [];
+							$l = count($values[$name]);
+							for ($i = 0; $i < $l; ++$i) {
+								$object->$name[$i] = $subobject = new stdClass;
+								$this->checkFields($type->getFieldDescriptors(), $subobject, $values[$name][$i], $badRequest, "$prefix$name\[$i\].");
+							}
+						} else {
+							$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
+						}
+					} else {
+						$object->$name = new stdClass;
+						$this->checkFields($type->getFieldDescriptors(), $object->$name, $values[$name], $badRequest, "$prefix$name.");
+					}
+					continue;
+				} elseif ($flags->isArray()) {
+					if (is_array($values[$name])) {
+						foreach ($values[$name] as $value) {
+							if (!$type->filter($value)) {
+								$badRequest->addMessage("$prefix$name does not have a valid value: {$value}");
+							}
+						}
+					} else {
+						$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
+					}
+				} elseif ($flags->isMultiple()) {
+					foreach (explode(",", $values[$name]) as $value) {
+						$value = trim($value);
+						if (!$type->filter($value)) {
+							$badRequest->addMessage("$prefix$name does not have a valid value: {$value}");
+						}
+					}
+				} else {
+					if (!$type->filter($values[$name])) {
+						$badRequest->addMessage("$prefix$name does not have a valid value: ".print_r($values[$name],true));
+					}
+				}
+			}
+			$object->$name = $values[$name] ?? null;
+		}
 	}
 
 	/**
@@ -278,7 +297,7 @@ final class Resource
 				$type = Type::createType($type);
 				$type->meta($field);
 				if ($type instanceof ObjectType) {
-					[$field->fields, $substate] = $this->recurseFields($type->getFieldDescriptors(), $translatorParameters, $preserve, ++$depth);
+					[$field->fields, $substate] = $this->recurseFields($type->getFieldDescriptors(), $translatorParameters, $preserve[$name], $depth+1);
 					if ($substate) {
 						$state[$name] = $substate;
 					}

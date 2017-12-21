@@ -115,15 +115,6 @@ final class ObjectType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if (!is_object($value)) {
-			return false;
-		}
-		foreach ($this->fieldDescriptors as $name => [$type, $defaultValue, $flags, $autocomplete]) {
-			$flags = new FieldFlags($flags);
-			if (isset($value->$name)) {
-			} elseif ($flags->isRequired()) {
-			}
-			$type = Type::createType($type);
-		}
+		return is_object($value);
 	}
 }
