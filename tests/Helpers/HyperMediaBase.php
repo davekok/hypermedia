@@ -75,7 +75,7 @@ class HyperMediaBase extends TestCase
 	{
 		$resource = (new CacheItem_Resource())
 			->setClass($this->class)
-			->setHints($this->label, $this->section, $this->component, $this->layout)
+			->setHints($this->label, null, $this->section, $this->component, $this->layout)
 			->setTags($this->tags);
 		$flags = new VerbFlags();
 		$flags->setStatus($this->statusCode);
@@ -401,7 +401,7 @@ CLASS
 
 	public function createHyperMedia(): HyperMedia
 	{
-		return new HyperMedia($this->createCache(), $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, new stdClass);
+		return new HyperMedia($this->createCache(), $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, '', new stdClass);
 	}
 
 	public function createHyperMediaWithNullCache(): HyperMedia
@@ -414,12 +414,12 @@ CLASS
 
 		$cache = $cache->reveal();
 
-		return new HyperMedia($cache, $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, new stdClass);
+		return new HyperMedia($cache, $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, '', new stdClass);
 	}
 
 	public function createHyperMediaWithErrorCache(): HyperMedia
 	{
-		return new HyperMedia($this->prophet->prophesize()->willImplement(Cache::class)->reveal(), $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, new stdClass);
+		return new HyperMedia($this->prophet->prophesize()->willImplement(Cache::class)->reveal(), $this->createJournalRepository(), $this->createTranslator(), $this->sourceUnit, $this->basePath, '', new stdClass);
 	}
 
 	public function handle(HyperMedia $hm, Request $request)

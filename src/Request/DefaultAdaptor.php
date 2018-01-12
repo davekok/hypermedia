@@ -76,7 +76,17 @@ final class DefaultAdaptor implements Request
 	 */
 	public function getContentType(): ?string
 	{
-		return $this->server['HTTP_CONTENT_TYPE'] ?? null;
+		return $this->server['CONTENT_TYPE'] ?? $this->server['HTTP_CONTENT_TYPE'] ?? null;
+	}
+
+	/**
+	 * Get accept
+	 *
+	 * @return ?string
+	 */
+	public function getAccept(): ?string
+	{
+		return $this->server['HTTP_ACCEPT'] ?? $this->server['ACCEPT'] ?? null;
 	}
 
 	/**

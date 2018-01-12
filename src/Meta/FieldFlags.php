@@ -23,6 +23,9 @@ final class FieldFlags
 	const recon    = 256;   // whether the field is a recon field, whenever the value of a recon field changes the
 	                        // client should send a RECON request to the server in which case the resource is
 	                        // reconditioned, depending on changing state
+	const lookup   = 512;   // whether the field is a lookup field, whenever the value of a lookup field changes the
+	                        // client should send a LOOKUP request to the server in which case the resource is
+	                        // look uped
 
 	private $flags;         // bitmask of the above constants
 
@@ -189,6 +192,23 @@ final class FieldFlags
 		return (bool)($this->flags & self::recon);
 	}
 
+	public function setLookup(): self
+	{
+		$this->flags |= self::lookup;
+		return $this;
+	}
+
+	public function clearLookup(): self
+	{
+		$this->flags &= ~self::lookup;
+		return $this;
+	}
+
+	public function isLookup(): bool
+	{
+		return (bool)($this->flags & self::lookup);
+	}
+
 	public function toInt(): int
 	{
 		return $this->flags;
@@ -207,5 +227,6 @@ final class FieldFlags
 		if ($this->isMeta    ()) $meta->meta = true;
 		if ($this->isData    ()) $meta->data = true;
 		if ($this->isRecon   ()) $meta->recon = true;
+		if ($this->isLookup  ()) $meta->lookup = true;
 	}
 }

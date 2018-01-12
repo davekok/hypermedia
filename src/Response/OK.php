@@ -100,30 +100,13 @@ final class OK implements Response
 	}
 
 	/**
-	 * Set the data of this response.
-	 *
-	 * @param array $fields
-	 * @return self
+	 * Set the content of the response
+	 * @param stdClass $content  the content
 	 */
-	public function fields(array $fields): void
+	public function setContent(stdClass $content): void
 	{
-		$this->part->fields = [];
-		foreach ($fields as $field) {
-			$this->part->fields[] = $field;
-			if ($field->meta??false) {
-				if (!isset($this->part->meta)) {
-					$this->part->meta = new stdClass;
-				}
-				$this->part->meta->{$field->name} = $field->value??null;
-			} elseif ($field->data??false) {
-				$this->part->data = $field->value??null;
-			} else {
-				if (!isset($this->part->data)) {
-					$this->part->data = new stdClass;
-				}
-				$this->part->data->{$field->name} = $field->value??null;
-			}
-			unset($field->value);
+		foreach ($content as $key => $value) {
+			$this->part->$key = $value;
 		}
 	}
 
@@ -167,6 +150,17 @@ final class OK implements Response
 			$resource->call($values, null);
 			$this->part = $previous;
 		}
+	}
+
+	/**
+	 * Request additional resources.
+	 *
+	 * @param string $linkName
+	 * @param string $url
+	 */
+	public function request(string $linkName, string $url): void
+	{
+		$this->parts->$linkName = $url;
 	}
 
 	/**

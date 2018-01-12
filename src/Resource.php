@@ -120,7 +120,7 @@ final class Resource
 		$this->verb = $verb;
 		$this->conditions = $conditions;
 		$this->hints = $resource->getHints();
-		$this->fields = $resource->getFields()??[];
+		$this->fields = $resource->getFields() ?? [];
 		$this->object = new $this->class;
 		[$this->method, $this->verbflags] = $resource->getVerb($verb);
 		$this->verbflags = new Meta\VerbFlags($this->verbflags);
@@ -181,13 +181,11 @@ final class Resource
 			}
 			$this->response->hints(...$this->hints);
 
-			[$fields, $state] = $this->recurseFields($this->fields, $translatorParameters, $preserve);
-
+			$content = new stdClass;
+			$state = $this->recurseFields($this->object, $content, $this->fields, $translatorParameters, $preserve);
+			$this->response->setContent($content);
 			if ($this->verbflags->hasSelfLink()) {
 				$this->response->link("self", null, $this->class, $state);
-			}
-			if (!empty($fields)) {
-				$this->response->fields($fields);
 			}
 		}
 
@@ -261,19 +259,16 @@ final class Resource
 	 * @param  array  $fieldDescriptors      the field descriptors
 	 * @param  array  $translatorParameters  translation parameters
 	 * @param  array  $preserve              preserve values
-	 * @return [$fields, $state]
+	 * @return $state
 	 */
-	private function recurseFields(array $fieldDescriptors, array $translatorParameters, ?array $preserve, int $depth = 0): array
+	private function recurseFields($source, stdClass $dest, array $fieldDescriptors, array $translatorParameters, ?array $preserve): array
 	{
 		$state = [];
-		$fields = [];
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isState()) {
-				if (isset($this->object->$name)) {
-					if ($depth === 0) { // only necessary at the top
-						$state[$name] = $this->object->$name;
-					}
+				if (isset($source->$name)) {
+					$state[$name] = $source->$name;
 				}
 			} else {
 				$field = new stdClass;
@@ -283,9 +278,6 @@ final class Resource
 				}
 				if ($icon) {
 					$field->icon = $icon;
-				}
-				if ($depth === 0) { // only necessary at the top
-					$field->value = $preserve[$name] ?? $this->object->$name ?? null;
 				}
 				if ($defaultValue !== null) {
 					$field->defaultValue = $defaultValue;
@@ -297,15 +289,44 @@ final class Resource
 				$type = Type::createType($type);
 				$type->meta($field);
 				if ($type instanceof ObjectType) {
-					[$field->fields, $substate] = $this->recurseFields($type->getFieldDescriptors(), $translatorParameters, $preserve[$name], $depth+1);
+					$subdest = new stdClass;
+					$substate = $this->recurseFields($source->$name ?? ($flags->isArray() ? [] : new stdClass), $subdest, $type->getFieldDescriptors(), $translatorParameters, $preserve[$name] ?? null);
+					if (isset($subdest->fields)) {
+						$field->fields = $subdest->fields;
+					}
+					if (isset($subdest->meta)) {
+						if (!isset($dest->meta)) $dest->meta = new stdClass;
+						$dest->meta->$name = $subdest->meta;
+					}
+					if (isset($subdest->data)) {
+						if ($flags->isData()) {
+							$dest->data = $subdest->data;
+						} else {
+							if (!isset($dest->data)) $dest->data = new stdClass;
+							$dest->data->$name = $subdest->data;
+						}
+					}
 					if ($substate) {
 						$state[$name] = $substate;
 					}
+				} elseif (!is_array($source)) {
+					if ($flags->isMeta()) {
+						if (!isset($dest->meta)) $dest->meta = new stdClass;
+						$dest->meta->$name = $preserve[$name] ?? $source->$name ?? null;
+					} elseif ($flags->isData() && !isset($dest->data)) {
+						$dest->data = $preserve[$name] ?? $source->$name ?? null;
+					} else {
+						if (!isset($dest->data)) $dest->data = new stdClass;
+						$dest->data->$name = $preserve[$name] ?? $source->$name ?? null;
+					}
 				}
-				$fields[] = $field;
+				$dest->fields[] = $field;
 			}
 		}
-		return [$fields, $state];
+		if (is_array($source)) {
+			$dest->data = $source;
+		}
+		return $state;
 	}
 
 	/**

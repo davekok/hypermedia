@@ -103,7 +103,7 @@ class SourceUnitActivityTest extends TestCase
 	public function testCompileActions()
 	{
 		$items = iterator_to_array($this->unit->getCacheItems());
-		
+
 		$this->assertEquals(4, count($items));
 		$a1 = new CacheItem_Activity();
 		$a1->setClass("Home");

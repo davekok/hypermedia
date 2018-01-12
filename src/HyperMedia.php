@@ -2,11 +2,12 @@
 
 namespace Sturdy\Activity;
 
-use Throwable;
-use Exception;
-use InvalidArgumentException;
+use Throwable, Exception, InvalidArgumentException;
+use Sturdy\Activity\Request\Request;
 use Sturdy\Activity\Response\{
+	Response,
 	BadRequest,
+	MethodNotAllowed,
 	InternalServerError,
 	UnsupportedMediaType
 };
@@ -51,7 +52,7 @@ final class HyperMedia
 		$this->translator = $translator;
 		$this->sourceUnit = $sourceUnit;
 		$this->basePath = rtrim($basePath, "/") . "/";
-		$this->namespace = rtrim($namespace, "\\") . "\\";
+		$this->namespace = !empty($namespace) ? (rtrim($namespace, "\\") . "\\") : '';
 		$this->di = $di;
 	}
 
@@ -82,11 +83,11 @@ final class HyperMedia
 	 * @param array    $tags             the tags to use
 	 * @param mixed    $request          the request object
 	 * @param ?string  $responseAdaptor  the response adaptor you would like to use
-	 * @return mixed   $response
+	 * @return mixed   a response
 	 */
 	public function handle(array $tags, $request, ?string $responseAdaptor = null)
 	{
-		$request = $this->adaptRequest($request, $responseAdaptor);
+		$request = Http::request($request, $responseAdaptor);
 		$verb = $request->getVerb();
 		$path = $request->getPath();
 		switch ($verb) {
@@ -108,11 +109,18 @@ final class HyperMedia
 				$response = $this->call($verb, $path, $values, $tags, $conditions, $body['data']);
 				break;
 
+			case "LOOKUP":
+				$verb = "GET";
+				$body = $this->getBody($request);
+				$values = array_merge($this->getQuery($request), $body);
+				$response = $this->call($verb, $path, $values, $tags, [], $body);
+				break;
+
 			default:
-				return new MethodNotAllowed();
+				$response = new MethodNotAllowed();
+				break;
 		}
-		$response->setProtocolVersion($request->getProtocolVersion());
-		return $this->adaptResponse($response, $responseAdaptor);
+		return Http::response($response);
 	}
 
 	/**
@@ -124,9 +132,9 @@ final class HyperMedia
 	 * @param  array  $tags        tags
 	 * @param  array  $conditions  conditions
 	 * @param  array  $preserve    preserve field values
-	 * @return Response\Response   the response
+	 * @return Response   the response
 	 */
-	private function call(string $verb, string $path, array $values, array $tags, array $conditions = [], array $preserve = null): Response\Response
+	private function call(string $verb, string $path, array $values, array $tags, array $conditions = [], array $preserve = null): Response
 	{
 		try {
 			$path = substr($path, strlen($this->basePath));
@@ -140,7 +148,7 @@ final class HyperMedia
 					->createResource($class, $verb, $conditions);
 				$response = $resource->call($values, $preserve);
 			}
-		} catch (Response\Response $e) {
+		} catch (Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
 			$response = new InternalServerError("Uncaught exception", 0, $e);
@@ -154,7 +162,7 @@ final class HyperMedia
 	 * @param  Request $request  the request
 	 * @return array  the body
 	 */
-	private function getBody(Request\Request $request): array
+	private function getBody(Request $request): array
 	{
 		$contentType = $request->getContentType();
 		switch (true) {
@@ -180,7 +188,7 @@ final class HyperMedia
 	 * @param  Request $request  the request
 	 * @return array  the query parameters
 	 */
-	private function getQuery(Request\Request $request): array
+	private function getQuery(Request $request): array
 	{
 		$query = $request->getQuery();
 		if ($query !== "") {
@@ -189,112 +197,5 @@ final class HyperMedia
 			return $query;
 		}
 		return [];
-	}
-
-	/**
-	 * Adapt a request to something sturdy understands.
-	 *
-	 * @param  mixed  $request           the original request
-	 * @param  string &$responseAdaptor  if no response adaptor is set, choose a matching one
-	 * @return Request\Request           a sturdy request object
-	 */
-	private function adaptRequest($request, ?string &$responseAdaptor): Request\Request
-	{
-		// adaptors
-		switch (true) {
-			case $request instanceof \Psr\Http\Message\ServerRequestInterface:
-				$request = new Request\PsrAdaptor($request);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "psr";
-				}
-				break;
-
-			case $request instanceof \Symfony\Component\HttpFoundation\Request:
-				$request = new Request\SymfonyAdaptor($request);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "symfony";
-				}
-				break;
-
-			case $request instanceof Request\Request:
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "sturdy";
-				}
-				break;
-
-			case is_array($request):
-				$request = new Request\ServerAdaptor($request);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "array";
-				}
-				break;
-
-			case $request === null:
-				$request = new Request\ServerAdaptor($_SERVER);
-				if ($responseAdaptor === null) {
-					$responseAdaptor = "echo";
-				}
-				break;
-
-			default:
-				throw new InvalidArgumentException("\$request argument is of unsupported type");
-		}
-		return $request;
-	}
-
-	/**
-	 * Adapt a sponse to something the caller understands
-	 *
-	 * @param  mixed  $response          the original sturdy response
-	 * @param  string $responseAdaptor   the response adaptor to use
-	 * @return mixed                     the response
-	 */
-	private function adaptResponse(Response\Response $response, string $responseAdaptor)
-	{
-		// adaptors
-		switch ($responseAdaptor) {
-			case "psr":
-				return new Response\PsrAdaptor($response);
-
-			case "symfony":
-				return new Response\SymfonyAdaptor($response);
-
-			case "sturdy":
-				return $response;
-
-			case "array":
-				$headers = [];
-				$headers["Date"] = $response->getDate()->format("r");
-				if ($location = $response->getLocation()) {
-					$headers["Location"] = $location;
-				}
-				if ($contentType = $response->getContentType()) {
-					$headers["Content-Type"] = $contentType;
-				}
-				return [
-					"protocolVersion" => $response->getProtocolVersion(),
-					"statusCode" => $response->getStatusCode(),
-					"statusText" => $response->getStatusText(),
-					"headers" => $headers,
-					"content" => $response->getContent(),
-				];
-
-			case "echo":
-				header("HTTP/".$response->getProtocolVersion()." ".$response->getStatusCode()." ".$response->getStatusText());
-				header("Date: ".$response->getDate()->format("r"));
-				if ($location = $response->getLocation()) {
-					header("Location: ".$location);
-				}
-				if ($contentType = $response->getContentType()) {
-					header("Content-Type: ".$contentType);
-				}
-				if ($content = $response->getContent()) {
-					echo $content;
-				}
-				return;
-
-			default:
-				throw new InvalidArgumentException("Unsupported response adaptor $responseAdaptor.");
-		}
 	}
 }

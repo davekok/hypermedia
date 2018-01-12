@@ -43,7 +43,7 @@ final class Link
 	{
 		$class = $this->resource->getClass();
 		$obj = new stdClass;
-		$path = strtolower(preg_replace('/([a-zA-Z])(?=[A-Z])/', '$1-', substr($class, strlen('AppBundle\\Resource\\'))));
+		$path = strtolower(preg_replace('/([a-zA-Z])(?=[A-Z])/', '$1-', substr($class, strlen($this->namespace))));
 		$obj->href = $this->basePath . trim(strtr($path, "\\", "/"), "/");
 		$known = "";
 		$unknown = "";

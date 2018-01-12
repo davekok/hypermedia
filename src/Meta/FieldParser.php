@@ -44,6 +44,7 @@ final class FieldParser
 	private $multipleToken;
 	private $stateToken;
 	private $reconToken;
+	private $lookupToken;
 	private $arrayToken;
 	private $minToken;
 	private $maxToken;
@@ -114,6 +115,7 @@ final class FieldParser
 		$this->multipleToken      = "/^multiple/";
 		$this->stateToken         = "/^state/";
 		$this->reconToken         = "/^recon/";
+		$this->lookupToken        = "/^lookup/";
 		$this->arrayToken         = "/^\[\]/";
 
 		$this->minToken           = "/^min=($int)/";
@@ -384,6 +386,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 2) && $this->match('reconToken')) {
 				$this->clearbit($mask, 2);
 				$flags->setRecon();
+			} elseif ($this->isbitset($mask, 2) && $this->match('lookupToken')) {
+				$this->clearbit($mask, 2);
+				$flags->setLookup();
 			} elseif ($this->isbitset($mask, 3) && $this->match('requiredToken')) {
 				$this->clearbit($mask, 3);
 				$this->clearbit($mask, 12);
@@ -605,6 +610,9 @@ final class FieldParser
 			}
 		}
 		if (0 === $sequence) {
+			throw new ParserError($this->parseError("Expected name"));
+		}
+		if ($name === null) {
 			throw new ParserError($this->parseError("Expected name"));
 		}
 		return $name;
