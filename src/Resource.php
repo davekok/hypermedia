@@ -339,7 +339,7 @@ final class Resource
 		if ($resource !== null) {
 			$this->class = $resource->getClass();
 			$this->hints = $resource->getHints();
-			$this->fields = $resource->getFields()??[];
+			$this->fields = $resource->getFields() ?? [];
 			[$this->method, $this->verbflags] = $resource->getVerb($this->verb);
 			$this->verbflags = new Meta\VerbFlags($this->verbflags);
 		}

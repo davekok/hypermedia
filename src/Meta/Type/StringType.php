@@ -151,8 +151,9 @@ final class StringType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if (!is_string($value)) return false;
-		$string = filter_var($value, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW);
+		if ($value === null) return true;
+		if (!is_scalar($value)) return false;
+		$string = filter_var((string)$value, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW);
 		if ($string === false) {
 			return false;
 		}
