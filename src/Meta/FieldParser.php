@@ -217,7 +217,7 @@ final class FieldParser
 
 		$mask = ~0;
 		// bit 1: type
-		// bit 2: meta, data or state field
+		// bit 2: meta, data, state or lookup field
 		// bit 3: required/readonly/disabled
 		// bit 4: multiple token
 		// bit 5: min token
@@ -229,7 +229,7 @@ final class FieldParser
 		// bit 11: autocomplete token
 		// bit 12: default value token
 		// bit 13: description token
-		// bit 14: object type allowed
+		// bit 14: recon token
 		// bit 15: label token
 		// bit 16: icon token
 		$this->clearbit($mask, 4); // multiple
@@ -240,7 +240,6 @@ final class FieldParser
 		$this->clearbit($mask, 9); // max length token
 		$this->clearbit($mask, 10); // pattern token
 		$this->clearbit($mask, 11); // autocomplete token
-		// $this->clearbit($mask, 14); // object type allowed
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -363,9 +362,8 @@ final class FieldParser
 				$field->setType($type = new Type\ListType());
 				$this->parseArray($flags);
 				$this->parseList($type);
-			} elseif ($this->isbitset($mask, 1) /*&& $this->isbitset($mask, 14)*/ && $this->match('objectToken')) {
+			} elseif ($this->isbitset($mask, 1) && $this->match('objectToken')) {
 				$this->clearbit($mask, 1);
-				// $this->clearbit($mask, 14);
 				$field->setType($type = new Type\ObjectType());
 				$this->parseArray($flags);
 				$this->parseFields($type);
@@ -373,22 +371,24 @@ final class FieldParser
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\HTMLType());
 				$this->parseArray($flags);
-			} elseif ($this->isbitset($mask, 2) && $this->match('dataToken')) {
+			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('dataToken')) {
 				$this->clearbit($mask, 2);
-				$this->setbit($mask, 14);
+				$this->clearbit($mask, 14);
 				$flags->setData();
-			} elseif ($this->isbitset($mask, 2) && $this->match('metaToken')) {
+			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('metaToken')) {
 				$this->clearbit($mask, 2);
+				$this->clearbit($mask, 14);
 				$flags->setMeta();
+			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('lookupToken')) {
+				$this->clearbit($mask, 2);
+				$this->clearbit($mask, 14);
+				$flags->setLookup();
 			} elseif ($this->isbitset($mask, 2) && $this->match('stateToken')) {
 				$this->clearbit($mask, 2);
 				$flags->setState();
-			} elseif ($this->isbitset($mask, 2) && $this->match('reconToken')) {
-				$this->clearbit($mask, 2);
+			} elseif ($this->isbitset($mask, 14) && $this->match('reconToken')) {
+				$this->clearbit($mask, 14);
 				$flags->setRecon();
-			} elseif ($this->isbitset($mask, 2) && $this->match('lookupToken')) {
-				$this->clearbit($mask, 2);
-				$flags->setLookup();
 			} elseif ($this->isbitset($mask, 3) && $this->match('requiredToken')) {
 				$this->clearbit($mask, 3);
 				$this->clearbit($mask, 12);

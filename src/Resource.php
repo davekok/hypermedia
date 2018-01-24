@@ -74,8 +74,8 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, array_merge($conditions, $this->tags), $this->basePath, $this->namespace, $this->di);
-		$resource = $self->cache->getRootResource($self->sourceUnit, $self->tags);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
 		}
@@ -89,8 +89,8 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, array_merge($conditions, $this->tags), $this->basePath, $this->namespace, $this->di);
-		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
+		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
 		}
@@ -160,6 +160,7 @@ final class Resource
 	{
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
+		$this->preRecon($values);
 		$this->checkFields($this->fields, $this->object, $values, $badRequest);
 		if ($badRequest->hasMessages()) {
 			throw $badRequest;
@@ -168,7 +169,7 @@ final class Resource
 		$this->object->{$this->method}($this->response, $this->di);
 
 		if ($this->verbflags->hasFields() && $this->response instanceof OK) {
-			$this->reinit();
+			$this->postRecon();
 
 			$translatorParameters = get_object_vars($this->object);
 			foreach ($translatorParameters as $key => $value) {
@@ -249,7 +250,7 @@ final class Resource
 					}
 				}
 			}
-			$object->$name = $values[$name] ?? null;
+			$object->$name = $values[$name] ?? $defaultValue;
 		}
 	}
 
@@ -330,32 +331,81 @@ final class Resource
 	}
 
 	/**
-	 * Reinit the resource the resource in case recon fields are found.
+	 * Pre recondition the resource in case recondition fields have changed.
 	 */
-	private function reinit(): void
+	private function preRecon(array $values): void
 	{
-		$conditions = $this->reinitRecurse($this->fields, [], $this->object);
-		$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->tags));
-		if ($resource !== null) {
-			$this->class = $resource->getClass();
-			$this->hints = $resource->getHints();
-			$this->fields = $resource->getFields() ?? [];
-			[$this->method, $this->verbflags] = $resource->getVerb($this->verb);
-			$this->verbflags = new Meta\VerbFlags($this->verbflags);
-		}
+		$cascade = 0;
+		$maxcascade = 5;
+		$cascadeConditions = $this->preReconRecurse($this->fields, $this->conditions, $values);
+		do {
+			$conditions = $cascadeConditions;
+			$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->tags));
+			if ($resource !== null) {
+				$this->class = $resource->getClass();
+				$this->hints = $resource->getHints();
+				$this->fields = $resource->getFields() ?? [];
+				[$this->method, $this->verbflags] = $resource->getVerb($this->verb);
+				$this->verbflags = new Meta\VerbFlags($this->verbflags);
+			}
+			$cascadeConditions = $this->preReconRecurse($this->fields, $conditions, $values);
+		} while ($conditions != $cascadeConditions && $cascade++ < $maxcascade);
 	}
 
-	private function reinitRecurse(array $fieldDescriptors, array $conditions, /*object*/ $object, string $prefix = ""): array
+	private function preReconRecurse(array $fieldDescriptors, array $conditions, $values, string $prefix = ""): array
 	{
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 			$flags = new FieldFlags($flags);
-			if ($flags->isRecon() && !(isset($conditions[$name]) && $conditions[$name] === $object->$name)) {
-				$conditions[$prefix.$name] = $object->$name;
+			if ($flags->isRecon()) {
+				if (!array_key_exists($prefix.$name, $conditions) && array_key_exists($name, $values)) {
+					$conditions[$prefix.$name] = $values[$name];
+				}
+			}
+			$type = Type::createType($type);
+			if ($type instanceof ObjectType && isset($values[$name])) {
+				if (is_array($values[$name])) {
+					$conditions = $this->preReconRecurse($type->getFieldDescriptors(), $conditions, $values[$name], $name."_");
+				}
+			}
+		}
+		return $conditions;
+	}
+
+	/**
+	 * Post recondition the resource in case recondition fields have changed.
+	 */
+	private function postRecon(): void
+	{
+		$cascade = 0;
+		$maxcascade = 5;
+		$cascadeConditions = $this->postReconRecurse($this->fields, $this->conditions, $this->object);
+		do {
+			$conditions = $cascadeConditions;
+			$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->tags));
+			if ($resource !== null) {
+				$this->class = $resource->getClass();
+				$this->hints = $resource->getHints();
+				$this->fields = $resource->getFields() ?? [];
+				[$this->method, $this->verbflags] = $resource->getVerb($this->verb);
+				$this->verbflags = new Meta\VerbFlags($this->verbflags);
+			}
+			$cascadeConditions = $this->postReconRecurse($this->fields, $conditions, $this->object);
+		} while ($conditions != $cascadeConditions && $cascade++ < $maxcascade);
+	}
+
+	private function postReconRecurse(array $fieldDescriptors, array $conditions, /*object*/ $object, string $prefix = ""): array
+	{
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+			$flags = new FieldFlags($flags);
+			if ($flags->isRecon()) {
+				if (!array_key_exists($prefix.$name, $conditions)) {
+					$conditions[$prefix.$name] = $object->$name;
+				}
 			}
 			$type = Type::createType($type);
 			if ($type instanceof ObjectType && isset($object->$name)) {
 				if (is_object($object->$name)) {
-					$conditions = $this->reinitRecurse($type->getFieldDescriptors(), $conditions, $object->$name, $name."_");
+					$conditions = $this->postReconRecurse($type->getFieldDescriptors(), $conditions, $object->$name, $name."_");
 				}
 			}
 		}

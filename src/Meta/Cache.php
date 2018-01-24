@@ -226,6 +226,9 @@ final class Cache implements CacheInterface
 		$reordered = [];
 		foreach ($order as $key) {
 			$reordered[$key] = $array[$key] ?? null;
+			if ($reordered[$key] === false) {
+				$reordered[$key] = null;
+			}
 		}
 		return $reordered;
 	}

@@ -41,6 +41,11 @@ final class Hints extends Taggable
 	private $layout;
 
 	/**
+	 * @var array | boolean
+	 */
+	private $clear;
+
+	/**
 	 * Constructor
 	 *
 	 * @param array $values  the values as injected by annotation reader
@@ -163,6 +168,26 @@ final class Hints extends Taggable
 	}
 
 	/**
+	 * Set clear
+	 *
+	 * @param array|boolean $clear
+	 */
+	public function setClear($clear): void
+	{
+		$this->clear = $clear;
+	}
+
+	/**
+	 * Get clear
+	 *
+	 * @return array|boolean
+	 */
+	public function getClear()
+	{
+		return $this->clear;
+	}
+
+	/**
 	 * Return a string representation of this object.
 	 */
 	public function __toString(): string
@@ -182,6 +207,11 @@ final class Hints extends Taggable
 		}
 		if ($this->layout) {
 			$r.= "layout({$this->layout}) ";
+		}
+		if ($this->clear === true) {
+			$r.= "clear ";
+		} elseif (is_array($this->clear)) {
+			$r.= "clear(".implode(",",$this->clear).") ";
 		}
 		$r.= parent::__toString();
 		return rtrim($r);

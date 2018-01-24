@@ -20,6 +20,7 @@ final class HintsParser
 	private $iconToken;
 	private $sectionToken;
 	private $layoutToken;
+	private $clearToken;
 	private $listStartToken;
 	private $listDelimiterToken;
 	private $listEndToken;
@@ -50,6 +51,7 @@ final class HintsParser
 		$this->sectionToken       = "/^section/";
 		$this->layoutToken        = "/^layout/";
 		$this->componentToken     = "/^component/";
+		$this->clearToken         = "/^clear/";
 
 		$this->listStartToken     = "/^\(/";
 		$this->listDelimiterToken = "/^,/";
@@ -131,6 +133,9 @@ final class HintsParser
 			} elseif ($this->isbitset($mask, 5) && $this->match('layoutToken')) {
 				$this->clearbit($mask, 5);
 				$hints->setLayout($this->parseDashedName());
+			} elseif ($this->isbitset($mask, 6) && $this->match('clearToken')) {
+				$this->clearbit($mask, 6);
+				$hints->setClear($this->parseClear());
 			} else {
 				throw new ParserError($this->parseError("Unexpected token"));
 			}
@@ -160,6 +165,49 @@ final class HintsParser
 				$taggable->matchTagValue($tag, $value);
 				return;
 		}
+	}
+
+	private function parseClear()
+	{
+		$sequence = 0;
+		$sections = [];
+		while ($this->valid()) {
+			switch ($sequence) {
+				case 0:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('listStartToken')) {
+						++$sequence;
+					} else {
+						return true;
+					}
+					break;
+
+				case 1:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('nameToken', $name)) {
+						$sections[] = $name;
+						++$sequence;
+					} else {
+						throw new ParserError($this->parseError("expected space or name"));
+					}
+					break;
+
+				case 2:
+					if ($this->match('spaceToken')) {
+						// do nothing
+					} elseif ($this->match('listDelimiterToken')) {
+						--$sequence;
+					} elseif ($this->match('listEndToken')) {
+						break 2;
+					} else {
+						throw new ParserError($this->parseError("expected space, list delimiter or list end"));
+					}
+					break;
+				}
+		}
+		return $sections;
 	}
 
 	private function parseDashedName(): string

@@ -76,8 +76,9 @@ final class OK implements Response
 	 * @param ?string $section
 	 * @param ?string $component
 	 * @param ?string $layout
+	 * @param string[]|boolean|null $clear
 	 */
-	public function hints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout): void
+	public function hints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout, $clear): void
 	{
 		if ($label !== null || $section !== null || $component !== null || $layout !== null) {
 			$this->part->hints = new stdClass;
@@ -95,6 +96,9 @@ final class OK implements Response
 			}
 			if ($layout !== null) {
 				$this->part->hints->layout = $layout;
+			}
+			if ($clear !== null) {
+				$this->part->hints->clear = $clear;
 			}
 		}
 	}
