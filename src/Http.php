@@ -18,8 +18,11 @@ final class Http
 	 *
 	 * @param ?Throwable $e  The exception or error causing the abort.
 	 */
-	public static function abort(?Throwable $e = null)
+	public static function abort(?Throwable $e = null, ?string $adaptor = null)
 	{
+		if ($adaptor !== null) {
+			self::$adaptor = $adaptor;
+		}
 		if ($e !== null) {
 			$response = new Response\InternalServerError($e->getMessage(), $e->getCode(), $e);
 		} else {
