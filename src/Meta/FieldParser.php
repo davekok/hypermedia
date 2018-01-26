@@ -82,7 +82,7 @@ final class FieldParser
 		$this->spaceToken         = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
 		$this->tagToken           = "/^#($name)/";
 		$this->equalsToken        = "/^=/";
-		$this->valueToken         = "/^(\S*)(?=\s|\*|$)/";
+		$this->valueToken         = "/^([A-Za-z0-9@$%^&*._~{}\[\]<>():+-]*)(?=,|\s|\*|$|)/";
 		$this->nameToken          = "/^($name):/";
 		$this->stringToken        = "/^string/";
 		$this->integerToken       = "/^int(?:eger)?/";
@@ -484,7 +484,7 @@ final class FieldParser
 			}
 		}
 		if (0 === $sequence) {
-			throw new ParserError($this->parseError("Unexpected token"));
+			throw new ParserError($this->parseError("Unexpected token while processing subfields"));
 		}
 	}
 
