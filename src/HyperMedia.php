@@ -194,6 +194,11 @@ final class HyperMedia
 		if ($query !== "") {
 			if ($query[0] === "?") $query = substr($query, 1);
 			parse_str($query, $query);
+			foreach ($query as $key => $value) {
+				if ($value === "" || $value === null) {
+					unset($query[$key]);
+				}
+			}
 			return $query;
 		}
 		return [];

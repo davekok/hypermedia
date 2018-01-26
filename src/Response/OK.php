@@ -174,9 +174,15 @@ final class OK implements Response
 	 * @param  array  $values  the values in case the resource has uri fields
 	 * @return object  the link
 	 */
-	public function getLink(string $class, array $values = [])/*: ?object*/
+	public function getLink(string $class, array ...$values)/*: ?object*/
 	{
 		$link = $this->resource->createLink($class);
-		return $link ? $link->expand($values, false) : null;
+		if (!$link) {
+			return null;
+		}
+		if (count($values)) {
+			$values = array_merge(...$values);
+		}
+		return $link->expand($values, false);
 	}
 }
