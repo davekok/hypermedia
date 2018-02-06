@@ -165,7 +165,7 @@ final class StringType extends Type
 			return false;
 		}
 		if (isset($this->pattern)) {
-			return preg_match($this->pattern, $string);
+			return 1 === preg_match("/".$this->pattern."/", $string);
 		}
 		$value = $string;
 		return true;
