@@ -11,20 +11,19 @@ interface JournalRepository
 	/**
 	 * Find one journal by id or throw exception if not found.
 	 *
-	 * @param $id  the id of the journal
+	 * @param string $id  the id of the journal
 	 * @return the journal
 	 */
-	public function findOneJournalById(int $id): Journal;
+	public function findOneJournalById(string $id): Journal;
 
 	/**
 	 * Create a new journal.
 	 *
 	 * @param string $sourceUnit    the source unit
-	 * @param int    $type          Journal::activity or Journal::resource
 	 * @param array  $tags          the tags
 	 * @return a freshly created journal
 	 */
-	public function createJournal(string $sourceUnit, int $type, array $tags): Journal;
+	public function createJournal(string $sourceUnit, array $tags): Journal;
 
 	/**
 	 * Save the updated journal.

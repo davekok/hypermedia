@@ -17,7 +17,12 @@ final class Link
 	private $namespace;
 	private $resource;
 	private $templated;
+	private $name;
+	private $slot;
 	private $label;
+	private $icon;
+	private $selected;
+	private $target;
 
 	public function __construct(Translator $translator, string $basePath, string $namespace, CacheItem_Resource $resource)
 	{
@@ -32,11 +37,6 @@ final class Link
 				return;
 			}
 		}
-	}
-
-	public function setLabel(string $label, array $values = [])/*: object */
-	{
-		$this->label = ($this->translator)($label, $values);
 	}
 
 	public function expand(array $values = [], bool $allowTemplated = true)/*: object */
@@ -80,8 +80,23 @@ final class Link
 		if (!empty($unknown)) {
 			$obj->templated = true;
 		}
+		if ($this->name) {
+			$obj->name = $this->name;
+		}
+		if ($this->slot) {
+			$obj->slot = $this->slot;
+		}
 		if ($this->label) {
 			$obj->label = $this->label;
+		}
+		if ($this->icon) {
+			$obj->icon = $this->icon;
+		}
+		if ($this->selected) {
+			$obj->selected = $this->selected;
+		}
+		if ($this->target) {
+			$obj->target = $this->target;
 		}
 		return $obj;
 	}
@@ -89,5 +104,69 @@ final class Link
 	public function getTemplated(): bool
 	{
 		return $this->templated;
+	}
+
+	public function setName(string $name): void
+	{
+		$this->name = $name;
+	}
+
+	public function getName(): string
+	{
+		return $this->name;
+	}
+
+	public function setSlot(?string $slot): void
+	{
+		$this->slot = $slot;
+	}
+
+	public function getSlot(): ?string
+	{
+		return $this->slot;
+	}
+
+	public function setLabel(?string $label, array $values = []): void
+	{
+		if ($label === null) {
+			$this->label = null;
+		} else {
+			$this->label = ($this->translator)($label, $values);
+		}
+	}
+
+	public function getLabel(): ?string
+	{
+		return $this->label;
+	}
+
+	public function setIcon(?string $icon): void
+	{
+		$this->icon = $icon;
+	}
+
+	public function getIcon(): ?string
+	{
+		return $this->icon;
+	}
+
+	public function setSelected(?bool $selected): void
+	{
+		$this->selected = $selected;
+	}
+
+	public function getSelected(): ?bool
+	{
+		return $this->selected;
+	}
+
+	public function setTarget(?string $target): void
+	{
+		$this->target = $target;
+	}
+
+	public function getTarget(): ?string
+	{
+		return $this->target;
 	}
 }

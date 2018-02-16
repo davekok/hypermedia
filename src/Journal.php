@@ -7,15 +7,12 @@ namespace Sturdy\Activity;
  */
 interface Journal
 {
-	const activity = 1;
-	const resource = 2;
-
 	/**
 	 * Get the journal id.
 	 *
-	 * @return int  the journal id.
+	 * @return string  the journal id.
 	 */
-	public function getId(): int;
+	public function getId(): string;
 
 	/**
 	 * Get source unit
@@ -23,13 +20,6 @@ interface Journal
 	 * @return string
 	 */
 	public function getSourceUnit(): string;
-
-	/**
-	 * Get type
-	 *
-	 * @return int
-	 */
-	public function getType(): int;
 
 	/**
 	 * Get tags

@@ -30,6 +30,7 @@ final class Resource
 {
 	private $cache;
 	private $translator;
+	private $journaling;
 	private $sourceUnit;
 	private $tags;
 	private $basePath;
@@ -46,10 +47,11 @@ final class Resource
 	private $method;
 	private $verbflags;
 
-	public function __construct(Cache $cache, Translator $translator, string $sourceUnit, array $tags, string $basePath, string $namespace, $di)
+	public function __construct(Cache $cache, Translator $translator, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, $di)
 	{
 		$this->cache = $cache;
 		$this->translator = $translator;
+		$this->journaling = $journaling;
 		$this->sourceUnit = $sourceUnit;
 		$this->tags = $tags;
 		$this->basePath = $basePath;
@@ -74,7 +76,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
 		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
@@ -89,7 +91,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -101,7 +103,7 @@ final class Resource
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->translator, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -166,7 +168,7 @@ final class Resource
 			throw $badRequest;
 		}
 
-		$this->object->{$this->method}($this->response, $this->di);
+		$this->object->{$this->method}($this->journaling, $this->response, $this->di);
 
 		if ($this->verbflags->hasFields() && $this->response instanceof OK) {
 			$this->postRecon();
@@ -186,7 +188,7 @@ final class Resource
 			$state = $this->recurseFields($this->object, $content, $this->fields, $translatorParameters, $preserve);
 			$this->response->setContent($content);
 			if ($this->verbflags->hasSelfLink()) {
-				$this->response->link("self", null, $this->class, $state);
+				$this->response->link("self", $this->class, ["values"=>$state]);
 			}
 		}
 

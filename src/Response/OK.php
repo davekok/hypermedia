@@ -117,21 +117,35 @@ final class OK implements Response
 	/**
 	 * Link to another resource.
 	 *
-	 * @param  string $name    the name of the link
-	 * @param  string $label   the label of the link
-	 * @param  string $class   the class of the resource
-	 * @param  array  $values  the values in case the resource has uri fields
+	 * @param  string $name       the name of the link
+	 * @param  string $class      the class of the resource
+	 * @param  array  $optionals  optional arguments
 	 * @return bool  link succeeded
+	 *
+	 * $optionals = [
+	 *   $values => array    used for both link and ICU expansion
+	 *   $slot => string     the slot the link is intended for
+	 *   $label => string    a ICU expandable message
+	 *   $icon => string     a icon identifier
+	 *   $selected => bool   whether or not the link is selected
+	 *   $target => string   which tab/window to target, see the target attribute of HTML A tag
+	 * ]
 	 */
-	public function link(string $name, ?string $label, string $class, array $values = [], bool $attach = false): bool
+	public function link(string $name, string $class, array $optionals = []): bool
 	{
 		$link = $this->resource->createLink($class);
 		if ($link === null) return false;
-		if ($label !== null) $link->setLabel($label, $values);
+		$link->setName($name);
+		$values = $optionals['values']??[];
+		if (isset($optionals['slot'    ])) $link->setSlot    ($optionals['slot'    ]);
+		if (isset($optionals['label'   ])) $link->setLabel   ($optionals['label'   ], $values);
+		if (isset($optionals['icon'    ])) $link->setIcon    ($optionals['icon'    ]);
+		if (isset($optionals['selected'])) $link->setSelected($optionals['selected']);
+		if (isset($optionals['target'  ])) $link->setTarget  ($optionals['target'  ]);
 		if (!isset($this->part->links)) {
-			$this->part->links = new stdClass();
+			$this->part->links = [];
 		}
-		$this->part->links->$name = $link->expand($values);
+		$this->part->links[] = $link->expand($values);
 		return true;
 	}
 
@@ -147,7 +161,7 @@ final class OK implements Response
 	 */
 	public function attach(string $name, string $class, array $values = []): void
 	{
-		if ($this->link($name, null, $class, $values)) {
+		if ($this->link($name, $class, ["values"=>$values])) {
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;

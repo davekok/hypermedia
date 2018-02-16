@@ -48,7 +48,7 @@ final class HyperMedia
 		/*object*/ $di)
 	{
 		$this->cache = $cache;
-		$this->journaling = new Journaling($journalRepository);
+		$this->journaling = new Journaling($journalRepository, $di);
 		$this->translator = $translator;
 		$this->sourceUnit = $sourceUnit;
 		$this->basePath = rtrim($basePath, "/") . "/";
@@ -139,12 +139,12 @@ final class HyperMedia
 		try {
 			$path = substr($path, strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
+				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
 					->createRootResource($verb, $conditions);
 				$response = $resource->call($values, $preserve);
 			} else { // if normal resource
 				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
-				$resource = (new Resource($this->cache, $this->translator, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
+				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
 					->createResource($class, $verb, $conditions);
 				$response = $resource->call($values, $preserve);
 			}
@@ -186,7 +186,7 @@ final class HyperMedia
 	 * Get query parameters from request.
 	 *
 	 * @param  Request $request  the request
-	 * @return array  the query parameters
+	 * @return array   the query parameters
 	 */
 	private function getQuery(Request $request): array
 	{
