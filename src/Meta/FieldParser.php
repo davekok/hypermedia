@@ -494,8 +494,13 @@ final class FieldParser
 			if ($this->match('spaceToken')) {
 				// do nothing
 			} elseif ($this->match('arrayToken')) {
-				$flags->setArray();
-				return;
+				if ($flags->isArray()) {
+					$flags->clearArray();
+					$flags->setMatrix();
+					return;
+				} else {
+					$flags->setArray();
+				}
 			} else {
 				return;
 			}

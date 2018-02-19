@@ -218,11 +218,36 @@ final class Resource
 							$object->$name = [];
 							$l = count($values[$name]);
 							for ($i = 0; $i < $l; ++$i) {
+								if (!isset($values[$name][$i])) {
+									$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
+								}
 								$object->$name[$i] = $subobject = new stdClass;
 								$this->checkFields($type->getFieldDescriptors(), $subobject, $values[$name][$i], $badRequest, "$prefix$name\[$i\].");
 							}
 						} else {
 							$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
+						}
+					} elseif ($flags->isMatrix()) {
+						if (is_array($values[$name])) {
+							$xl = count($values[$name]);
+							for ($x = 0; $x < $xl; ++$x) {
+								$row = $values[$name][$x] ?? null;
+								if (is_array($row)) {
+									$object->$name = [];
+									$yl = count($values[$name]);
+									for ($y = 0; $y < $yl; ++$y) {
+										if (!isset($row[$y])) {
+											$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
+										}
+										$object->$name[$x][$y] = $subobject = new stdClass;
+										$this->checkFields($type->getFieldDescriptors(), $subobject, $row[$y], $badRequest, "$prefix$name\[$x\]\[$y\].");
+									}
+								} else {
+									$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
+								}
+							}
+						} else {
+							$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
 						}
 					} else {
 						$object->$name = new stdClass;
@@ -238,6 +263,22 @@ final class Resource
 						}
 					} else {
 						$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
+					}
+				} elseif ($flags->isMatrix()) {
+					if (is_array($values[$name])) {
+						foreach ($values[$name] as $row) {
+							if (is_array($row)) {
+								foreach ($row as $value) {
+									if (!$type->filter($value)) {
+										$badRequest->addMessage("$prefix$name does not have a valid value: {$value}");
+									}
+								}
+							} else {
+								$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
+							}
+						}
+					} else {
+						$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
 					}
 				} elseif ($flags->isMultiple()) {
 					foreach (explode(",", $values[$name]) as $value) {
@@ -293,7 +334,8 @@ final class Resource
 				$type->meta($field);
 				if ($type instanceof ObjectType) {
 					$subdest = new stdClass;
-					$substate = $this->recurseFields($source->$name ?? ($flags->isArray() ? [] : new stdClass), $subdest, $type->getFieldDescriptors(), $translatorParameters, $preserve[$name] ?? null);
+					$default = ($flags->isArray() || $flags->isMatrix()) ? [] : new stdClass;
+					$substate = $this->recurseFields($source->$name ?? $default, $subdest, $type->getFieldDescriptors(), $translatorParameters, $preserve[$name] ?? null);
 					if (isset($subdest->fields)) {
 						$field->fields = $subdest->fields;
 					}

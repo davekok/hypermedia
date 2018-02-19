@@ -26,6 +26,7 @@ final class FieldFlags
 	const lookup   =  512;  // whether the field is a lookup field, whenever the value of a lookup field changes the
 	                        // client should send a LOOKUP request to the server in which case the resource is
 	                        // looked up
+	const matrix   = 1024;  // field is a matrix or two dimensional array
 
 	private $flags;         // bitmask of the above constants
 
@@ -209,6 +210,23 @@ final class FieldFlags
 		return (bool)($this->flags & self::lookup);
 	}
 
+	public function setMatrix(): self
+	{
+		$this->flags |= self::matrix;
+		return $this;
+	}
+
+	public function clearMatrix(): self
+	{
+		$this->flags &= ~self::matrix;
+		return $this;
+	}
+
+	public function isMatrix(): bool
+	{
+		return (bool)($this->flags & self::matrix);
+	}
+
 	public function toInt(): int
 	{
 		return $this->flags;
@@ -228,5 +246,6 @@ final class FieldFlags
 		if ($this->isData    ()) $meta->data = true;
 		if ($this->isRecon   ()) $meta->recon = true;
 		if ($this->isLookup  ()) $meta->lookup = true;
+		if ($this->isMatrix  ()) $meta->matrix = true;
 	}
 }
