@@ -22,64 +22,74 @@ final class Link
 	private $label;
 	private $icon;
 	private $selected;
+	private $disabled;
 	private $target;
+	private $phase;
 
-	public function __construct(Translator $translator, string $basePath, string $namespace, CacheItem_Resource $resource)
+	public function __construct(Translator $translator, string $basePath, string $namespace, ?CacheItem_Resource $resource)
 	{
 		$this->translator = $translator;
 		$this->basePath = $basePath;
 		$this->namespace = $namespace;
 		$this->resource = $resource;
-		foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
-			$flags = new FieldFlags($flags);
-			if ($flags->isMeta()) {
-				$this->templated = true;
-				return;
+		if ($this->resource) {
+			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
+				$flags = new FieldFlags($flags);
+				if ($flags->isMeta()) {
+					$this->templated = true;
+					return;
+				}
 			}
 		}
 	}
 
 	public function expand(array $values = [], bool $allowTemplated = true)/*: object */
 	{
-		$class = $this->resource->getClass();
 		$obj = new stdClass;
-		$path = strtolower(preg_replace('/([a-zA-Z])(?=[A-Z])/', '$1-', substr($class, strlen($this->namespace))));
-		$obj->href = $this->basePath . trim(strtr($path, "\\", "/"), "/");
-		$known = "";
-		$unknown = "";
-		foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
-			$flags = new FieldFlags($flags);
-			if ($flags->isMeta()) {
-				if ($flags->isReadonly() || $flags->isDisabled()) continue;
-				if (array_key_exists($name, $values)) {
-					$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
-				} elseif ($allowTemplated) {
-					$unknown.= "," . $name;
-				} elseif ($flags->isRequired()) {
-					throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
-				}
-			} elseif ($flags->isState()) {
-				if (array_key_exists($name, $values)) {
-					$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
-				} elseif (!$allowTemplated && $flags->isRequired()) {
-					throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
+
+		if ($this->resource !== null) {
+			$class = $this->resource->getClass();
+			$path = strtolower(preg_replace('/([a-zA-Z])(?=[A-Z])/', '$1-', substr($class, strlen($this->namespace))));
+			$obj->href = $this->basePath . trim(strtr($path, "\\", "/"), "/");
+			$known = "";
+			$unknown = "";
+			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
+				$flags = new FieldFlags($flags);
+				if ($flags->isMeta()) {
+					if ($flags->isReadonly() || $flags->isDisabled()) continue;
+					if (array_key_exists($name, $values)) {
+						$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
+					} elseif ($allowTemplated) {
+						$unknown.= "," . $name;
+					} elseif ($flags->isRequired()) {
+						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
+					}
+				} elseif ($flags->isState()) {
+					if (array_key_exists($name, $values)) {
+						$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
+					} elseif (!$allowTemplated && $flags->isRequired()) {
+						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
+					}
 				}
 			}
-		}
-		if ($known) {
-			$known[0] = "?";
-			$obj->href.= $known;
-			if ($unknown) {
-				$unknown[0] = "&";
+			if ($known) {
+				$known[0] = "?";
+				$obj->href.= $known;
+				if ($unknown) {
+					$unknown[0] = "&";
+					$obj->href.= "{" . $unknown . "}";
+				}
+			} elseif ($unknown) {
+				$unknown[0] = "?";
 				$obj->href.= "{" . $unknown . "}";
 			}
-		} elseif ($unknown) {
-			$unknown[0] = "?";
-			$obj->href.= "{" . $unknown . "}";
+			if (!empty($unknown)) {
+				$obj->templated = true;
+			}
+		} else {
+			$obj->disabled = true;
 		}
-		if (!empty($unknown)) {
-			$obj->templated = true;
-		}
+
 		if ($this->name) {
 			$obj->name = $this->name;
 		}
@@ -95,8 +105,14 @@ final class Link
 		if ($this->selected) {
 			$obj->selected = $this->selected;
 		}
+		if ($this->disabled) {
+			$obj->disabled = $this->disabled;
+		}
 		if ($this->target) {
 			$obj->target = $this->target;
+		}
+		if ($this->phase !== null) {
+			$obj->phase = $this->phase;
 		}
 		return $obj;
 	}
@@ -160,6 +176,16 @@ final class Link
 		return $this->selected;
 	}
 
+	public function setDisabled(?bool $disabled): void
+	{
+		$this->disabled = $disabled;
+	}
+
+	public function getDisabled(): ?bool
+	{
+		return $this->disabled;
+	}
+
 	public function setTarget(?string $target): void
 	{
 		$this->target = $target;
@@ -168,5 +194,15 @@ final class Link
 	public function getTarget(): ?string
 	{
 		return $this->target;
+	}
+
+	public function setPhase(?int $phase): void
+	{
+		$this->phase = $phase;
+	}
+
+	public function getPhase(): ?int
+	{
+		return $this->phase;
 	}
 }

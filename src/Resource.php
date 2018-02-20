@@ -65,10 +65,14 @@ final class Resource
 	 * @param  string $class  the class of the resource
 	 * @return ?Link          containing the href property and possibly the templated property
 	 */
-	public function createLink(string $class): ?Link
+	public function createLink(?string $class): ?Link
 	{
-		$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
-		return $resource ? new Link($this->translator, $this->basePath, $this->namespace, $resource) : null;
+		if ($class === null) {
+			return new Link($this->translator, $this->basePath, $this->namespace, null);
+		} else {
+			$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
+			return $resource ? new Link($this->translator, $this->basePath, $this->namespace, $resource) : null;
+		}
 	}
 
 	public function createRootResource(string $verb, array $conditions): self

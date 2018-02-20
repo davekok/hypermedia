@@ -129,9 +129,11 @@ final class OK implements Response
 	 *   $icon => string     a icon identifier
 	 *   $selected => bool   whether or not the link is selected
 	 *   $target => string   which tab/window to target, see the target attribute of HTML A tag
+	 *   $phase => integer   sometimes you wish to differentiate between links, assign a number
+	 *                       from 0 to 10 to specify the phase variance of the link
 	 * ]
 	 */
-	public function link(string $name, string $class, array $optionals = []): bool
+	public function link(string $name, ?string $class, array $optionals = []): bool
 	{
 		$link = $this->resource->createLink($class);
 		if ($link === null) return false;
@@ -141,7 +143,9 @@ final class OK implements Response
 		if (isset($optionals['label'   ])) $link->setLabel   ($optionals['label'   ], $values);
 		if (isset($optionals['icon'    ])) $link->setIcon    ($optionals['icon'    ]);
 		if (isset($optionals['selected'])) $link->setSelected($optionals['selected']);
+		if (isset($optionals['disabled'])) $link->setDisabled($optionals['disabled']);
 		if (isset($optionals['target'  ])) $link->setTarget  ($optionals['target'  ]);
+		if (isset($optionals['phase'   ])) $link->setPhase   ($optionals['phase'   ]);
 		if (!isset($this->part->links)) {
 			$this->part->links = [];
 		}
