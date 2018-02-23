@@ -60,12 +60,14 @@ final class Action extends Taggable
 	/**
 	 * Constructor
 	 *
-	 * @param array $values  the values as injected by annotation reader
+	 * @param string|array|null $text  the text to parse or the values as injected by annotation reader
 	 */
-	public function __construct(array $values = null)
+	public function __construct($text = null)
 	{
-		if (isset($values["value"])) {
-			$this->text = $values["value"];
+		if (is_string($text)) {
+			$this->text = $text;
+		} elseif (isset($text["value"])) {
+			$this->text = $text["value"];
 		}
 	}
 
