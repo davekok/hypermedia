@@ -53,14 +53,14 @@ class ResourceCompiler
 		return $item;
 	}
 
-	private function compileObjectType(Type\ObjectType $object, TagMatcher $matcher): void
+	private function compileObjectType($object, TagMatcher $matcher): void
 	{
 		$fieldDescriptors = [];
 		foreach ($object->getFields() as $name => $variants) {
 			$field = $matcher->findBestMatch($variants);
 			if ($field) {
 				$type = $field->getType();
-				if ($type instanceof Type\ObjectType) {
+				if ($type instanceof Type\ObjectType || $type instanceof Type\TupleType) {
 					$this->compileObjectType($type, $matcher);
 				}
 				$fieldDescriptors[] = [
@@ -76,13 +76,4 @@ class ResourceCompiler
 		}
 		$object->setFieldDescriptors($fieldDescriptors);
 	}
-
-	/**
-	 * @param string $name          name
-	 * @param string $type          the type descriptor
-	 * @param mixed  $defaultValue  the default value
-	 * @param int    $flags         field flags
-	 * @param string $autocomplete  autocomplete expression
-	 * @param string $label         label
-	 */
 }

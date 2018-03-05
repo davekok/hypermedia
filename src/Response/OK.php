@@ -138,7 +138,7 @@ final class OK implements Response
 		$link = $this->resource->createLink($class);
 		if ($link === null) return false;
 		$link->setName($name);
-		$values = $optionals['values']??[];
+		$values = $optionals['values'] ?? [];
 		if (isset($optionals['slot'    ])) $link->setSlot    ($optionals['slot'    ]);
 		if (isset($optionals['label'   ])) $link->setLabel   ($optionals['label'   ], $values);
 		if (isset($optionals['icon'    ])) $link->setIcon    ($optionals['icon'    ]);

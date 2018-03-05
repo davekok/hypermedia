@@ -8,11 +8,11 @@ use Sturdy\Activity\Meta\FieldFlags;
 use Sturdy\Activity\Translator;
 
 /**
- * Object type
+ * Tuple type
  */
-final class ObjectType extends Type
+final class TupleType extends Type
 {
-	const type = "object";
+	const type = "tuple";
 
 	private $fieldDescriptors;
 	private $fields; // only used for during compilation
@@ -115,6 +115,6 @@ final class ObjectType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		return is_object($value);
+		return is_array($value);
 	}
 }

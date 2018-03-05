@@ -28,6 +28,7 @@ abstract class Type
 		SetType::type => SetType::class,
 		StringType::type => StringType::class,
 		TimeType::type => TimeType::class,
+		TupleType::type => TupleType::class,
 		URLType::type => URLType::class,
 		UUIDType::type => UUIDType::class,
 		WeekDayType::type => WeekDayType::class,

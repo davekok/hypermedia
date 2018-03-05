@@ -10,7 +10,8 @@ use Sturdy\Activity\Meta\{
 };
 use Sturdy\Activity\Meta\Type\{
 	Type,
-	ObjectType
+	ObjectType,
+	TupleType
 };
 use Sturdy\Activity\Response\{
 	Accepted,
@@ -38,6 +39,7 @@ final class Resource
 
 	private $response;
 
+	private $main;
 	private $verb;
 	private $conditions;
 	private $hints;
@@ -81,6 +83,7 @@ final class Resource
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
 		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self->main = true;
 		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
@@ -96,6 +99,7 @@ final class Resource
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
 		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self->main = true;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -108,6 +112,7 @@ final class Resource
 	public function createAttachedResource(string $class): self
 	{
 		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self->main = false;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -167,7 +172,9 @@ final class Resource
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
 		$this->preRecon($values);
-		$this->checkFields($this->fields, $this->object, $values, $badRequest);
+		foreach ($this->fields as $field) {
+			$this->object->{$field[0]} = $this->checkField($field, $values[$field[0]]??null, $badRequest, $field[0]);
+		}
 		if ($badRequest->hasMessages()) {
 			throw $badRequest;
 		}
@@ -188,10 +195,9 @@ final class Resource
 			}
 			$this->response->hints(...$this->hints);
 
-			$content = new stdClass;
-			$state = $this->recurseFields($this->object, $content, $this->fields, $translatorParameters, $preserve);
+			[$content, $state] = $this->createContent($this->object, $this->fields, $translatorParameters, $preserve);
 			$this->response->setContent($content);
-			if ($this->verbflags->hasSelfLink()) {
+			if ($this->main && $this->verbflags->hasSelfLink()) {
 				$this->response->link("self", $this->class, ["values"=>$state]);
 			}
 		}
@@ -199,106 +205,136 @@ final class Resource
 		return $this->response;
 	}
 
-	private function checkFields(array $fieldDescriptors, /*object*/ $object, array $values, BadRequest $badRequest, string $prefix = "")
+	private function checkField(array $fieldDescriptor, $value, BadRequest $badRequest, string $path = "")
 	{
-		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
-			// flags check
-			$flags = new FieldFlags($flags);
-			if ($flags->isRequired() && !isset($values[$name]) && ($flags->isMeta() || $flags->isState() || $this->verb === "POST")) {
-				$badRequest->addMessage("$prefix$name is required");
-			}
-			if ($flags->isReadonly() && isset($values[$name])) {
-				$badRequest->addMessage("$prefix$name is readonly");
-			}
-			if ($flags->isDisabled() && isset($values[$name])) {
-				$badRequest->addMessage("$prefix$name is disabled");
-			}
-			// type check
-			if (isset($values[$name])) {
-				$type = Type::createType($type);
-				if ($type instanceof ObjectType) {
-					if ($flags->isArray()) {
-						if (is_array($values[$name])) {
-							$object->$name = [];
-							$l = count($values[$name]);
-							for ($i = 0; $i < $l; ++$i) {
-								if (!isset($values[$name][$i])) {
-									$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
-								}
-								$object->$name[$i] = $subobject = new stdClass;
-								$this->checkFields($type->getFieldDescriptors(), $subobject, $values[$name][$i], $badRequest, "$prefix$name\[$i\].");
+		[$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon] = $fieldDescriptor;
+
+		// flags check
+		$flags = new FieldFlags($flags);
+		if ($flags->isRequired() && !isset($value) && ($flags->isMeta() || $flags->isState() || $this->verb === "POST")) {
+			$badRequest->addMessage("$path is required");
+		}
+		if ($flags->isReadonly() && isset($value)) {
+			$badRequest->addMessage("$path is readonly");
+		}
+		if ($flags->isDisabled() && isset($value)) {
+			$badRequest->addMessage("$path is disabled");
+		}
+
+		// type check
+		if (isset($value)) {
+			$type = Type::createType($type);
+			// object type
+			if ($type instanceof ObjectType) {
+				// array of objects
+				if ($flags->isArray()) {
+					if (is_array($value)) {
+						$object = [];
+						$l = count($value);
+						for ($i = 0; $i < $l; ++$i) {
+							if (!isset($value[$i])) {
+								$badRequest->addMessage("Expected type of $path\[$i\] is array, " . gettype($value) . " found.");
 							}
-						} else {
-							$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
-						}
-					} elseif ($flags->isMatrix()) {
-						if (is_array($values[$name])) {
-							$xl = count($values[$name]);
-							for ($x = 0; $x < $xl; ++$x) {
-								$row = $values[$name][$x] ?? null;
-								if (is_array($row)) {
-									$object->$name = [];
-									$yl = count($values[$name]);
-									for ($y = 0; $y < $yl; ++$y) {
-										if (!isset($row[$y])) {
-											$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
-										}
-										$object->$name[$x][$y] = $subobject = new stdClass;
-										$this->checkFields($type->getFieldDescriptors(), $subobject, $row[$y], $badRequest, "$prefix$name\[$x\]\[$y\].");
-									}
-								} else {
-									$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
-								}
+							$object[i] = new stdClass;
+							foreach ($type->getFieldDescriptors() as $field) {
+								$object[i]->{$field[0]} = $this->checkField($field, $value[$i][$field[0]], $badRequest, "$path\[$i\].{$field[0]}");
 							}
-						} else {
-							$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
 						}
+						return $object;
 					} else {
-						$object->$name = new stdClass;
-						$this->checkFields($type->getFieldDescriptors(), $object->$name, $values[$name], $badRequest, "$prefix$name.");
+						$badRequest->addMessage("Expected type of $path is array, " . gettype($value) . " found.");
 					}
-					continue;
-				} elseif ($flags->isArray()) {
-					if (is_array($values[$name])) {
-						foreach ($values[$name] as $value) {
-							if (!$type->filter($value)) {
-								$badRequest->addMessage("$prefix$name does not have a valid value: {$value}");
-							}
-						}
-					} else {
-						$badRequest->addMessage("Expected type of $prefix$name is array, " . gettype($values[$name]) . " found.");
-					}
+
+				// matrix of objects
 				} elseif ($flags->isMatrix()) {
-					if (is_array($values[$name])) {
-						foreach ($values[$name] as $row) {
+					if (is_array($value)) {
+						$matrix = [];
+						$xl = count($value);
+						for ($x = 0; $x < $xl; ++$x) {
+							$row = $value[$x] ?? null;
 							if (is_array($row)) {
-								foreach ($row as $value) {
-									if (!$type->filter($value)) {
-										$badRequest->addMessage("$prefix$name does not have a valid value: {$value}");
+								$yl = count($value);
+								for ($y = 0; $y < $yl; ++$y) {
+									if (isset($row[$y])) {
+										$matrix[$x][$y] = new stdClass;
+										foreach ($type->getFieldDescriptors() as $field) {
+											$matrix[$x][$y]->{$field[0]} = $this->checkField($field, $row[$y][$field[0]], $badRequest, "$path\[$x\]\[$y\].{$field[0]}");
+										}
 									}
 								}
 							} else {
-								$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
+								$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
 							}
 						}
+						return $matrix;
 					} else {
-						$badRequest->addMessage("Expected type of $prefix$name is matrix, " . gettype($values[$name]) . " found.");
+						$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
 					}
-				} elseif ($flags->isMultiple()) {
-					foreach (explode(",", $values[$name]) as $value) {
-						$value = trim($value);
-						if (!$type->filter($value)) {
-							$badRequest->addMessage("$prefix$name does not have a valid value: {$value}");
+
+				// normal object
+				} else {
+					$object = new stdClass;
+					foreach ($type->getFieldDescriptors() as $field) {
+						$object->{$field[0]} = $this->checkField($field, $value[$field[0]], $badRequest, "$path.{$field[0]}");
+					}
+					return $object;
+				}
+
+			// tuple
+			} elseif ($type instanceof TupleType) {
+				$tuple = [];
+				foreach ($type->getFieldDescriptors() as $i => $field) {
+					$tuple[$i] = $this->checkField($field, $value[$i], $badRequest, "$path\[$i\]");
+				}
+				return $tuple;
+
+			// array
+			} elseif ($flags->isArray()) {
+				if (is_array($value)) {
+					foreach ($value as $v) {
+						if (!$type->filter($v)) {
+							$badRequest->addMessage("$path does not have a valid value: {$v}");
 						}
 					}
 				} else {
-					if (!$type->filter($values[$name])) {
-						$badRequest->addMessage("$prefix$name does not have a valid value: ".print_r($values[$name],true));
+					$badRequest->addMessage("Expected type of $path is array, " . gettype($value) . " found.");
+				}
+
+			// matrix
+			} elseif ($flags->isMatrix()) {
+				if (is_array($value)) {
+					foreach ($value as $row) {
+						if (is_array($row)) {
+							foreach ($row as $value) {
+								if (!$type->filter($value)) {
+									$badRequest->addMessage("$path does not have a valid value: {$value}");
+								}
+							}
+						} else {
+							$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
+						}
+					}
+				} else {
+					$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
+				}
+
+			// multiple
+			} elseif ($flags->isMultiple()) {
+				foreach (explode(",", $value) as $v) {
+					$v = trim($v);
+					if (!$type->filter($v)) {
+						$badRequest->addMessage("$path does not have a valid value: {$value}");
 					}
 				}
+
+			// normal
+			} else {
+				if (!$type->filter($value)) {
+					$badRequest->addMessage("$path does not have a valid value: ".print_r($value, true));
+				}
 			}
-			$object->$name = $values[$name] ?? $defaultValue;
 		}
+		return $value ?? $defaultValue;
 	}
 
 	/**
@@ -309,73 +345,147 @@ final class Resource
 	 * @param  array  $preserve              preserve values
 	 * @return $state
 	 */
-	private function recurseFields($source, stdClass $dest, array $fieldDescriptors, array $translatorParameters, ?array $preserve): array
+	private function createContent($source, array $fieldDescriptors, array $translatorParameters, ?array $preserve): array
 	{
+		$content = new stdClass;
 		$state = [];
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isState()) {
 				if (isset($source->$name)) {
-					$state[$name] = $source->$name;
+					$state[$name] = $preserve[$name] ?? $source->$name ?? null;
 				}
+			} elseif ($flags->isMeta()) {
+				if (!isset($dest->meta)) {
+					$content->meta = new stdClass;
+				}
+				[$content->fields[], $content->meta->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+			} elseif ($flags->isData()) {
+				[$content->fields[], $content->data] = $this->createField($preserve[$name] ?? $source->$name ?? null,
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
 			} else {
-				$field = new stdClass;
-				$field->name = $name;
-				if ($label) {
-					$field->label = ($this->translator)($label, $translatorParameters);
+				if (!isset($content->data)) {
+					$content->data = new stdClass;
 				}
-				if ($icon) {
-					$field->icon = $icon;
-				}
-				if ($defaultValue !== null) {
-					$field->defaultValue = $defaultValue;
-				}
-				if ($autocomplete) {
-					$field->autocomplete = $autocomplete;
-				}
-				$flags->meta($field);
-				$type = Type::createType($type);
-				$type->meta($field);
-				if ($type instanceof ObjectType) {
-					$subdest = new stdClass;
-					$default = ($flags->isArray() || $flags->isMatrix()) ? [] : new stdClass;
-					$substate = $this->recurseFields($source->$name ?? $default, $subdest, $type->getFieldDescriptors(), $translatorParameters, $preserve[$name] ?? null);
-					if (isset($subdest->fields)) {
-						$field->fields = $subdest->fields;
-					}
-					if (isset($subdest->meta)) {
-						if (!isset($dest->meta)) $dest->meta = new stdClass;
-						$dest->meta->$name = $subdest->meta;
-					}
-					if (isset($subdest->data)) {
-						if ($flags->isData()) {
-							$dest->data = $subdest->data;
-						} else {
-							if (!isset($dest->data)) $dest->data = new stdClass;
-							$dest->data->$name = $subdest->data;
-						}
-					}
-					if ($substate) {
-						$state[$name] = $substate;
-					}
-				} elseif (!is_array($source)) {
-					if ($flags->isMeta()) {
-						if (!isset($dest->meta)) $dest->meta = new stdClass;
-						$dest->meta->$name = $preserve[$name] ?? $source->$name ?? null;
-					} elseif ($flags->isData() && !isset($dest->data)) {
-						$dest->data = $preserve[$name] ?? $source->$name ?? null;
-					} else {
-						if (!isset($dest->data)) $dest->data = new stdClass;
-						$dest->data->$name = $preserve[$name] ?? $source->$name ?? null;
-					}
-				}
-				$dest->fields[] = $field;
+				[$content->fields[], $content->data->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
 			}
 		}
-		if (is_array($source)) {
-			$dest->data = $source;
+		return [$content, $state];
+	}
+
+	private function createField($value, $translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon)
+	{
+		$field = new stdClass;
+		$field->name = $name;
+		if ($label) {
+			$field->label = ($this->translator)($label, $translatorParameters);
 		}
-		return $state;
+		if ($icon) {
+			$field->icon = $icon;
+		}
+		if ($defaultValue !== null) {
+			$field->defaultValue = $defaultValue;
+		}
+		if ($autocomplete) {
+			$field->autocomplete = $autocomplete;
+		}
+		$flags->meta($field);
+		$type = Type::createType($type);
+		$type->meta($field);
+		if ($type instanceof ObjectType) {
+			$field->fields = [];
+			if ($flags->isArray() || $flags->isMatrix()) {
+				$value = $value ?? [];
+				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+					$flags = new FieldFlags($flags);
+					[$field->fields[], $i] = $this->createField(null,
+						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+				}
+			} else {
+				$value = $value ?? new stdClass;
+				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+					$flags = new FieldFlags($flags);
+					[$field->fields[], $value->$name] = $this->createField($value->$name ?? null,
+						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+				}
+			}
+		} elseif ($type instanceof TupleType) {
+			$field->fields = [];
+			$value = $value ?? [];
+			$i = 0;
+			foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+				$flags = new FieldFlags($flags);
+				[$field->fields[], $value[$i]] = $this->createField($value[$i] ?? null,
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+				++$i;
+			}
+		}
+		return [$field, $value];
+	}
+
+	private function recurseField($name, $type, $flags, $value, $defaultValue, $preserve, $label, $icon, &$state, array $translatorParameters): array
+	{
+		$flags = new FieldFlags($flags);
+		if ($flags->isState()) {
+			if (isset($source)) {
+				$state = $source;
+			}
+		} else {
+			$field = new stdClass;
+			$field->name = $name;
+			if ($label) {
+				$field->label = ($this->translator)($label, $translatorParameters);
+			}
+			if ($icon) {
+				$field->icon = $icon;
+			}
+			if ($defaultValue !== null) {
+				$field->defaultValue = $defaultValue;
+			}
+			if ($autocomplete) {
+				$field->autocomplete = $autocomplete;
+			}
+			$flags->meta($field);
+			$type = Type::createType($type);
+			$type->meta($field);
+			if ($type instanceof ObjectType) {
+				$subdest = new stdClass;
+				$default = ($flags->isArray() || $flags->isMatrix()) ? [] : new stdClass;
+				$substate = $this->recurseFields($source->$name ?? $default, $subdest, $type->getFieldDescriptors(), $translatorParameters, $preserve[$name] ?? null);
+				if (isset($subdest->fields)) {
+					$field->fields = $subdest->fields;
+				}
+				if (isset($subdest->meta)) {
+					if (!isset($dest->meta)) $dest->meta = new stdClass;
+					$dest->meta->$name = $subdest->meta;
+				}
+				if (isset($subdest->data)) {
+					if ($flags->isData()) {
+						$dest->data = $subdest->data;
+					} else {
+						if (!isset($dest->data)) $dest->data = new stdClass;
+						$dest->data->$name = $subdest->data;
+					}
+				}
+				if ($substate) {
+					$state = $substate;
+				}
+			} elseif ($type instanceof TupleType) {
+			} elseif (!is_array($source)) {
+				if ($flags->isMeta()) {
+					if (!isset($dest->meta)) $dest->meta = new stdClass;
+					$dest->meta->$name = $preserve[$name] ?? $source->$name ?? null;
+				} elseif ($flags->isData() && !isset($dest->data)) {
+					$dest->data = $preserve[$name] ?? $source->$name ?? null;
+				} else {
+					if (!isset($dest->data)) $dest->data = new stdClass;
+					$dest->data->$name = $preserve[$name] ?? $source->$name ?? null;
+				}
+			}
+			$dest->fields[] = $field;
+		}
 	}
 
 	/**

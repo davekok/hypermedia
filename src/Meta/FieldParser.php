@@ -35,6 +35,7 @@ final class FieldParser
 	private $linkToken;
 	private $listToken;
 	private $objectToken;
+	private $tupleToken;
 	private $htmlToken;
 	private $dataToken;
 	private $metaToken;
@@ -106,6 +107,8 @@ final class FieldParser
 		$this->linkToken          = "/^link/";
 		$this->listToken          = "/^list/";
 		$this->objectToken        = "/^object/";
+		$this->startTupleToken    = "/^\[/";
+		$this->endTupleToken      = "/^\]/";
 		$this->htmlToken          = "/^html/";
 		$this->dataToken          = "/^data/";
 		$this->metaToken          = "/^meta/";
@@ -367,6 +370,10 @@ final class FieldParser
 				$field->setType($type = new Type\ObjectType());
 				$this->parseArray($flags);
 				$this->parseFields($type);
+			} elseif ($this->isbitset($mask, 1) && $this->match('startTupleToken')) {
+				$this->clearbit($mask, 1);
+				$field->setType($type = new Type\TupleType());
+				$this->parseTuple($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('htmlToken')) {
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\HTMLType());
@@ -485,6 +492,29 @@ final class FieldParser
 		}
 		if (0 === $sequence) {
 			throw new ParserError($this->parseError("Unexpected token while processing subfields"));
+		}
+	}
+
+	private function parseTuple(Type\TupleType $type): void
+	{
+		$i = 0;
+		$sequence = 0;
+		while ($this->valid()) {
+			if ($this->match('spaceToken')) {
+				// do nothing
+			} elseif (0 === $sequence) {
+				$field = new Field;
+				$field->setName((string)$i++);
+				$type->addField($field);
+				$this->parseTokens($field, true);
+				$sequence = 1;
+			} elseif (1 === $sequence && $this->match('listDelimiterToken')) {
+				$sequence = 0;
+			} elseif ($this->match('endTupleToken')) {
+				break;
+			} else {
+				throw new ParserError($this->parseError("Unexpected token while processing tuple"));
+			}
 		}
 	}
 
