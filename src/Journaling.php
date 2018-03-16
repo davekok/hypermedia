@@ -155,6 +155,15 @@ class Journaling
 	}
 
 	/**
+	 * Commit change to journal.
+	 */
+	public function commit(/*object*/ $object, ?string $action, int $status, ?string $statusText = null, ?JournalBranch $branch = null): void
+	{
+		($branch ?? $this->mainBranch)->addEntry($object, $action, $status, $statusText);
+		$this->save();
+	}
+
+	/**
 	 * Get the current entry for a branch.
 	 *
 	 * @return [$object, $action]  teh current entry

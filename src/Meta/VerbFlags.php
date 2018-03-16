@@ -61,7 +61,7 @@ class VerbFlags
 				$this->flags |= self::seeOther;
 				break;
 			default:
-				new InvalidArgumentException("Unsupported status $status.");
+				throw new InvalidArgumentException("Unsupported status $status.");
 		}
 	}
 
