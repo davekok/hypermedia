@@ -21,17 +21,20 @@ final class Link
 	private $slot;
 	private $label;
 	private $icon;
-	private $selected;
 	private $disabled;
 	private $target;
 	private $phase;
+	private $mainClass;
+	private $mainQuery;
 
-	public function __construct(Translator $translator, string $basePath, string $namespace, ?CacheItem_Resource $resource)
+	public function __construct(Translator $translator, string $basePath, string $namespace, ?CacheItem_Resource $resource, bool $mainClass = false, array $mainQuery = [])
 	{
 		$this->translator = $translator;
 		$this->basePath = $basePath;
 		$this->namespace = $namespace;
 		$this->resource = $resource;
+		$this->mainClass = $mainClass;
+		$this->mainQuery = $mainQuery;
 		if ($this->resource) {
 			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
 				$flags = new FieldFlags($flags);
@@ -53,22 +56,43 @@ final class Link
 			$obj->href = $this->basePath . trim(strtr($path, "\\", "/"), "/");
 			$known = "";
 			$unknown = "";
+			$selectedTrue = false;
+			$selectedFalse = false;
 			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
 				$flags = new FieldFlags($flags);
 				if ($flags->isMeta()) {
 					if ($flags->isReadonly() || $flags->isDisabled()) continue;
 					if (array_key_exists($name, $values)) {
 						$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
+						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {
+							$selectedTrue = true;
+						} else {
+							$selectedFalse = true;
+						}
 					} elseif ($allowTemplated) {
 						$unknown.= "," . $name;
+						if ($this->mainClass && !isset($this->mainQuery[$name])) {
+							$selectedTrue = true;
+						} else {
+							$selectedFalse = true;
+						}
 					} elseif ($flags->isRequired()) {
 						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
+					} elseif ($this->mainClass && isset($this->mainQuery[$name])) {
+						$selectedFalse = true;
 					}
 				} elseif ($flags->isState()) {
 					if (array_key_exists($name, $values)) {
 						$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
+						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {
+							$selectedTrue = true;
+						} else {
+							$selectedFalse = true;
+						}
 					} elseif (!$allowTemplated && $flags->isRequired()) {
 						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
+					} elseif ($this->mainClass && isset($this->mainQuery[$name])) {
+						$selectedFalse = true;
 					}
 				}
 			}
@@ -86,6 +110,9 @@ final class Link
 			if (!empty($unknown)) {
 				$obj->templated = true;
 			}
+			if ($selectedTrue && !$selectedFalse) {
+				$obj->selected = true;
+			}
 		} else {
 			$obj->disabled = true;
 		}
@@ -101,9 +128,6 @@ final class Link
 		}
 		if ($this->icon) {
 			$obj->icon = $this->icon;
-		}
-		if ($this->selected) {
-			$obj->selected = $this->selected;
 		}
 		if ($this->disabled) {
 			$obj->disabled = $this->disabled;
@@ -164,16 +188,6 @@ final class Link
 	public function getIcon(): ?string
 	{
 		return $this->icon;
-	}
-
-	public function setSelected(?bool $selected): void
-	{
-		$this->selected = $selected;
-	}
-
-	public function getSelected(): ?bool
-	{
-		return $this->selected;
 	}
 
 	public function setDisabled(?bool $disabled): void

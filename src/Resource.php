@@ -48,8 +48,10 @@ final class Resource
 	private $object;
 	private $method;
 	private $verbflags;
+	private $mainClass;
+	private $query;
 
-	public function __construct(Cache $cache, Translator $translator, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, $di)
+	public function __construct(Cache $cache, Translator $translator, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query, $di)
 	{
 		$this->cache = $cache;
 		$this->translator = $translator;
@@ -58,6 +60,8 @@ final class Resource
 		$this->tags = $tags;
 		$this->basePath = $basePath;
 		$this->namespace = $namespace;
+		$this->mainClass = $mainClass;
+		$this->query = $query;
 		$this->di = $di;
 	}
 
@@ -73,7 +77,7 @@ final class Resource
 			return new Link($this->translator, $this->basePath, $this->namespace, null);
 		} else {
 			$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
-			return $resource ? new Link($this->translator, $this->basePath, $this->namespace, $resource) : null;
+			return $resource ? new Link($this->translator, $this->basePath, $this->namespace, $resource, $this->mainClass === $class, $this->query) : null;
 		}
 	}
 
@@ -82,12 +86,13 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
 		}
+		$this->mainClass = $self->mainClass = $resource->getClass();
 		$self->initResource($resource, $verb, $conditions);
 		$self->initResponse();
 		return $self;
@@ -98,7 +103,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -111,7 +116,7 @@ final class Resource
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->di);
+		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = false;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
@@ -423,69 +428,6 @@ final class Resource
 			}
 		}
 		return [$field, $value];
-	}
-
-	private function recurseField($name, $type, $flags, $value, $defaultValue, $preserve, $label, $icon, &$state, array $translatorParameters): array
-	{
-		$flags = new FieldFlags($flags);
-		if ($flags->isState()) {
-			if (isset($source)) {
-				$state = $source;
-			}
-		} else {
-			$field = new stdClass;
-			$field->name = $name;
-			if ($label) {
-				$field->label = ($this->translator)($label, $translatorParameters);
-			}
-			if ($icon) {
-				$field->icon = $icon;
-			}
-			if ($defaultValue !== null) {
-				$field->defaultValue = $defaultValue;
-			}
-			if ($autocomplete) {
-				$field->autocomplete = $autocomplete;
-			}
-			$flags->meta($field);
-			$type = Type::createType($type);
-			$type->meta($field);
-			if ($type instanceof ObjectType) {
-				$subdest = new stdClass;
-				$default = ($flags->isArray() || $flags->isMatrix()) ? [] : new stdClass;
-				$substate = $this->recurseFields($source->$name ?? $default, $subdest, $type->getFieldDescriptors(), $translatorParameters, $preserve[$name] ?? null);
-				if (isset($subdest->fields)) {
-					$field->fields = $subdest->fields;
-				}
-				if (isset($subdest->meta)) {
-					if (!isset($dest->meta)) $dest->meta = new stdClass;
-					$dest->meta->$name = $subdest->meta;
-				}
-				if (isset($subdest->data)) {
-					if ($flags->isData()) {
-						$dest->data = $subdest->data;
-					} else {
-						if (!isset($dest->data)) $dest->data = new stdClass;
-						$dest->data->$name = $subdest->data;
-					}
-				}
-				if ($substate) {
-					$state = $substate;
-				}
-			} elseif ($type instanceof TupleType) {
-			} elseif (!is_array($source)) {
-				if ($flags->isMeta()) {
-					if (!isset($dest->meta)) $dest->meta = new stdClass;
-					$dest->meta->$name = $preserve[$name] ?? $source->$name ?? null;
-				} elseif ($flags->isData() && !isset($dest->data)) {
-					$dest->data = $preserve[$name] ?? $source->$name ?? null;
-				} else {
-					if (!isset($dest->data)) $dest->data = new stdClass;
-					$dest->data->$name = $preserve[$name] ?? $source->$name ?? null;
-				}
-			}
-			$dest->fields[] = $field;
-		}
 	}
 
 	/**

@@ -90,30 +90,31 @@ final class HyperMedia
 		$request = Http::request($request, $responseAdaptor);
 		$verb = $request->getVerb();
 		$path = $request->getPath();
+		$query = $this->getQuery($request);
 		switch ($verb) {
 			case "GET":
-				$values = $this->getQuery($request);
-				$response = $this->call($verb, $path, $values, $tags);
+				$values = $query;
+				$response = $this->call($verb, $path, $values, $query, $tags);
 				break;
 
 			case "POST":
-				$values = array_merge($this->getBody($request), $this->getQuery($request));
-				$response = $this->call($verb, $path, $values, $tags);
+				$values = array_merge($this->getBody($request), $query);
+				$response = $this->call($verb, $path, $values, $query, $tags);
 				break;
 
 			case "RECON":
 				$verb = "GET";
 				$body = $this->getBody($request);
 				$conditions = $body['conditions'];
-				$values = array_merge($this->getQuery($request), $body['data']);
-				$response = $this->call($verb, $path, $values, $tags, $conditions, $body['data']);
+				$values = array_merge($query, $body['data']);
+				$response = $this->call($verb, $path, $values, $query, $tags, $conditions, $body['data']);
 				break;
 
 			case "LOOKUP":
 				$verb = "GET";
 				$body = $this->getBody($request);
-				$values = array_merge($this->getQuery($request), $body);
-				$response = $this->call($verb, $path, $values, $tags, [], $body);
+				$values = array_merge($query, $body);
+				$response = $this->call($verb, $path, $values, $query, $tags, [], $body);
 				break;
 
 			default:
@@ -134,17 +135,17 @@ final class HyperMedia
 	 * @param  array  $preserve    preserve field values
 	 * @return Response   the response
 	 */
-	private function call(string $verb, string $path, array $values, array $tags, array $conditions = [], array $preserve = null): Response
+	private function call(string $verb, string $path, array $values, array $query, array $tags, array $conditions = [], array $preserve = null): Response
 	{
 		try {
 			$path = substr($path, strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
+				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))
 					->createRootResource($verb, $conditions);
 				$response = $resource->call($values, $preserve);
 			} else { // if normal resource
 				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
-				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $this->di))
+				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query, $this->di))
 					->createResource($class, $verb, $conditions);
 				$response = $resource->call($values, $preserve);
 			}
