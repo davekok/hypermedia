@@ -355,27 +355,34 @@ final class Resource
 				if (isset($source->$name)) {
 					$state[$name] = $preserve[$name] ?? $source->$name ?? null;
 				}
-			} elseif ($flags->isMeta()) {
-				if (!isset($dest->meta)) {
+			}
+		}
+
+		foreach($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]){
+			$flags = new FieldFlags($flags);
+			if ($flags->isState()) {
+				continue;
+			} else if ($flags->isMeta()) {
+				if (!isset($content->meta)) {
 					$content->meta = new stdClass;
 				}
 				[$content->fields[], $content->meta->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
-			} elseif ($flags->isData()) {
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
+			} else if ($flags->isData()) {
 				[$content->fields[], $content->data] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
 			} else {
 				if (!isset($content->data)) {
 					$content->data = new stdClass;
 				}
 				[$content->fields[], $content->data->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
 			}
 		}
 		return [$content, $state];
 	}
 
-	private function createField($value, $translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon)
+	private function createField($value, $translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state)
 	{
 		$field = new stdClass;
 		$field->name = $name;
@@ -393,7 +400,7 @@ final class Resource
 		}
 		$flags->meta($field);
 		$type = Type::createType($type);
-		$type->meta($field);
+		$type->meta($field, $state);
 		if ($type instanceof ObjectType) {
 			$field->fields = [];
 			if ($flags->isArray() || $flags->isMatrix()) {
@@ -401,14 +408,14 @@ final class Resource
 				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 					$flags = new FieldFlags($flags);
 					[$field->fields[], $i] = $this->createField(null,
-						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
 				}
 			} else {
 				$value = $value ?? new stdClass;
 				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 					$flags = new FieldFlags($flags);
 					[$field->fields[], $value->$name] = $this->createField($value->$name ?? null,
-						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
 				}
 			}
 		} elseif ($type instanceof TupleType) {
@@ -418,7 +425,7 @@ final class Resource
 			foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 				$flags = new FieldFlags($flags);
 				[$field->fields[], $value[$i]] = $this->createField($value[$i] ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
 				++$i;
 			}
 		}

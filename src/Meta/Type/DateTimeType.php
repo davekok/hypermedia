@@ -8,6 +8,8 @@ use stdClass;
 final class DateTimeType extends Type
 {
 	const type = "datetime";
+	private $minimumRange;
+	private $maximumRange;
 
 	/**
 	 * Constructor
@@ -16,6 +18,11 @@ final class DateTimeType extends Type
 	 */
 	public function __construct(string $state = null)
 	{
+		if ($state !== null) {
+			[$min, $max] = explode(",", $state);
+			$this->minimumRange = strlen($min) ? $min : null;
+			$this->maximumRange = strlen($max) ? $min : null;
+		}
 	}
 
 	/**
@@ -25,17 +32,50 @@ final class DateTimeType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type;
+		return self::type.":".$this->minimumRange.",".$this->maximumRange;
 	}
 
 	/**
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
+	 * @param array $state
 	 */
-	public function meta(stdClass $meta): void
+	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getMinimumRange()
+	{
+		return $this->minimumRange;
+	}
+
+	/**
+	 * @param string $minimumRange
+	 */
+	public function setMinimumRange(string $minimumRange)
+	{
+		$this->minimumRange = $minimumRange;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getMaximumRange()
+	{
+		return $this->maximumRange;
+	}
+
+	/**
+	 * @param string $maximumRange
+	 */
+	public function setMaximumRange(string $maximumRange)
+	{
+		$this->maximumRange = $maximumRange;
 	}
 
 	/**

@@ -61,8 +61,9 @@ abstract class Type
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
+	 * @param array $state
 	 */
-	public abstract function meta(stdClass $meta): void;
+	public abstract function meta(stdClass $meta, array $state): void;
 
 	/**
 	 * Filter value
