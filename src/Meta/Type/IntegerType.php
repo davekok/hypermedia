@@ -23,8 +23,8 @@ final class IntegerType extends Type
 	{
 		if ($state !== null) {
 			[$min, $max, $step] = explode(",", $state);
-			$this->minimumRange = strlen($min) ? (int)$min : null;
-			$this->maximumRange = strlen($max) ? (int)$max : null;
+			$this->minimumRange = strlen($min) ? ($min[0] == '$' ? $min : (int)$min) : null;
+			$this->maximumRange = strlen($max) ? ($max[0] == '$' ? $max : (int)$max) : null;
 			$this->step = strlen($step) ? (int)$step : null;
 		}
 	}
@@ -33,15 +33,30 @@ final class IntegerType extends Type
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
+	 * @param array $state
 	 */
-	public function meta(stdClass $meta): void
+	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
 		if (isset($this->minimumRange)) {
-			$meta->min = $this->minimumRange;
+			if (is_int($this->minimumRange)) {
+				$meta->min = $this->minimumRange;
+			} else {
+				$key = substr($this->minimumRange,1);
+				if (isset($state[$key])) {
+					$meta->min = $state[$key];
+				}
+			}
 		}
 		if (isset($this->maximumRange)) {
-			$meta->max = $this->maximumRange;
+			if (is_int($this->maximumRange)) {
+				$meta->max = $this->maximumRange;
+			} else {
+				$key = substr($this->maximumRange,1);
+				if (isset($state[$key])) {
+					$meta->max = $state[$key];
+				}
+			}
 		}
 		if (isset($this->step)) {
 			$meta->step = $this->step;
@@ -64,9 +79,14 @@ final class IntegerType extends Type
 	 * @param ?int $minimumRange
 	 * @return self
 	 */
-	public function setMinimumRange(?int $minimumRange): self
+	public function setMinimumRange(?string $minimumRange): self
 	{
-		$this->minimumRange = $minimumRange;
+		if ($minimumRange === null || $minimumRange[0] == '$') {
+			$this->minimumRange = $minimumRange;
+		} else {
+			$this->minimumRange = (int)$minimumRange;
+		}
+
 		return $this;
 	}
 
@@ -75,7 +95,7 @@ final class IntegerType extends Type
 	 *
 	 * @return ?int
 	 */
-	public function getMinimumRange(): ?int
+	public function getMinimumRange()
 	{
 		return $this->minimumRange;
 	}
@@ -86,9 +106,14 @@ final class IntegerType extends Type
 	 * @param ?int $maximumRange
 	 * @return self
 	 */
-	public function setMaximumRange(?int $maximumRange): self
+	public function setMaximumRange(?string $maximumRange): self
 	{
-		$this->maximumRange = $maximumRange;
+		if ($maximumRange === null || $maximumRange[0] == '$') {
+			$this->maximumRange = $maximumRange;
+		} else {
+			$this->maximumRange = (int)$maximumRange;
+		}
+
 		return $this;
 	}
 
@@ -97,7 +122,7 @@ final class IntegerType extends Type
 	 *
 	 * @return ?int
 	 */
-	public function getMaximumRange(): ?int
+	public function getMaximumRange()
 	{
 		return $this->maximumRange;
 	}
@@ -108,9 +133,13 @@ final class IntegerType extends Type
 	 * @param ?int $step
 	 * @return self
 	 */
-	public function setStep(?int $step): self
+	public function setStep(?string $step): self
 	{
-		$this->step = $step;
+		if ($step === null || $step[0] == '$') {
+			$this->step = $step;
+		} else {
+			$this->step = (int)$step;
+		}
 		return $this;
 	}
 

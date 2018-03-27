@@ -50,6 +50,8 @@ final class FieldParser
 	private $minToken;
 	private $maxToken;
 	private $stepToken;
+	private $minDateToken;
+	private $maxDateToken;
 	private $minlengthToken;
 	private $maxlengthToken;
 	private $patternToken;
@@ -79,6 +81,8 @@ final class FieldParser
 		$int = '0|[1-9][0-9]*';
 		$nsname = '[A-Za-z_][A-Za-z0-9_]+(?:\\\\[A-Za-z_][A-Za-z0-9_]+)*';
 		$name = '[A-Za-z_][A-Za-z0-9_]+';
+		$variable = '\$[A-Za-z_][A-Za-z0-9_]+';
+		$date = '[0-9]{4}-[0-9]{2}-[0-9]{2}';
 
 		$this->spaceToken         = "/^[\s\*]+/"; // include * character as space character to allow annotation in docblocks
 		$this->tagToken           = "/^#($name)/";
@@ -121,9 +125,11 @@ final class FieldParser
 		$this->lookupToken        = "/^lookup/";
 		$this->arrayToken         = "/^\[\]/";
 
-		$this->minToken           = "/^min=($int)/";
-		$this->maxToken           = "/^max=($int)/";
-		$this->stepToken          = "/^step=($int)/";
+		$this->minToken           = "/^min=($int|$variable)/";
+		$this->maxToken           = "/^max=($int|$variable)/";
+		$this->stepToken          = "/^step=($int|$variable)/";
+		$this->minDateToken       = "/^min=($date|$variable)/";
+		$this->maxDateToken       = "/^max=($date|$variable)/";
 
 		$this->minlengthToken     = "/^minlength=($int)/";
 		$this->maxlengthToken     = "/^maxlength=($int)/";
@@ -235,6 +241,8 @@ final class FieldParser
 		// bit 14: recon token
 		// bit 15: label token
 		// bit 16: icon token
+		// bit 17: minDate token
+		// bit 18: maxDate token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -243,6 +251,8 @@ final class FieldParser
 		$this->clearbit($mask, 9); // max length token
 		$this->clearbit($mask, 10); // pattern token
 		$this->clearbit($mask, 11); // autocomplete token
+		$this->clearbit($mask, 17); // minDate token
+		$this->clearbit($mask, 18); // maxDate token
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -297,6 +307,8 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 1) && $this->match('dateToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
+				$this->setbit($mask, 17);
+				$this->setbit($mask, 18);
 				$field->setType($type = new Type\DateType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('timeToken')) {
@@ -412,13 +424,19 @@ final class FieldParser
 				$flags->setMultiple();
 			} elseif ($this->isbitset($mask, 5) && $this->match('minToken', $min)) {
 				$this->clearbit($mask, 5);
-				$type->setMinimumRange((int)$min);
+				$type->setMinimumRange($min);
 			} elseif ($this->isbitset($mask, 6) && $this->match('maxToken', $max)) {
 				$this->clearbit($mask, 6);
-				$type->setMaximumRange((int)$max);
+				$type->setMaximumRange($max);
 			} elseif ($this->isbitset($mask, 7) && $this->match('stepToken', $step)) {
 				$this->clearbit($mask, 7);
-				$type->setStep((int)$step);
+				$type->setStep($step);
+			} elseif ($this->isbitset($mask, 17) && $this->match('minDateToken', $min)) {
+				$this->clearbit($mask, 17);
+				$type->setMinimumRange($min);
+			} elseif ($this->isbitset($mask, 18) && $this->match('maxDateToken', $max)) {
+				$this->clearbit($mask, 18);
+				$type->setMaximumRange($max);
 			} elseif ($this->isbitset($mask, 8) && $this->match('minlengthToken', $min)) {
 				$this->clearbit($mask, 8);
 				$type->setMinimumLength((int)$min);

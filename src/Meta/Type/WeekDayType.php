@@ -55,8 +55,9 @@ final class WeekDayType extends Type
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
+	 * @param array $state
 	 */
-	public function meta(stdClass $meta): void
+	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
 	}
