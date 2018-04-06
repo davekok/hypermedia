@@ -74,7 +74,11 @@ final class ListType extends Type
 	 */
 	public function filter(&$value): bool
 	{
-		if (!is_string($value)) return false;
-		return 1 === preg_match("/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/", $value);
+		$string = filter_var($value, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW);
+		if ($string === false) {
+			return false;
+		}
+		return true;
+//		return 1 === preg_match("/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/", $value);
 	}
 }
