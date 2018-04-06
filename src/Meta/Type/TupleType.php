@@ -47,7 +47,7 @@ final class TupleType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.":".serialize($this->fieldDescriptors);
+		return self::type . ":" . serialize($this->fieldDescriptors);
 	}
 
 	/**
@@ -66,7 +66,7 @@ final class TupleType extends Type
 	 */
 	public function getFieldDescriptors(): array
 	{
-		return $this->fieldDescriptors??[];
+		return $this->fieldDescriptors ?? [];
 	}
 
 	/**
@@ -87,7 +87,7 @@ final class TupleType extends Type
 	 */
 	public function getFields(): iterable
 	{
-		return $this->fields??[];
+		return $this->fields ?? [];
 	}
 
 	/**
@@ -97,7 +97,7 @@ final class TupleType extends Type
 	 */
 	public function getTaggables(): iterable
 	{
-		foreach ($this->fields??[] as $name => $fields) {
+		foreach ($this->fields ?? [] as $name => $fields) {
 			foreach ($fields as $field) {
 				yield $field;
 				$type = $field->getType();

@@ -424,13 +424,25 @@ final class FieldParser
 				$flags->setMultiple();
 			} elseif ($this->isbitset($mask, 5) && $this->match('minToken', $min)) {
 				$this->clearbit($mask, 5);
-				$type->setMinimumRange($min);
+				if ($min[0] === '$') {
+					$type->setMinimumRange($min);
+				} else {
+					$type->setMinimumRange((int)$min);
+				}
 			} elseif ($this->isbitset($mask, 6) && $this->match('maxToken', $max)) {
 				$this->clearbit($mask, 6);
-				$type->setMaximumRange($max);
+				if ($max[0] === '$') {
+					$type->setMaximumRange($max);
+				} else {
+					$type->setMaximumRange((int)$max);
+				}
 			} elseif ($this->isbitset($mask, 7) && $this->match('stepToken', $step)) {
 				$this->clearbit($mask, 7);
-				$type->setStep($step);
+				if ($step[0] === '$') {
+					$type->setStep($step);
+				} else {
+					$type->setStep((int)$step);
+				}
 			} elseif ($this->isbitset($mask, 17) && $this->match('minDateToken', $min)) {
 				$this->clearbit($mask, 17);
 				$type->setMinimumRange($min);

@@ -76,12 +76,14 @@ final class IntegerType extends Type
 	/**
 	 * Set minimum range
 	 *
-	 * @param ?int $minimumRange
+	 * @param $minimumRange
 	 * @return self
 	 */
-	public function setMinimumRange(?string $minimumRange): self
+	public function setMinimumRange($minimumRange): self
 	{
-		if ($minimumRange === null || $minimumRange[0] == '$') {
+		if (is_int($minimumRange)) {
+			$this->minimumRange = $minimumRange;
+		} else if ($minimumRange === null || $minimumRange[0] == '$') {
 			$this->minimumRange = $minimumRange;
 		} else {
 			$this->minimumRange = (int)$minimumRange;
@@ -93,7 +95,7 @@ final class IntegerType extends Type
 	/**
 	 * Get minimum range
 	 *
-	 * @return ?int
+	 * @return mixed
 	 */
 	public function getMinimumRange()
 	{
@@ -103,12 +105,14 @@ final class IntegerType extends Type
 	/**
 	 * Set maximum range
 	 *
-	 * @param ?int $maximumRange
+	 * @param $maximumRange
 	 * @return self
 	 */
-	public function setMaximumRange(?string $maximumRange): self
+	public function setMaximumRange($maximumRange): self
 	{
-		if ($maximumRange === null || $maximumRange[0] == '$') {
+		if (is_int($maximumRange)) {
+			$this->maximumRange = $maximumRange;
+		} else if ($maximumRange === null || $maximumRange[0] == '$') {
 			$this->maximumRange = $maximumRange;
 		} else {
 			$this->maximumRange = (int)$maximumRange;
@@ -120,7 +124,7 @@ final class IntegerType extends Type
 	/**
 	 * Get maximum range
 	 *
-	 * @return ?int
+	 * @return mixed
 	 */
 	public function getMaximumRange()
 	{
@@ -130,12 +134,14 @@ final class IntegerType extends Type
 	/**
 	 * Set step
 	 *
-	 * @param ?int $step
+	 * @param $step
 	 * @return self
 	 */
-	public function setStep(?string $step): self
+	public function setStep($step): self
 	{
-		if ($step === null || $step[0] == '$') {
+		if (is_int($step)) {
+			$this->step = $step;
+		} else if ($step === null || $step[0] == '$') {
 			$this->step = $step;
 		} else {
 			$this->step = (int)$step;
@@ -146,9 +152,9 @@ final class IntegerType extends Type
 	/**
 	 * Get step
 	 *
-	 * @return ?int
+	 * @return mixed
 	 */
-	public function getStep(): ?int
+	public function getStep()
 	{
 		return $this->step;
 	}

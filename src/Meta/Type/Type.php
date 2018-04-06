@@ -22,6 +22,7 @@ abstract class Type
 		IntegerType::type => IntegerType::class,
 		LinkType::type => LinkType::class,
 		ListType::type => ListType::class,
+		MapType::type => MapType::class,
 		MonthType::type => MonthType::class,
 		ObjectType::type => ObjectType::class,
 		PasswordType::type => PasswordType::class,
