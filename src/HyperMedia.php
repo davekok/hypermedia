@@ -93,12 +93,12 @@ final class HyperMedia
 		$query = $this->getQuery($request);
 		switch ($verb) {
 			case "GET":
-				$values = $query;
+				$values = [];
 				$response = $this->call($verb, $path, $values, $query, $tags);
 				break;
 
 			case "POST":
-				$values = array_merge($this->getBody($request), $query);
+				$values = $this->getBody($request);
 				$response = $this->call($verb, $path, $values, $query, $tags);
 				break;
 
@@ -106,14 +106,13 @@ final class HyperMedia
 				$verb = "GET";
 				$body = $this->getBody($request);
 				$conditions = $body['conditions'];
-				$values = array_merge($query, $body['data']);
+				$values = $body['data'];
 				$response = $this->call($verb, $path, $values, $query, $tags, $conditions, $body['data']);
 				break;
 
 			case "LOOKUP":
 				$verb = "GET";
-				$body = $this->getBody($request);
-				$values = array_merge($query, $body);
+				$values = $this->getBody($request);
 				$response = $this->call($verb, $path, $values, $query, $tags, [], $body);
 				break;
 
@@ -142,12 +141,12 @@ final class HyperMedia
 			if ($path === "" || $path === "/") { // if root resource
 				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))
 					->createRootResource($verb, $conditions);
-				$response = $resource->call($values, $preserve);
+				$response = $resource->call($values, $query, $preserve);
 			} else { // if normal resource
 				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
 				$resource = (new Resource($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query, $this->di))
 					->createResource($class, $verb, $conditions);
-				$response = $resource->call($values, $preserve);
+				$response = $resource->call($values, $query, $preserve);
 			}
 		} catch (Response $e) {
 			$response = $e;

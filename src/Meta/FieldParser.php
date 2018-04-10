@@ -46,6 +46,7 @@ final class FieldParser
 	private $stateToken;
 	private $reconToken;
 	private $lookupToken;
+	private $autoSubmitToken;
 	private $arrayToken;
 	private $minToken;
 	private $maxToken;
@@ -123,6 +124,7 @@ final class FieldParser
 		$this->stateToken         = "/^state/";
 		$this->reconToken         = "/^recon/";
 		$this->lookupToken        = "/^lookup/";
+		$this->autoSubmitToken    = "/^autosubmit/";
 		$this->arrayToken         = "/^\[\]/";
 
 		$this->minToken           = "/^min=($int|$variable)/";
@@ -226,7 +228,7 @@ final class FieldParser
 
 		$mask = ~0;
 		// bit 1: type
-		// bit 2: meta, data, state or lookup field
+		// bit 2: meta, data, state, lookup or autosubmit field
 		// bit 3: required/readonly/disabled
 		// bit 4: multiple token
 		// bit 5: min token
@@ -402,6 +404,10 @@ final class FieldParser
 				$this->clearbit($mask, 2);
 				$this->clearbit($mask, 14);
 				$flags->setLookup();
+			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('autoSubmitToken')) {
+				$this->clearbit($mask, 2);
+				$this->clearbit($mask, 14);
+				$flags->setAutoSubmit();
 			} elseif ($this->isbitset($mask, 2) && $this->match('stateToken')) {
 				$this->clearbit($mask, 2);
 				$flags->setState();

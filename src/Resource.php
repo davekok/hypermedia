@@ -172,13 +172,13 @@ final class Resource
 		return $this->method;
 	}
 
-	public function call(array $values, ?array $preserve): Response
+	public function call(array $values, array $query, ?array $preserve): Response
 	{
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
-		$this->preRecon($values);
+		$this->preRecon($values, $query);
 		foreach ($this->fields as $field) {
-			$this->object->{$field[0]} = $this->checkField($field, $values[$field[0]]??null, $badRequest, $field[0]);
+			$this->object->{$field[0]} = $this->checkField($field, $values[$field[0]]??null, $query, $badRequest, $field[0]);
 		}
 		if ($badRequest->hasMessages()) {
 			throw $badRequest;
@@ -210,14 +210,23 @@ final class Resource
 		return $this->response;
 	}
 
-	private function checkField(array $fieldDescriptor, $value, BadRequest $badRequest, string $path = "")
+	private function checkField(array $fieldDescriptor, $value, array $query, BadRequest $badRequest, string $path = "")
 	{
 		[$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon] = $fieldDescriptor;
 
 		// flags check
 		$flags = new FieldFlags($flags);
-		if ($flags->isRequired() && !isset($value) && ($flags->isMeta() || $flags->isState() || $this->verb === "POST")) {
-			$badRequest->addMessage("$path is required");
+		if ($flags->isMeta() || $flags->isState()) {
+			if ($flags->isRequired() && !isset($query[$name])) {
+				$badRequest->addMessage("$path is required");
+				return null;
+			} else {
+				return $query[$name] ?? $defaultValue;
+			}
+		} else {
+			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {
+				$badRequest->addMessage("$path is required");
+			}
 		}
 		if ($flags->isReadonly() && isset($value)) {
 			$badRequest->addMessage("$path is readonly");
@@ -229,6 +238,7 @@ final class Resource
 		// type check
 		if (isset($value)) {
 			$type = Type::createType($type);
+
 			// object type
 			if ($type instanceof ObjectType) {
 				// array of objects
@@ -242,7 +252,7 @@ final class Resource
 							}
 							$object[i] = new stdClass;
 							foreach ($type->getFieldDescriptors() as $field) {
-								$object[i]->{$field[0]} = $this->checkField($field, $value[$i][$field[0]], $badRequest, "$path\[$i\].{$field[0]}");
+								$object[i]->{$field[0]} = $this->checkField($field, $value[$i][$field[0]], [], $badRequest, "$path\[$i\].{$field[0]}");
 							}
 						}
 						return $object;
@@ -263,7 +273,7 @@ final class Resource
 									if (isset($row[$y])) {
 										$matrix[$x][$y] = new stdClass;
 										foreach ($type->getFieldDescriptors() as $field) {
-											$matrix[$x][$y]->{$field[0]} = $this->checkField($field, $row[$y][$field[0]], $badRequest, "$path\[$x\]\[$y\].{$field[0]}");
+											$matrix[$x][$y]->{$field[0]} = $this->checkField($field, $row[$y][$field[0]], [], $badRequest, "$path\[$x\]\[$y\].{$field[0]}");
 										}
 									}
 								}
@@ -280,7 +290,7 @@ final class Resource
 				} else {
 					$object = new stdClass;
 					foreach ($type->getFieldDescriptors() as $field) {
-						$object->{$field[0]} = $this->checkField($field, $value[$field[0]], $badRequest, "$path.{$field[0]}");
+						$object->{$field[0]} = $this->checkField($field, $value[$field[0]], [], $badRequest, "$path.{$field[0]}");
 					}
 					return $object;
 				}
@@ -289,7 +299,7 @@ final class Resource
 			} elseif ($type instanceof TupleType) {
 				$tuple = [];
 				foreach ($type->getFieldDescriptors() as $i => $field) {
-					$tuple[$i] = $this->checkField($field, $value[$i], $badRequest, "$path\[$i\]");
+					$tuple[$i] = $this->checkField($field, $value[$i], [], $badRequest, "$path\[$i\]");
 				}
 				return $tuple;
 
@@ -440,11 +450,11 @@ final class Resource
 	/**
 	 * Pre recondition the resource in case recondition fields have changed.
 	 */
-	private function preRecon(array $values): void
+	private function preRecon(array $values, array $query): void
 	{
 		$cascade = 0;
 		$maxcascade = 5;
-		$cascadeConditions = $this->preReconRecurse($this->fields, $this->conditions, $values);
+		$cascadeConditions = $this->preReconRecurse($this->fields, $this->conditions, $values, $query);
 		do {
 			$conditions = $cascadeConditions;
 			$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->tags));
@@ -455,23 +465,29 @@ final class Resource
 				[$this->method, $this->verbflags] = $resource->getVerb($this->verb);
 				$this->verbflags = new Meta\VerbFlags($this->verbflags);
 			}
-			$cascadeConditions = $this->preReconRecurse($this->fields, $conditions, $values);
+			$cascadeConditions = $this->preReconRecurse($this->fields, $conditions, $values, $query);
 		} while ($conditions != $cascadeConditions && $cascade++ < $maxcascade);
 	}
 
-	private function preReconRecurse(array $fieldDescriptors, array $conditions, $values, string $prefix = ""): array
+	private function preReconRecurse(array $fieldDescriptors, array $conditions, $values, $query, string $prefix = ""): array
 	{
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isRecon()) {
-				if (!array_key_exists($prefix.$name, $conditions) && array_key_exists($name, $values)) {
-					$conditions[$prefix.$name] = $values[$name];
+				if ($flags->isMeta() || $flags->isState()) {
+					if (!array_key_exists($name, $conditions) && array_key_exists($name, $query)) {
+						$conditions[$name] = $query[$name];
+					}
+				} else {
+					if (!array_key_exists($prefix.$name, $conditions) && array_key_exists($name, $values)) {
+						$conditions[$prefix.$name] = $values[$name];
+					}
 				}
 			}
 			$type = Type::createType($type);
 			if ($type instanceof ObjectType && isset($values[$name])) {
 				if (is_array($values[$name])) {
-					$conditions = $this->preReconRecurse($type->getFieldDescriptors(), $conditions, $values[$name], $name."_");
+					$conditions = $this->preReconRecurse($type->getFieldDescriptors(), $conditions, $values[$name], [], $name."_");
 				}
 			}
 		}

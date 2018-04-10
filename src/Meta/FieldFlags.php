@@ -9,26 +9,27 @@ use stdClass;
  */
 final class FieldFlags
 {
-	const required =    1;  // whether the field is required
-	const readonly =    2;  // whether the field is readonly
-	const disabled =    4;  // whether the field is disabled
-	const multiple =    8;  // if multiple emails or files are allowed
-	const _array   =   16;  // field contains an array of the given type, can not be a meta field
-	const meta     =   32;  // whether this is meta data, meta data is part of the URI, making URI a templated URI
-	                        // also meta data is never in the data section
-	const data     =   64;  // only one field may have this flag, when used on a field the value of the field will
-	                        // be put in the data section and all other fields must have the meta flag
-	const state    =  128;  // whether the field is a state field, state fields are hidden from the client
-	                        // state fields can be used to embed data in the URL without the client knowing about it
-	const recon    =  256;  // whether the field is a recon field, whenever the value of a recon field changes the
-	                        // client should send a RECON request to the server in which case the resource is
-	                        // reconditioned, depending on changing state
-	const lookup   =  512;  // whether the field is a lookup field, whenever the value of a lookup field changes the
-	                        // client should send a LOOKUP request to the server in which case the resource is
-	                        // looked up
-	const matrix   = 1024;  // field is a matrix or two dimensional array
+	const required   =    1;  // whether the field is required
+	const readonly   =    2;  // whether the field is readonly
+	const disabled   =    4;  // whether the field is disabled
+	const multiple   =    8;  // if multiple emails or files are allowed
+	const _array     =   16;  // field contains an array of the given type, can not be a meta field
+	const meta       =   32;  // whether this is meta data, meta data is part of the URI, making URI a templated URI
+	                          // also meta data is never in the data section
+	const data       =   64;  // only one field may have this flag, when used on a field the value of the field will
+	                          // be put in the data section and all other fields must have the meta flag
+	const state      =  128;  // whether the field is a state field, state fields are hidden from the client
+	                          // state fields can be used to embed data in the URL without the client knowing about it
+	const recon      =  256;  // whether the field is a recon field, whenever the value of a recon field changes the
+	                          // client should send a RECON request to the server in which case the resource is
+	                          // reconditioned, depending on changing state
+	const lookup     =  512;  // whether the field is a lookup field, whenever the value of a lookup field changes the
+	                          // client should send a LOOKUP request to the server in which case the resource is
+	                          // looked up
+	const matrix     = 1024;  // field is a matrix or two dimensional array
+	const autosubmit = 2048;  // auto submit field
 
-	private $flags;         // bitmask of the above constants
+	private $flags;           // bitmask of the above constants
 
 	/**
 	 * Constructor
@@ -227,6 +228,23 @@ final class FieldFlags
 		return (bool)($this->flags & self::matrix);
 	}
 
+	public function setAutoSubmit(): self
+	{
+		$this->flags |= self::autosubmit;
+		return $this;
+	}
+
+	public function clearAutoSubmit(): self
+	{
+		$this->flags &= ~self::autosubmit;
+		return $this;
+	}
+
+	public function isAutoSubmit(): bool
+	{
+		return (bool)($this->flags & self::autosubmit);
+	}
+
 	public function toInt(): int
 	{
 		return $this->flags;
@@ -237,15 +255,16 @@ final class FieldFlags
 		if ($this->isState()) {
 			throw new \LogicException("State fields should not be visible to the client.");
 		}
-		if ($this->isRequired()) $meta->required = true;
-		if ($this->isReadonly()) $meta->readonly = true;
-		if ($this->isDisabled()) $meta->disabled = true;
-		if ($this->isMultiple()) $meta->multiple = true;
-		if ($this->isArray   ()) $meta->{"array"} = true;
-		if ($this->isMeta    ()) $meta->meta = true;
-		if ($this->isData    ()) $meta->data = true;
-		if ($this->isRecon   ()) $meta->recon = true;
-		if ($this->isLookup  ()) $meta->lookup = true;
-		if ($this->isMatrix  ()) $meta->matrix = true;
+		if ($this->isRequired  ()) $meta->required   = true;
+		if ($this->isReadonly  ()) $meta->readonly   = true;
+		if ($this->isDisabled  ()) $meta->disabled   = true;
+		if ($this->isMultiple  ()) $meta->multiple   = true;
+		if ($this->isArray     ()) $meta->{"array"}  = true;
+		if ($this->isMeta      ()) $meta->meta       = true;
+		if ($this->isData      ()) $meta->data       = true;
+		if ($this->isRecon     ()) $meta->recon      = true;
+		if ($this->isLookup    ()) $meta->lookup     = true;
+		if ($this->isMatrix    ()) $meta->matrix     = true;
+		if ($this->isAutoSubmit()) $meta->autosubmit = true;
 	}
 }

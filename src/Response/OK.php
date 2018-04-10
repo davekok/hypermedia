@@ -158,18 +158,18 @@ final class OK implements Response
 	 *
 	 * @param  string $name    the name of the link
 	 * @param  string $class   the class of the resource
-	 * @param  array  $values  the values in case the resource has uri fields
+	 * @param  array  $query   the values in case the resource has uri fields
 	 *
 	 * Please note that $attach is ignored if link is called from a Resource
 	 * that itself is attached by another resource.
 	 */
-	public function attach(string $name, string $class, array $values = []): void
+	public function attach(string $name, string $class, array $query = []): void
 	{
 		if ($this->link($name, $class, ["values"=>$values])) {
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;
-			$resource->call($values, null);
+			$resource->call([], $query, null);
 			$this->part = $previous;
 		}
 	}
