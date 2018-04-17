@@ -19,6 +19,12 @@ class ResourceCompiler
 	public function compile(Resource $resource, TagMatcher $matcher): CacheItem_Resource
 	{
 		$hints = $matcher->findBestMatch($resource->getHints());
+		$order = $matcher->findBestMatch($resource->getOrders());
+		if ($order !== null) {
+			$order = array_flip(array_values($order->getFields()));
+		} else {
+			$order = [];
+		}
 
 		$verbs = [];
 		$root = false;
@@ -43,7 +49,14 @@ class ResourceCompiler
 			$item->setHints($hints->getLabel(), $hints->getIcon(), $hints->getSection(), $hints->getComponent(), $hints->getLayout(), $hints->getClear());
 		}
 		$item->setTags($matcher->getTags());
+
+		$i = count($order);
+		$fields = [];
 		foreach ($type->getFieldDescriptors() as $descriptor) {
+			$fields[$order[$descriptor[0]] ?? $i++] = $descriptor;
+		}
+		ksort($fields);
+		foreach ($fields as $descriptor) {
 			$item->addField(...$descriptor);
 		}
 		foreach ($verbs as $name => [$method, $flags]) {

@@ -56,6 +56,7 @@ final class FieldParser
 	private $minlengthToken;
 	private $maxlengthToken;
 	private $patternToken;
+	private $orderToken;
 	private $tagToken;
 	private $equalsToken;
 	private $valueToken;
