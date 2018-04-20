@@ -17,7 +17,9 @@ class Resource
 {
 	private $class;
 	private $description;
+	private $root;
 	private $hints;
+	private $orders;
 	private $labels;
 	private $components;
 	private $layouts;
@@ -34,6 +36,7 @@ class Resource
 		$this->class = $class;
 		$this->description = $description;
 		$this->hints = [];
+		$this->orders = [];
 		$this->labels = [];
 		$this->components = [];
 		$this->layouts = [];
@@ -113,6 +116,26 @@ class Resource
 	public function getHints(): iterable
 	{
 		return $this->hints;
+	}
+
+	/**
+	 * Add order for fields
+	 *
+	 * @param Order $order
+	 */
+	public function addOrder(Order $order): void
+	{
+		$this->orders[] = $order;
+	}
+
+	/**
+	 * Get collection of field orders
+	 *
+	 * @return iterable
+	 */
+	public function getOrders(): iterable
+	{
+		return $this->orders;
 	}
 
 	/**

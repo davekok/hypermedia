@@ -66,6 +66,10 @@ final class SourceUnitFactory
 							if (!isset($resource)) $resource = new Resource($className, $this->getDescription($reflect->getDocComment()?:""));
 							$resource->addHints($annotation);
 						}
+						if ($annotation instanceof Order) {
+							if (!isset($resource)) $resource = new Resource($className, $this->getDescription($reflect->getDocComment()?:""));
+							$resource->addOrder($annotation);
+						}
 					}
 					$defaults = $reflect->getDefaultProperties();
 					foreach ($reflect->getProperties() as $property) {
