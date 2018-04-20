@@ -149,7 +149,7 @@ final class FloatType extends Type
 			$ratio = (($float-($this->minimumRange??0.0)) / $this->step);
 			// distance should be 0, if ration is an integer
 			$distance = abs($ratio - round($ratio, 0));
-			// allow distance to be a little bit imprise to allow for floating point rounding errors
+			// allow distance to be a little bit imprecise to allow for floating point rounding errors
 			if ($distance > 0.00001) {
 				return false;
 			}

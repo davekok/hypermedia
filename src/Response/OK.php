@@ -165,7 +165,7 @@ final class OK implements Response
 	 */
 	public function attach(string $name, string $class, array $query = []): void
 	{
-		if ($this->link($name, $class, ["values"=>$values])) {
+		if ($this->link($name, $class, ["values"=>$query])) {
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;

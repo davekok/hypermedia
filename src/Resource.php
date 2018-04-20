@@ -31,6 +31,7 @@ final class Resource
 {
 	private $cache;
 	private $translator;
+	private $jsonDeserializer;
 	private $journaling;
 	private $sourceUnit;
 	private $tags;
@@ -51,10 +52,11 @@ final class Resource
 	private $mainClass;
 	private $query;
 
-	public function __construct(Cache $cache, Translator $translator, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query, $di)
+	public function __construct(Cache $cache, Translator $translator, JsonDeserializer $jsonDeserializer, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query, $di)
 	{
 		$this->cache = $cache;
 		$this->translator = $translator;
+		$this->jsonDeserializer = $jsonDeserializer;
 		$this->journaling = $journaling;
 		$this->sourceUnit = $sourceUnit;
 		$this->tags = $tags;
@@ -86,7 +88,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -103,7 +105,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -116,7 +118,7 @@ final class Resource
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = false;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
@@ -236,8 +238,8 @@ final class Resource
 		}
 
 		// type check
+		$type = Type::createType($type);
 		if (isset($value)) {
-			$type = Type::createType($type);
 
 			// object type
 			if ($type instanceof ObjectType) {
@@ -307,7 +309,9 @@ final class Resource
 			} elseif ($flags->isArray()) {
 				if (is_array($value)) {
 					foreach ($value as $v) {
-						if (!$type->filter($v)) {
+						if ($type->filter($v)) {
+							$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
+						} else {
 							$badRequest->addMessage("$path does not have a valid value: {$v}");
 						}
 					}
@@ -321,7 +325,9 @@ final class Resource
 					foreach ($value as $row) {
 						if (is_array($row)) {
 							foreach ($row as $value) {
-								if (!$type->filter($value)) {
+								if ($type->filter($value)) {
+									$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
+								} else {
 									$badRequest->addMessage("$path does not have a valid value: {$value}");
 								}
 							}
@@ -337,17 +343,23 @@ final class Resource
 			} elseif ($flags->isMultiple()) {
 				foreach (explode(",", $value) as $v) {
 					$v = trim($v);
-					if (!$type->filter($v)) {
+					if ($type->filter($v)) {
+						$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
+					} else {
 						$badRequest->addMessage("$path does not have a valid value: {$value}");
 					}
 				}
 
 			// normal
 			} else {
-				if (!$type->filter($value)) {
+				if ($type->filter($value)) {
+					$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
+				} else {
 					$badRequest->addMessage("$path does not have a valid value: ".print_r($value, true));
 				}
 			}
+		} else {
+			$defaultValue = $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
 		}
 		return $value ?? $defaultValue;
 	}
