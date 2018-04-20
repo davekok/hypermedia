@@ -28,7 +28,7 @@ final class Cache implements CacheInterface
 	/**
 	 * Whether a source unit is already cached.
 	 *
-	 * @param $name  the source unit name
+	 * @param string $name  the source unit name
 	 * @return true if cached, false otherwise
 	 */
 	public function hasSourceUnit(string $name): bool
@@ -39,7 +39,7 @@ final class Cache implements CacheInterface
 	/**
 	 * Update source unit in cache.
 	 *
-	 * @param $unit  the source unit to cache
+	 * @param CacheSourceUnit $unit  the source unit to cache
 	 */
 	public function updateSourceUnit(CacheSourceUnit $unit): void
 	{
@@ -52,7 +52,11 @@ final class Cache implements CacheInterface
 		$item->set(serialize([$tagorder, $wildcards]));
 		$this->cachePool->saveDeferred($item);
 
-		foreach ($unit->getCacheItems() as $item) {
+		$filter = function(/*object*/ $item): bool {
+			return false;
+		};
+
+		foreach ($unit->getCacheItems($filter) as $item) {
 			$cacheItem = $this->getSourceUnitItem($name, $item->getType(), $item->getClass(), $item->getTags());
 			$cacheItem->set(serialize($item));
 			$this->cachePool->saveDeferred($cacheItem);
