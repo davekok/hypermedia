@@ -223,7 +223,18 @@ final class Resource
 				$badRequest->addMessage("$path is required");
 				return null;
 			} else {
-				return $query[$name] ?? $defaultValue;
+				$type = Type::createType($type);
+				$queryValue = $query[$name] ?? null;
+				if (isset($queryValue)) {
+					if ($type->filter($queryValue)) {
+						$queryValue = $this->jsonDeserializer->jsonDeserialize($type::type, $queryValue);
+					} else {
+						$badRequest->addMessage("$path does not have a valid value: ".print_r($queryValue, true));
+					}
+					return $queryValue;
+				} else {
+					return $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
+				}
 			}
 		} else {
 			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {

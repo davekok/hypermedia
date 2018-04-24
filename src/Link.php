@@ -63,7 +63,7 @@ final class Link
 				if ($flags->isMeta()) {
 					if ($flags->isReadonly() || $flags->isDisabled()) continue;
 					if (array_key_exists($name, $values)) {
-						$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
+						$known.= "&" . $name . "=" . $this->getValue($values, $name);
 						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {
 							$selectedTrue = true;
 						} else {
@@ -83,7 +83,7 @@ final class Link
 					}
 				} elseif ($flags->isState()) {
 					if (array_key_exists($name, $values)) {
-						$known.= "&" . $name . "=" . urlencode((string)$values[$name]);
+						$known.= "&" . $name . "=" . $this->getValue($values, $name);
 						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {
 							$selectedTrue = true;
 						} else {
@@ -139,6 +139,17 @@ final class Link
 			$obj->phase = $this->phase;
 		}
 		return $obj;
+	}
+
+	private function getValue(array $values, string $key): string
+	{
+		$value = $values[$key];
+		if ($value instanceof \JsonSerializable) {
+			$value = $value->jsonSerialize();
+		} else {
+			$value = (string)$value;
+		}
+		return urlencode($value);
 	}
 
 	public function getTemplated(): bool
