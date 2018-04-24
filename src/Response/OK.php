@@ -169,6 +169,13 @@ final class OK implements Response
 			$resource = $this->resource->createAttachedResource($class);
 			$previous = $this->part;
 			$this->parts->$name = $this->part = new stdClass;
+			foreach ($query as &$value) {
+				if ($value instanceof \JsonSerializable) {
+					$value = $value->jsonSerialize();
+				} else {
+					$value = (string)$value;
+				}
+			}
 			$resource->call([], $query, null);
 			$this->part = $previous;
 		}

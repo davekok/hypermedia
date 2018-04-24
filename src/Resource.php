@@ -88,7 +88,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -105,7 +105,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -118,7 +118,7 @@ final class Resource
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->translator, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = false;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
@@ -223,7 +223,18 @@ final class Resource
 				$badRequest->addMessage("$path is required");
 				return null;
 			} else {
-				return $query[$name] ?? $defaultValue;
+				$type = Type::createType($type);
+				$queryValue = $query[$name] ?? null;
+				if (isset($queryValue)) {
+					if ($type->filter($queryValue)) {
+						$queryValue = $this->jsonDeserializer->jsonDeserialize($type::type, $queryValue);
+					} else {
+						$badRequest->addMessage("$path does not have a valid value: ".print_r($queryValue, true));
+					}
+					return $queryValue;
+				} else {
+					return $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
+				}
 			}
 		} else {
 			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {
@@ -238,8 +249,8 @@ final class Resource
 		}
 
 		// type check
+		$type = Type::createType($type);
 		if (isset($value)) {
-			$type = Type::createType($type);
 
 			// object type
 			if ($type instanceof ObjectType) {

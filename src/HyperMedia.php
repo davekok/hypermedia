@@ -44,7 +44,7 @@ final class HyperMedia
 		Cache $cache,
 		JournalRepository $journalRepository,
 		Translator $translator,
-		JsonDeserialize $jsonDeserializer,
+		JsonDeserializer $jsonDeserializer,
 		string $sourceUnit,
 		string $basePath,
 		string $namespace,

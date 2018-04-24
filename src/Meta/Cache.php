@@ -53,7 +53,7 @@ final class Cache implements CacheInterface
 		$this->cachePool->saveDeferred($item);
 
 		$filter = function(/*object*/ $item): bool {
-			return false;
+			return true;
 		};
 
 		foreach ($unit->getCacheItems($filter) as $item) {
