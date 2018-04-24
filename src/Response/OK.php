@@ -11,6 +11,7 @@ final class OK implements Response
 	use DateTrait;
 	use NoLocationTrait;
 
+	/** @var Resource $resource */
 	private $resource;
 	private $parts;
 	private $part;

@@ -219,12 +219,15 @@ final class Resource
 		// flags check
 		$flags = new FieldFlags($flags);
 		if ($flags->isMeta() || $flags->isState()) {
-			if ($flags->isRequired() && !isset($query[$name])) {
+			if ($flags->isRequired() && (!isset($query[$name]) || $query[$name] === "")) {
 				$badRequest->addMessage("$path is required");
 				return null;
 			} else {
 				$type = Type::createType($type);
 				$queryValue = $query[$name] ?? null;
+				if ($queryValue === "") {
+					$queryValue = null;
+				}
 				if (isset($queryValue)) {
 					if ($type->filter($queryValue)) {
 						$queryValue = $this->jsonDeserializer->jsonDeserialize($type::type, $queryValue);
