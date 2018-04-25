@@ -11,10 +11,10 @@ interface JournalRepository
 	/**
 	 * Find one journal by id or throw exception if not found.
 	 *
-	 * @param string $id  the id of the journal
+	 * @param mixed $id  the id of the journal
 	 * @return the journal
 	 */
-	public function findOneJournalById(string $id): Journal;
+	public function findOneJournalById($id): Journal;
 
 	/**
 	 * Create a new journal.

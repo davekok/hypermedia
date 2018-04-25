@@ -10,9 +10,9 @@ interface Journal
 	/**
 	 * Get the journal id.
 	 *
-	 * @return string  the journal id.
+	 * @return mixed  the journal id.
 	 */
-	public function getId(): string;
+	public function getId();
 
 	/**
 	 * Get source unit

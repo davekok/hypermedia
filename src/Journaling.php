@@ -57,9 +57,9 @@ class Journaling
 	/**
 	 * Resume an existing journal.
 	 *
-	 * @param string $journalId  the id of the journal
+	 * @param mixed $journalId  the id of the journal
 	 */
-	public function resume(string $journalId): void
+	public function resume($journalId): void
 	{
 		$this->journal = $this->journalRepository->findOneJournalById($journalId);
 		$this->mainBranch = $this->journal->getFirstBranch();
@@ -107,9 +107,9 @@ class Journaling
 	/**
 	 * Get id
 	 *
-	 * @return string  the id
+	 * @return mixed  the id
 	 */
-	public function getId(): string
+	public function getId()
 	{
 		return $this->journal->getId();
 	}

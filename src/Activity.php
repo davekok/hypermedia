@@ -96,10 +96,10 @@ final class Activity implements ActivityInterface
 	/**
 	 * Load a previously persisted journal to continue an activity.
 	 *
-	 * @param int $journalId  the id of the journal to load
+	 * @param $zeroId $journalId  the id of the journal to load
 	 * @return self
 	 */
-	public function loadJournal(int $journalId): self
+	public function loadJournal($journalId): self
 	{
 		$this->journaling->resume($journalId);
 		$class = get_class($this->journaling->getObject());
@@ -133,9 +133,9 @@ final class Activity implements ActivityInterface
 	/**
 	 * Get the journal id
 	 *
-	 * @return int  the journal id
+	 * @return mixed  the journal id
 	 */
-	public function getJournalId(): int
+	public function getJournalId()
 	{
 		return $this->journaling->getId();
 	}

@@ -74,9 +74,9 @@ interface ActivityInterface
 	/**
 	 * Get the journal id
 	 *
-	 * @return int
+	 * @return mixed
 	 */
-	public function getJournalId(): int;
+	public function getJournalId();
 
 	/**
 	 * Get source unit
