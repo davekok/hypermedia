@@ -399,7 +399,7 @@ final class Resource
 			}
 		}
 
-		foreach($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]){
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isState()) {
 				continue;
@@ -436,7 +436,7 @@ final class Resource
 		if ($defaultValue !== null) {
 			$field->defaultValue = $defaultValue;
 		}
-		if ($autocomplete) {
+		if ($autocomplete !== null && $autocomplete !== "") {
 			$field->autocomplete = $autocomplete;
 		}
 		$flags->meta($field);
@@ -459,7 +459,7 @@ final class Resource
 						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
 				}
 			}
-		} elseif ($type instanceof TupleType) {
+		} else if ($type instanceof TupleType) {
 			$field->fields = [];
 			$value = $value ?? [];
 			$i = 0;

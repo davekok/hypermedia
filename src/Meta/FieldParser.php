@@ -139,7 +139,7 @@ final class FieldParser
 
 		$this->optionToken        = "/^($name)/";
 		$this->autocompleteToken  = "/^autocomplete/";
-		$this->autocompleteOption = '/^[^\S\*\(\)]+/';
+		$this->autocompleteOption = '/^([^ \t\n\v\f\r\*\(\)]+)/';
 
 		$this->labelToken         = '/^label/';
 		$this->newline            = '/^\v+(?:\h*\*\h*)?/';
