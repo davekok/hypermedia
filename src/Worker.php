@@ -81,8 +81,8 @@ final class Worker
 		$this->outputfile = $config['outputfile'] ?? sys_get_temp_dir()."/{$this->name}.log";
 		$this->inputfile = $config['inputfile'] ?? "/dev/zero";
 		$this->errorfile = $config['errorfile'] ?? $this->outputfile;
-		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["LANG"];
-		$this->environmentVariableDefaults = $config['environmentVariableDefaults'] ?? ["LANG"=>"en_US.UTF-8"];
+		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["ENVIRONMENT", "LANG"];
+		$this->environmentVariableDefaults = $config['environmentVariableDefaults'] ?? ["ENVIRONMENT"=>"prod", "LANG"=>"en_US.UTF-8"];
 	}
 
 	/**
@@ -166,11 +166,12 @@ final class Worker
 
 		$reload = false;
 
+		$cenv = getenv();
 		$env = $unsafe;
 
 		// check unsafe environment variables
 		foreach ($unsafe as $key => $value) {
-			if (!isset($_ENV[$key]) || $_ENV[$key] != $value) {
+			if (!isset($cenv[$key]) || $cenv[$key] != $value) {
 				$reload = true;
 			}
 		}
@@ -179,7 +180,7 @@ final class Worker
 		$safe = array_diff($this->safeEnvironmentVariables, array_keys($unsafe));
 
 		// check environment
-		foreach ($_ENV as $key=>$value) {
+		foreach ($cenv as $key => $value) {
 			if (in_array($key, $safe)) {
 				// remember value of safe environment variable in case reload is necessary
 				$env[$key] = $value;
@@ -190,8 +191,8 @@ final class Worker
 		}
 
 		// set default environment variables if allowed by safe but are not already set
-		foreach ($this->environmentVariableDefaults as $key=>$value) {
-			if (!isset($_ENV[$key]) && in_array($key, $safe)) {
+		foreach ($this->environmentVariableDefaults as $key => $value) {
+			if (!isset($cenv[$key]) && in_array($key, $safe)) {
 				$env[$key] = $value;
 				$reload = true;
 			}
@@ -212,7 +213,7 @@ final class Worker
 	 */
 	public function checkRunning(): bool
 	{
-		$pidfile = $this->pidfile??(sys_get_temp_dir()."/".basename($_SERVER['PHP_SELF'],'.php').".pid");
+		$pidfile = $this->pidfile ?? (sys_get_temp_dir()."/".basename($_SERVER['PHP_SELF'],'.php').".pid");
 		$rundir = dirname($pidfile);
 		if (!is_dir($rundir) && !mkdir($rundir, 0775, true))
 			throw new Exception("unable to make directory ".$rundir);
