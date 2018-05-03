@@ -138,7 +138,7 @@ final class Worker
 	public function stop(): void
 	{
 		if ($this->checkRunning($this->pidfile)) {
-			$pid = file_get_contents($this->pidfile);
+			$pid = (int)file_get_contents($this->pidfile);
 			posix_kill($pid, SIGTERM);
 		}
 	}
@@ -220,7 +220,6 @@ final class Worker
 		if (file_exists($pidfile) && file_exists("/proc/".file_get_contents($pidfile))) {
 			return true;
 		} else {
-			file_put_contents($pidfile, posix_getpid());
 			return false;
 		}
 	}
@@ -349,9 +348,6 @@ final class Worker
 		$pid = pcntl_fork();
 		if ($pid < 0) throw new Exception(pcntl_strerror(pcntl_errno()), pcntl_errno());
 		$ischild = $pid === 0;
-		if ($ischild) {
-			$this->pidfile = null;
-		}
 		return $ischild;
 	}
 
@@ -364,7 +360,7 @@ final class Worker
 	{
 		global $argv;
 		$progname = basename($argv[0]);
-		$usage = "Usage: $progname [-bBrRdDh?] [-e ENVIRONMENT] WORKER [INSTANCE] [start|stop|restart|status]\n";
+		$usage = "Usage: $progname [-bBrRdDh?] [-e ENVIRONMENT] [NAME] [INSTANCE] [start|stop|restart|status]\n";
 		$usage.= "\n";
 		$usage.= "Options:\n";
 		$usage.= " -b, --background\n";
@@ -390,15 +386,15 @@ final class Worker
 			$arg = $argv[$i];
 			if ($arg === "--env") {
 				$env = $argv[++$i];
-			} elseif ($arg === "--debug") {
+			} else if ($arg === "--debug") {
 				$debug = true;
-			} elseif ($arg === "--no-debug") {
+			} else if ($arg === "--no-debug") {
 				$debug = false;
-			} elseif ($arg === "--background") {
+			} else if ($arg === "--background") {
 				$background = true;
-			} elseif ($arg === "--no-background") {
+			} else if ($arg === "--no-background") {
 				$background = false;
-			} elseif ($arg[0] == "-" && $arg[1] != "-") {
+			} else if ($arg[0] == "-" && $arg[1] != "-") {
 				$cl = strlen($arg);
 				for ($c = 1; $c < $cl; ++$c) {
 					switch ($arg[$c]) {
@@ -430,18 +426,18 @@ final class Worker
 							exit($usage);
 					}
 				}
-			} elseif (in_array($arg, ["help", "--help", "usage", "--usage"])) {
+			} else if (in_array($arg, ["help", "--help", "usage", "--usage"])) {
 				exit($usage);
-			} elseif (in_array($arg, ["start", "stop", "restart", "status"])) {
+			} else if (in_array($arg, ["start", "stop", "restart", "status"])) {
 				$command = $arg;
-			} elseif ($arg === "reload") {
+			} else if ($arg === "reload") {
 				$command = "restart";
-			} elseif ($arg[0] == "-") {
+			} else if ($arg[0] == "-") {
 				echo "unknown option: $arg\n";
 				exit($usage);
-			} elseif (!isset($name)) {
+			} else if (!isset($name)) {
 				$name = $arg;
-			} elseif (!isset($instance)) {
+			} else if (!isset($instance)) {
 				$instance = $arg;
 			} else {
 				exit($usage);
@@ -451,10 +447,39 @@ final class Worker
 			"name" => $name ?? "default",
 			"command" => $command ?? "start",
 			"instance" => $instance ?? null,
-			"env" => $env ?? getenv("SYMFONY_ENV") ?: "dev",
-			"debug" => $debug ?? getenv("SYMFONY_DEBUG") !== "0" ?: false,
+			"env" => $env ?? getenv("ENVIRONMENT") ?: "prod",
+			"debug" => $debug ?? false,
 			"background" => $background ?? true,
 			"redirect" => $redirect ?? $background ?? true,
 		];
+	}
+
+	public static function init(): array
+	{
+		$args = self::args();
+		$worker = new \Sturdy\Activity\Worker($args);
+		switch ($args["command"]) {
+			case "restart":
+				$worker->stop();
+				// no break
+			case "start":
+				$worker->boot();
+				return $args;
+
+			case "stop":
+				$worker->stop();
+				exit;
+
+			case "status":
+				if ($worker->checkRunning()) {
+					echo $args["name"] . " is running.\n";
+				} else {
+					echo $args["name"] . " is not running.\n";
+				}
+				exit;
+
+			default:
+				exit;
+		}
 	}
 }
