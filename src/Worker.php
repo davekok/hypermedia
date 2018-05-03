@@ -360,7 +360,7 @@ final class Worker
 	{
 		global $argv;
 		$progname = basename($argv[0]);
-		$usage = "Usage: $progname [-bBrRdDh?] [-e ENVIRONMENT] [NAME] [INSTANCE] [start|stop|restart|status]\n";
+		$usage = "Usage: $progname [-bBrRdDh?] [-e ENVIRONMENT] NAME [INSTANCE] [start|stop|restart|status]\n";
 		$usage.= "\n";
 		$usage.= "Options:\n";
 		$usage.= " -b, --background\n";
