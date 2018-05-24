@@ -20,9 +20,6 @@ class Resource
 	private $root;
 	private $hints;
 	private $orders;
-	private $labels;
-	private $components;
-	private $layouts;
 	private $object;
 	private $verbs;
 
@@ -37,9 +34,6 @@ class Resource
 		$this->description = $description;
 		$this->hints = [];
 		$this->orders = [];
-		$this->labels = [];
-		$this->components = [];
-		$this->layouts = [];
 		$this->object = new Type\ObjectType;
 		$this->verbs = [];
 	}

@@ -66,6 +66,16 @@ final class SeeOther implements Response
 	}
 
 	/**
+	 * Set location URL
+	 *
+	 * @param string $url   the url to redirect to
+	 */
+	public function setLocationURL(string $url): void
+	{
+		$this->location = $url;
+	}
+
+	/**
 	 * Get location
 	 *
 	 * @return string  the location on which the resource has been created

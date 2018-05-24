@@ -14,6 +14,7 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	private $section;
 	private $component;
 	private $layout;
+	private $variant;
 	private $clear;
 	private $fields;
 	private $verbs;
@@ -26,15 +27,17 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 * @param ?string $section
 	 * @param ?string $component
 	 * @param ?string $layout
+	 * @param ?string $variant
 	 * @param string[]|boolean|null $clear
 	 */
-	public function setHints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout, $clear): self
+	public function setHints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout, ?string $variant, $clear): self
 	{
 		$this->label = $label;
 		$this->icon = $icon;
 		$this->section = $section;
 		$this->component = $component;
 		$this->layout = $layout;
+		$this->variant = $variant;
 		$this->clear = $clear;
 		return $this;
 	}
@@ -42,11 +45,11 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	/**
 	 * Get layout
 	 *
-	 * @return [?$label, ?$icon, ?$section, ?$component, ?$layout, $clear]
+	 * @return [?$label, ?$icon, ?$section, ?$component, ?$layout, ?$variant, $clear]
 	 */
 	public function getHints(): array
 	{
-		return [$this->label, $this->icon, $this->section, $this->component, $this->layout, $this->clear];
+		return [$this->label, $this->icon, $this->section, $this->component, $this->layout, $this->variant, $this->clear];
 	}
 
 	/**

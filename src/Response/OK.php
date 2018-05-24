@@ -76,11 +76,12 @@ final class OK implements Response
 	 * @param ?string $section
 	 * @param ?string $component
 	 * @param ?string $layout
+	 * @param ?string $variant
 	 * @param string[]|boolean|null $clear
 	 */
-	public function hints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout, $clear): void
+	public function hints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout, ?string $variant, $clear): void
 	{
-		if ($label !== null || $section !== null || $component !== null || $layout !== null) {
+		if ($label !== null || $section !== null || $component !== null || $layout !== null || $variant !== null || $clear !== null) {
 			$this->part->hints = new stdClass;
 			if ($label !== null) {
 				$this->part->hints->label = $label;
@@ -96,6 +97,9 @@ final class OK implements Response
 			}
 			if ($layout !== null) {
 				$this->part->hints->layout = $layout;
+			}
+			if ($variant !== null) {
+				$this->part->hints->variant = $variant;
 			}
 			if ($clear !== null) {
 				$this->part->hints->clear = $clear;

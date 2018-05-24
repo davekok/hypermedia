@@ -41,6 +41,11 @@ final class Hints extends Taggable
 	private $layout;
 
 	/**
+	 * @var string
+	 */
+	private $variant;
+
+	/**
 	 * @var array | boolean
 	 */
 	private $clear;
@@ -170,6 +175,26 @@ final class Hints extends Taggable
 	}
 
 	/**
+	 * Set variant
+	 *
+	 * @param ?string $variant
+	 */
+	public function setVariant(?string $variant): void
+	{
+		$this->variant = $variant;
+	}
+
+	/**
+	 * Get variant
+	 *
+	 * @return ?string
+	 */
+	public function getVariant(): ?string
+	{
+		return $this->variant;
+	}
+
+	/**
 	 * Set clear
 	 *
 	 * @param array|boolean $clear
@@ -210,9 +235,12 @@ final class Hints extends Taggable
 		if ($this->layout) {
 			$r.= "layout({$this->layout}) ";
 		}
+		if ($this->variant) {
+			$r.= "variant({$this->variant}) ";
+		}
 		if ($this->clear === true) {
 			$r.= "clear ";
-		} elseif (is_array($this->clear)) {
+		} else if (is_array($this->clear)) {
 			$r.= "clear(".implode(",",$this->clear).") ";
 		}
 		$r.= parent::__toString();

@@ -44,6 +44,7 @@ final class FieldParser
 	private $disabledToken;
 	private $multipleToken;
 	private $stateToken;
+	private $sharedToken;
 	private $reconToken;
 	private $lookupToken;
 	private $autoSubmitToken;
@@ -122,6 +123,7 @@ final class FieldParser
 		$this->disabledToken      = "/^disabled/";
 		$this->multipleToken      = "/^multiple/";
 		$this->stateToken         = "/^state/";
+		$this->sharedToken        = "/^shared/";
 		$this->reconToken         = "/^recon/";
 		$this->lookupToken        = "/^lookup/";
 		$this->autoSubmitToken    = "/^autosubmit/";
@@ -245,6 +247,7 @@ final class FieldParser
 		// bit 16: icon token
 		// bit 17: minDate token
 		// bit 18: maxDate token
+		// bit 19: shared token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -428,6 +431,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 4) && $this->match('multipleToken')) {
 				$this->clearbit($mask, 4);
 				$flags->setMultiple();
+			} elseif ($this->isbitset($mask, 19) && $this->match('sharedToken')) {
+				$this->clearbit($mask, 19);
+				$flags->setShared();
 			} elseif ($this->isbitset($mask, 5) && $this->match('minToken', $min)) {
 				$this->clearbit($mask, 5);
 				if ($min[0] === '$') {

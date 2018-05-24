@@ -20,6 +20,7 @@ final class HintsParser
 	private $iconToken;
 	private $sectionToken;
 	private $layoutToken;
+	private $variantToken;
 	private $clearToken;
 	private $listStartToken;
 	private $listDelimiterToken;
@@ -50,6 +51,7 @@ final class HintsParser
 		$this->iconToken          = "/^icon/";
 		$this->sectionToken       = "/^section/";
 		$this->layoutToken        = "/^layout/";
+		$this->variantToken         = "/^variant/";
 		$this->componentToken     = "/^component/";
 		$this->clearToken         = "/^clear/";
 
@@ -116,25 +118,28 @@ final class HintsParser
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
-			} elseif ($this->match('tagToken', $tag)) {
+			} else if ($this->match('tagToken', $tag)) {
 				$this->parseTag($hints, $tag);
-			} elseif ($this->isbitset($mask, 1) && $this->match('labelToken')) {
+			} else if ($this->isbitset($mask, 1) && $this->match('labelToken')) {
 				$this->clearbit($mask, 1);
 				$hints->setLabel($this->parseQuotedString());
-			} elseif ($this->isbitset($mask, 2) && $this->match('iconToken')) {
+			} else if ($this->isbitset($mask, 2) && $this->match('iconToken')) {
 				$this->clearbit($mask, 2);
 				$hints->setIcon($this->parseName());
-			} elseif ($this->isbitset($mask, 3) && $this->match('sectionToken')) {
+			} else if ($this->isbitset($mask, 3) && $this->match('sectionToken')) {
 				$this->clearbit($mask, 3);
 				$hints->setSection($this->parseName());
-			} elseif ($this->isbitset($mask, 4) && $this->match('componentToken')) {
+			} else if ($this->isbitset($mask, 4) && $this->match('componentToken')) {
 				$this->clearbit($mask, 4);
 				$hints->setComponent($this->parseDashedName());
-			} elseif ($this->isbitset($mask, 5) && $this->match('layoutToken')) {
+			} else if ($this->isbitset($mask, 5) && $this->match('layoutToken')) {
 				$this->clearbit($mask, 5);
 				$hints->setLayout($this->parseDashedName());
-			} elseif ($this->isbitset($mask, 6) && $this->match('clearToken')) {
+			} else if ($this->isbitset($mask, 6) && $this->match('variantToken')) {
 				$this->clearbit($mask, 6);
+				$hints->setVariant($this->parseDashedName());
+			} else if ($this->isbitset($mask, 7) && $this->match('clearToken')) {
+				$this->clearbit($mask, 7);
 				$hints->setClear($this->parseClear());
 			} else {
 				throw new ParserError($this->parseError("Unexpected token"));
@@ -205,7 +210,7 @@ final class HintsParser
 						throw new ParserError($this->parseError("expected space, list delimiter or list end"));
 					}
 					break;
-				}
+			}
 		}
 		return $sections;
 	}
@@ -245,7 +250,7 @@ final class HintsParser
 						throw new ParserError($this->parseError("expected space or list end"));
 					}
 					break;
-				}
+			}
 		}
 		return $name;
 	}
@@ -285,7 +290,7 @@ final class HintsParser
 						throw new ParserError($this->parseError("expected space or list end"));
 					}
 					break;
-				}
+			}
 		}
 		return $name;
 	}
@@ -339,7 +344,7 @@ final class HintsParser
 						throw new ParserError($this->parseError("expected list end"));
 					}
 					break;
-				}
+			}
 		}
 		return $string;
 	}
