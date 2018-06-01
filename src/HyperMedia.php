@@ -18,6 +18,7 @@ use Sturdy\Activity\Response\{
 final class HyperMedia
 {
 	// dependencies/configuration
+	private $sharedStateStore;
 	private $cache;
 	private $journaling;
 	private $translator;
@@ -41,6 +42,7 @@ final class HyperMedia
 	 *                                              dependencies for your actions
 	 */
 	public function __construct(
+		SharedStateStore $sharedStateStore,
 		Cache $cache,
 		JournalRepository $journalRepository,
 		Translator $translator,
@@ -58,6 +60,7 @@ final class HyperMedia
 		$this->basePath = rtrim($basePath, "/") . "/";
 		$this->namespace = !empty($namespace) ? (rtrim($namespace, "\\") . "\\") : '';
 		$this->di = $di;
+		$this->sharedStateStore = $sharedStateStore;
 	}
 
 	/**
@@ -136,26 +139,26 @@ final class HyperMedia
 	 * @param  array  $tags        tags
 	 * @param  array  $conditions  conditions
 	 * @param  array  $preserve    preserve field values
-	 * @return Response   the response
+	 * @return Response  the response
 	 */
 	private function call(string $verb, string $path, array $values, array $query, array $tags, array $conditions = [], array $preserve = null): Response
 	{
 		try {
 			$path = substr($path, strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				$resource = (new Resource($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))
+				$resource = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))
 					->createRootResource($verb, $conditions);
 				$response = $resource->call($values, $query, $preserve);
 			} else { // if normal resource
 				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
-				$resource = (new Resource($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query, $this->di))
+				$resource = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query, $this->di))
 					->createResource($class, $verb, $conditions);
 				$response = $resource->call($values, $query, $preserve);
 			}
 		} catch (Response $e) {
 			$response = $e;
 		} catch (Throwable $e) {
-			$response = new InternalServerError("Uncaught exception", 0, $e);
+			$response = new InternalServerError("Uncaught exception: $verb {$this->basePath}$path" . ($query ? "?".http_build_query($query) : ""), 0, $e);
 		}
 		return $response;
 	}

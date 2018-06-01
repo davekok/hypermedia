@@ -81,7 +81,7 @@ final class Link
 					} elseif ($this->mainClass && isset($this->mainQuery[$name])) {
 						$selectedFalse = true;
 					}
-				} elseif ($flags->isState()) {
+				} elseif ($flags->isState() && !$flags->isShared()) {
 					if (array_key_exists($name, $values)) {
 						$known.= "&" . $name . "=" . $this->getValue($values, $name);
 						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {

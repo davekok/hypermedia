@@ -26,6 +26,7 @@ abstract class Type
 		MonthType::type => MonthType::class,
 		ObjectType::type => ObjectType::class,
 		PasswordType::type => PasswordType::class,
+		ReferenceType::type => ReferenceType::class,
 		SetType::type => SetType::class,
 		StringType::type => StringType::class,
 		TimeType::type => TimeType::class,

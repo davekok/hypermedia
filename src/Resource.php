@@ -29,6 +29,7 @@ use Sturdy\Activity\Response\{
 
 final class Resource
 {
+	private $sharedStateStore;
 	private $cache;
 	private $translator;
 	private $jsonDeserializer;
@@ -52,8 +53,9 @@ final class Resource
 	private $mainClass;
 	private $query;
 
-	public function __construct(Cache $cache, Translator $translator, JsonDeserializer $jsonDeserializer, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query, $di)
+	public function __construct(SharedStateStore $sharedStateStore, Cache $cache, Translator $translator, JsonDeserializer $jsonDeserializer, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query, $di)
 	{
+		$this->sharedStateStore = $sharedStateStore;
 		$this->cache = $cache;
 		$this->translator = $translator;
 		$this->jsonDeserializer = $jsonDeserializer;
@@ -88,7 +90,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -105,7 +107,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = true;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -118,7 +120,7 @@ final class Resource
 
 	public function createAttachedResource(string $class): self
 	{
-		$self = new self($this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = false;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
@@ -149,6 +151,7 @@ final class Resource
 		switch ($this->verbflags->getStatus()) {
 			case Meta\Verb::OK:
 				$this->response = new OK($this);
+				Http::setLogger($this->response);
 				break;
 
 			case Meta\Verb::NO_CONTENT:
@@ -214,11 +217,17 @@ final class Resource
 
 	private function checkField(array $fieldDescriptor, $value, array $query, BadRequest $badRequest, string $path = "")
 	{
-		[$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon] = $fieldDescriptor;
+		[$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool] = $fieldDescriptor;
 
 		// flags check
 		$flags = new FieldFlags($flags);
 		if ($flags->isMeta() || $flags->isState()) {
+			if ($flags->isShared()) {
+				$v = $this->sharedStateStore->get($pool, $name);
+				if ($v !== null) {
+					$query[$name] = $v;
+				}
+			}
 			if ($flags->isRequired() && (!isset($query[$name]) || $query[$name] === "")) {
 				$badRequest->addMessage("$path is required");
 				return null;
@@ -390,16 +399,19 @@ final class Resource
 	{
 		$content = new stdClass;
 		$state = [];
-		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isState()) {
 				if (isset($source->$name)) {
 					$state[$name] = $preserve[$name] ?? $source->$name ?? null;
+					if ($flags->isShared() && !$flags->isReadOnly()) {
+						$this->sharedStateStore->set($pool, $name, $state[$name]);
+					}
 				}
 			}
 		}
 
-		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isState()) {
 				continue;
@@ -408,22 +420,23 @@ final class Resource
 					$content->meta = new stdClass;
 				}
 				[$content->fields[], $content->meta->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $state);
 			} else if ($flags->isData()) {
 				[$content->fields[], $content->data] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $state);
 			} else {
 				if (!isset($content->data)) {
 					$content->data = new stdClass;
 				}
 				[$content->fields[], $content->data->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $state);
 			}
 		}
+
 		return [$content, $state];
 	}
 
-	private function createField($value, $translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state)
+	private function createField($value, $translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $state)
 	{
 		$field = new stdClass;
 		$field->name = $name;
@@ -446,27 +459,27 @@ final class Resource
 			$field->fields = [];
 			if ($flags->isArray() || $flags->isMatrix()) {
 				$value = $value ?? [];
-				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 					$flags = new FieldFlags($flags);
 					[$field->fields[], $i] = $this->createField(null,
-						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
+						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $state);
 				}
 			} else {
 				$value = $value ?? new stdClass;
-				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 					$flags = new FieldFlags($flags);
 					[$field->fields[], $value->$name] = $this->createField($value->$name ?? null,
-						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
+						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $state);
 				}
 			}
 		} else if ($type instanceof TupleType) {
 			$field->fields = [];
 			$value = $value ?? [];
 			$i = 0;
-			foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+			foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 				$flags = new FieldFlags($flags);
 				[$field->fields[], $value[$i]] = $this->createField($value[$i] ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $state);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $state);
 				++$i;
 			}
 		}
@@ -497,7 +510,7 @@ final class Resource
 
 	private function preReconRecurse(array $fieldDescriptors, array $conditions, $values, $query, string $prefix = ""): array
 	{
-		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isRecon()) {
 				if ($flags->isMeta() || $flags->isState()) {
@@ -544,7 +557,7 @@ final class Resource
 
 	private function postReconRecurse(array $fieldDescriptors, array $conditions, /*object*/ $object, string $prefix = ""): array
 	{
-		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon]) {
+		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isRecon()) {
 				if (!array_key_exists($prefix.$name, $conditions)) {

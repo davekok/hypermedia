@@ -12,6 +12,7 @@ final class Http
 	private static $adaptor = "echo";
 	private static $request;
 	private static $mediaTypes;
+	private static $logger;
 
 	/**
 	 * Abort
@@ -106,5 +107,15 @@ final class Http
 				break;
 		}
 		return $response;
+	}
+
+	public static function setLogger($logger)
+	{
+		self::$logger = $logger;
+	}
+
+	public static function log(...$data)
+	{
+		self::$logger->log(...$data);
 	}
 }

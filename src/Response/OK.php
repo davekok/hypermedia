@@ -214,4 +214,30 @@ final class OK implements Response
 		}
 		return $link->expand($values, false);
 	}
+
+	/**
+	 * Log a message to the current part
+	 *
+	 * @param $data  data to log
+	 */
+	public function log(...$data): void
+	{
+		foreach ($data as $item) {
+			if (is_scalar($item) || is_array($item) || $item instanceof \stdClass) {
+				$this->part->log[] = $item;
+			} else if (is_object($item)) {
+				if (method_exists($item, "__toString")) {
+					$this->part->log[] = $item->__toString();
+				} else if (method_exists($item, "toString")) {
+					$this->part->log[] = $item->toString();
+				} else if (method_exists($item, "jsonSerialize")) {
+					$this->part->log[] = $item->jsonSerialize();
+				} else {
+					$this->part->log[] = get_class($item);
+				}
+			} else {
+				$this->part->log[] = print_r($item, true);
+			}
+		}
+	}
 }

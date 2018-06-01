@@ -26,6 +26,7 @@ final class Field extends Taggable
 	private $autocomplete; // autocomplete expression, see HTML 5 autofill documentation
 	private $label;        // label
 	private $icon;         // icon
+	private $pool;         // shared state pool name
 
 	/**
 	 * Constructor
@@ -222,6 +223,26 @@ final class Field extends Taggable
 	public function getIcon(): ?string
 	{
 		return $this->icon;
+	}
+
+	/**
+	 * Set shared state pool name
+	 *
+	 * @param string $sharedStatePoolName
+	 */
+	public function setSharedStatePoolName(string $sharedStatePoolName): void
+	{
+		$this->pool = $sharedStatePoolName;
+	}
+
+	/**
+	 * Get shared state pool name
+	 *
+	 * @return string
+	 */
+	public function getSharedStatePoolName(): ?string
+	{
+		return $this->pool;
 	}
 
 	/**

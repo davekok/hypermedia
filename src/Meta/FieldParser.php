@@ -113,6 +113,7 @@ final class FieldParser
 		$this->linkToken          = "/^link/";
 		$this->listToken          = "/^list/";
 		$this->objectToken        = "/^object/";
+		$this->referenceToken     = "/^reference/";
 		$this->startTupleToken    = "/^\[/";
 		$this->endTupleToken      = "/^\]/";
 		$this->htmlToken          = "/^html/";
@@ -258,6 +259,7 @@ final class FieldParser
 		$this->clearbit($mask, 11); // autocomplete token
 		$this->clearbit($mask, 17); // minDate token
 		$this->clearbit($mask, 18); // maxDate token
+		$this->clearbit($mask, 19); // shared token requires state token
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -387,6 +389,9 @@ final class FieldParser
 				$field->setType($type = new Type\ObjectType());
 				$this->parseArray($flags);
 				$this->parseFields($type);
+			} elseif ($this->isbitset($mask, 1) && $this->match('referenceToken')) {
+				$this->clearbit($mask, 1);
+				$field->setType($type = new Type\ReferenceType());
 			} elseif ($this->isbitset($mask, 1) && $this->match('startTupleToken')) {
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\TupleType());
@@ -413,6 +418,7 @@ final class FieldParser
 				$flags->setAutoSubmit();
 			} elseif ($this->isbitset($mask, 2) && $this->match('stateToken')) {
 				$this->clearbit($mask, 2);
+				$this->setbit($mask, 19);
 				$flags->setState();
 			} elseif ($this->isbitset($mask, 14) && $this->match('reconToken')) {
 				$this->clearbit($mask, 14);
@@ -434,6 +440,7 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 19) && $this->match('sharedToken')) {
 				$this->clearbit($mask, 19);
 				$flags->setShared();
+				$field->setSharedStatePoolName($this->parseNameToken());
 			} elseif ($this->isbitset($mask, 5) && $this->match('minToken', $min)) {
 				$this->clearbit($mask, 5);
 				if ($min[0] === '$') {
