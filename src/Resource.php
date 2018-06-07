@@ -78,10 +78,10 @@ final class Resource
 	public function createLink(?string $class): ?Link
 	{
 		if ($class === null) {
-			return new Link($this->translator, $this->basePath, $this->namespace, null);
+			return new Link($this->sharedStateStore, $this->translator, $this->basePath, $this->namespace, null);
 		} else {
 			$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
-			return $resource ? new Link($this->translator, $this->basePath, $this->namespace, $resource, $this->mainClass === $class, $this->query) : null;
+			return $resource ? new Link($this->sharedStateStore, $this->translator, $this->basePath, $this->namespace, $resource, $this->mainClass === $class, $this->query) : null;
 		}
 	}
 

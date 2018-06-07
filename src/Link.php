@@ -6,12 +6,14 @@ use stdClass;
 use Sturdy\Activity\Meta\CacheItem_Resource;
 use Sturdy\Activity\Meta\FieldFlags;
 use Sturdy\Activity\Response\InternalServerError;
+use Sturdy\Activity\SharedStateStore;
 
 /**
  * A HyperMedia Link
  */
 final class Link
 {
+	private $store;
 	private $translator;
 	private $basePath;
 	private $namespace;
@@ -27,8 +29,9 @@ final class Link
 	private $mainClass;
 	private $mainQuery;
 
-	public function __construct(Translator $translator, string $basePath, string $namespace, ?CacheItem_Resource $resource, bool $mainClass = false, array $mainQuery = [])
+	public function __construct(SharedStateStore $store, Translator $translator, string $basePath, string $namespace, ?CacheItem_Resource $resource, bool $mainClass = false, array $mainQuery = [])
 	{
+		$this->store = $store;
 		$this->translator = $translator;
 		$this->basePath = $basePath;
 		$this->namespace = $namespace;
@@ -36,7 +39,7 @@ final class Link
 		$this->mainClass = $mainClass;
 		$this->mainQuery = $mainQuery;
 		if ($this->resource) {
-			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
+			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 				$flags = new FieldFlags($flags);
 				if ($flags->isMeta()) {
 					$this->templated = true;
@@ -54,11 +57,12 @@ final class Link
 			$class = $this->resource->getClass();
 			$path = strtolower(preg_replace('/([a-zA-Z])(?=[A-Z])/', '$1-', substr($class, strlen($this->namespace))));
 			$obj->href = $this->basePath . trim(strtr($path, "\\", "/"), "/");
+			$store = "";
 			$known = "";
 			$unknown = "";
 			$selectedTrue = false;
 			$selectedFalse = false;
-			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete]) {
+			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 				$flags = new FieldFlags($flags);
 				if ($flags->isMeta()) {
 					if ($flags->isReadonly() || $flags->isDisabled()) continue;
@@ -69,19 +73,19 @@ final class Link
 						} else {
 							$selectedFalse = true;
 						}
-					} elseif ($allowTemplated) {
+					} else if ($allowTemplated) {
 						$unknown.= "," . $name;
 						if ($this->mainClass && !isset($this->mainQuery[$name])) {
 							$selectedTrue = true;
 						} else {
 							$selectedFalse = true;
 						}
-					} elseif ($flags->isRequired()) {
+					} else if ($flags->isRequired()) {
 						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
-					} elseif ($this->mainClass && isset($this->mainQuery[$name])) {
+					} else if ($this->mainClass && isset($this->mainQuery[$name])) {
 						$selectedFalse = true;
 					}
-				} elseif ($flags->isState() && !$flags->isShared()) {
+				} else if ($flags->isState() && !$flags->isShared()) {
 					if (array_key_exists($name, $values)) {
 						$known.= "&" . $name . "=" . $this->getValue($values, $name);
 						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {
@@ -89,22 +93,31 @@ final class Link
 						} else {
 							$selectedFalse = true;
 						}
-					} elseif (!$allowTemplated && $flags->isRequired()) {
+					} else if (!$allowTemplated && $flags->isRequired()) {
 						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
-					} elseif ($this->mainClass && isset($this->mainQuery[$name])) {
+					} else if ($this->mainClass && isset($this->mainQuery[$name])) {
 						$selectedFalse = true;
 					}
+				} else if ($flags->isPersistent()) {
+					$store = "?store=" . ($this->store->getPersistentStoreId() ?? $this->store->createPersistentStore());
 				}
 			}
-			if ($known) {
+			if ($store) {
+				if ($known) $known[0] = "&";
+				if ($unknown) $unknown[0] = "&";
+			} else if ($known) {
 				$known[0] = "?";
-				$obj->href.= $known;
-				if ($unknown) {
-					$unknown[0] = "&";
-					$obj->href.= "{" . $unknown . "}";
-				}
-			} elseif ($unknown) {
+				if ($unknown) $unknown[0] = "&";
+			} else if ($unknown) {
 				$unknown[0] = "?";
+			}
+			if ($storeId) {
+				$obj->href.= $storeId;
+			}
+			if ($known) {
+				$obj->href.= $known;
+			}
+			if ($unknown) {
 				$obj->href.= "{" . $unknown . "}";
 			}
 			if (!empty($unknown)) {

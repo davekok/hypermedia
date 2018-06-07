@@ -52,6 +52,7 @@ final class HyperMedia
 		string $namespace,
 		/*object*/ $di)
 	{
+		$this->sharedStateStore = $sharedStateStore;
 		$this->cache = $cache;
 		$this->journaling = new Journaling($journalRepository, $di);
 		$this->translator = $translator;
@@ -60,7 +61,6 @@ final class HyperMedia
 		$this->basePath = rtrim($basePath, "/") . "/";
 		$this->namespace = !empty($namespace) ? (rtrim($namespace, "\\") . "\\") : '';
 		$this->di = $di;
-		$this->sharedStateStore = $sharedStateStore;
 	}
 
 	/**
@@ -98,6 +98,10 @@ final class HyperMedia
 		$verb = $request->getVerb();
 		$path = $request->getPath();
 		$query = $this->getQuery($request);
+		if (isset($query['store'])) {
+			$this->sharedStateStore->loadPersistentStore($query['store']);
+			unset($query['store']);
+		}
 		switch ($verb) {
 			case "GET":
 				$values = [];
@@ -144,6 +148,7 @@ final class HyperMedia
 	private function call(string $verb, string $path, array $values, array $query, array $tags, array $conditions = [], array $preserve = null): Response
 	{
 		try {
+			$this->sharedStateStore->fill("query", $query);
 			$path = substr($path, strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
 				$resource = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))

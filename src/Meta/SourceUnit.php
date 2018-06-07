@@ -174,23 +174,20 @@ final class SourceUnit implements CacheSourceUnit
 	/**
 	 * Get cache items
 	 *
-	 * @param  callable $filter  whether or not to include the item 'bool filter(object $item)'
 	 * @return CacheItem[]  the cache items
 	 */
-	public function getCacheItems(callable $filter): iterable
+	public function getCacheItems(): iterable
 	{
 		$tagMatchers = [];
 
 		foreach ([$this->activities??[], $this->resources??[]] as $items) {
 			foreach ($items as $item) {
-				if ($filter($item)) {
-					foreach ($item->getTaggables() as $taggable) {
-						$taggable->setKeyOrder($this->tagorder);
-						foreach ($this->tagPermutations($taggable->getTags()) as $tags) {
-							$hash = hash("md5", serialize($tags), true);
-							if (!isset($tagMatchers[$hash])) {
-								$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
-							}
+				foreach ($item->getTaggables() as $taggable) {
+					$taggable->setKeyOrder($this->tagorder);
+					foreach ($this->tagPermutations($taggable->getTags()) as $tags) {
+						$hash = hash("md5", serialize($tags), true);
+						if (!isset($tagMatchers[$hash])) {
+							$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
 						}
 					}
 				}

@@ -29,6 +29,7 @@ final class FieldFlags
 	const matrix     = 1024;  // field is a matrix or two dimensional array
 	const autosubmit = 2048;  // auto submit field
 	const shared     = 4096;  // whether the field is shared with other resources
+	const persistent = 8192;  // whether the value of the field should be persisted
 
 	private $flags;           // bitmask of the above constants
 
@@ -261,6 +262,23 @@ final class FieldFlags
 	public function isShared(): bool
 	{
 		return (bool)($this->flags & self::shared);
+	}
+
+	public function setPersistent(): self
+	{
+		$this->flags |= self::persistent;
+		return $this;
+	}
+
+	public function clearPersistent(): self
+	{
+		$this->flags &= ~self::persistent;
+		return $this;
+	}
+
+	public function isPersistent(): bool
+	{
+		return (bool)($this->flags & self::persistent);
 	}
 
 	public function toInt(): int

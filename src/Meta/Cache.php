@@ -52,11 +52,7 @@ final class Cache implements CacheInterface
 		$item->set(serialize([$tagorder, $wildcards]));
 		$this->cachePool->saveDeferred($item);
 
-		$filter = function(/*object*/ $item): bool {
-			return true;
-		};
-
-		foreach ($unit->getCacheItems($filter) as $item) {
+		foreach ($unit->getCacheItems() as $item) {
 			$cacheItem = $this->getSourceUnitItem($name, $item->getType(), $item->getClass(), $item->getTags());
 			$cacheItem->set(serialize($item));
 			$this->cachePool->saveDeferred($cacheItem);
