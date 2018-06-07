@@ -10,7 +10,7 @@ class TagMatcher
 	private $alltags = [];
 	private $tags = [];
 	private $shouldHave = [];
-	private $mustHave = [];
+	private $mustNotHave = [];
 
 	/**
 	 * Init tags for usage by findBestMatch
@@ -33,14 +33,11 @@ class TagMatcher
 	{
 		$this->tags = $tags;
 		$this->shouldHave = [];
+		$this->mustNotHave = [];
 		foreach ($this->alltags as $tag) {
 			if (isset($tags[$tag])) {
 				$this->shouldHave[$tag] = $tags[$tag];
-			}
-		}
-		$this->mustNotHave = [];
-		foreach ($this->alltags as $tag) {
-			if (!isset($tags[$tag])) {
+			} else {
 				$this->mustNotHave[] = $tag;
 			}
 		}

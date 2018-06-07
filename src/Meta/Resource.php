@@ -13,7 +13,7 @@ use Doctrine\Common\Annotations\Annotation\{
 /**
  * Resource meta class
  */
-class Resource
+class Resource implements SourceUnitItem
 {
 	private $class;
 	private $description;

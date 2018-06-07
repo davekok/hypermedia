@@ -48,15 +48,30 @@ final class Cache implements CacheInterface
 		// save the tagorder in which the tags are stored
 		$tagorder = $unit->getTagOrder();
 		$wildcards = $unit->getWildCardTags();
-		$item = $this->getSourceUnit($name);
-		$item->set(serialize([$tagorder, $wildcards]));
-		$this->cachePool->saveDeferred($item);
 
-		foreach ($unit->getCacheItems() as $item) {
-			$cacheItem = $this->getSourceUnitItem($name, $item->getType(), $item->getClass(), $item->getTags());
-			$cacheItem->set(serialize($item));
+		$cachedUnit = $this->getSourceUnit($name);
+		$data = $cachedUnit->get();
+		if (!empty($data)) {
+			$cachedItems = $data[2];
+		}
+
+		foreach ($unit->getCacheItems() as $variants) {
+			$variant = reset($variants);
+			$hash = $this->getSourceUnitItemHash($name, $variant->getType(), $variant->getClass());
+			$cacheItem = $this->cachePool->getItem($hash);
+			$updated = [];
+			foreach ($variants as $variant) {
+				$tags = $variant->getTags();
+				$hash = md5(serialize($tags));
+				$tags['@'] = $variant;
+				$updated[$hash] = $tags;
+			}
+			$cacheItem->set(serialize($updated));
 			$this->cachePool->saveDeferred($cacheItem);
 		}
+
+		$cachedUnit->set(serialize([$tagorder, $wildcards, $items]));
+		$this->cachePool->saveDeferred($cachedUnit);
 
 		// commit cache
 		$this->cachePool->commit();
@@ -202,15 +217,15 @@ final class Cache implements CacheInterface
 	 * @param string $unit   the unit name
 	 * @param string $type   the item type
 	 * @param string $class  the item class
-	 * @param array  $tags   the tags
+	 * @return string
 	 */
-	private function getSourceUnitItem(string $unit, string $type, string $class, array $tags)
+	private function getSourceUnitItemHash(string $unit, string $type, string $class): string
 	{
 		switch ($type) {
 			case "RootResource":
-				return $this->cachePool->getItem(hash("sha256", "/sturdy-activity/$unit/$type/".serialize($tags)));
+				return hash("sha256", "/sturdy-activity/$unit/$type"));
 			default:
-				return $this->cachePool->getItem(hash("sha256", "/sturdy-activity/$unit/$type/$class/".serialize($tags)));
+				return hash("sha256", "/sturdy-activity/$unit/$type/$class");
 		}
 	}
 

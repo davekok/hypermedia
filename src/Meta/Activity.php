@@ -13,7 +13,7 @@ use Doctrine\Common\Annotations\Annotation\{
 /**
  * Activity meta class
  */
-class Activity
+class Activity implements SourceUnitItem
 {
 	private $class;
 	private $description;

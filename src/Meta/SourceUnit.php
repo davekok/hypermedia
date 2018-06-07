@@ -182,9 +182,10 @@ final class SourceUnit implements CacheSourceUnit
 
 		foreach ([$this->activities??[], $this->resources??[]] as $items) {
 			foreach ($items as $item) {
+				$variants = [];
 				foreach ($item->getTaggables() as $taggable) {
 					$taggable->setKeyOrder($this->tagorder);
-					foreach ($this->tagPermutations($taggable->getTags()) as $tags) {
+					foreach ($taggable->getTags() as $tags) {
 						$hash = hash("md5", serialize($tags), true);
 						if (!isset($tagMatchers[$hash])) {
 							$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
@@ -194,21 +195,25 @@ final class SourceUnit implements CacheSourceUnit
 			}
 		}
 
-		foreach ($tagMatchers as $tagMatcher) {
-			$compiler = new ActivityCompiler();
-			foreach ($this->activities??[] as $activity) {
-				// compile item
+		$compiler = new ActivityCompiler();
+		foreach ($this->activities??[] as $activity) {
+			$variants = [];
+			foreach ($tagMatchers as $tagMatcher) {
 				$cacheItem = $compiler->compile($activity, $tagMatcher);
 				if (!$cacheItem->valid()) continue;
-				yield $cacheItem;
+				$variants[] = $cacheItem;
 			}
-			$compiler = new ResourceCompiler();
-			foreach ($this->resources??[] as $resource) {
-				// compile item
+			yield $variants;
+		}
+		$compiler = new ResourceCompiler();
+		foreach ($this->resources??[] as $resource) {
+			$variants = [];
+			foreach ($tagMatchers as $tagMatcher) {
 				$cacheItem = $compiler->compile($resource, $tagMatcher);
 				if (!$cacheItem->valid()) continue;
-				yield $cacheItem;
+				$variants[] = $cacheItem;
 			}
+			yield $variants;
 		}
 	}
 
