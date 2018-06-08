@@ -33,5 +33,5 @@ interface CacheSourceUnit
 	 *
 	 * @return iterable  get cash item
 	 */
-	public function getCacheItems(callable $filter): iterable;
+	public function getCacheItems(): iterable;
 }

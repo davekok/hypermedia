@@ -185,11 +185,10 @@ final class SourceUnit implements CacheSourceUnit
 				$variants = [];
 				foreach ($item->getTaggables() as $taggable) {
 					$taggable->setKeyOrder($this->tagorder);
-					foreach ($taggable->getTags() as $tags) {
-						$hash = hash("md5", serialize($tags), true);
-						if (!isset($tagMatchers[$hash])) {
-							$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
-						}
+					$tags = $taggable->getTags();
+					$hash = hash("md5", serialize($tags), true);
+					if (!isset($tagMatchers[$hash])) {
+						$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
 					}
 				}
 			}

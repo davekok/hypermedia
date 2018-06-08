@@ -131,10 +131,10 @@ final class Cache implements CacheInterface
 	 */
 	private function getItem(string $unit, string $type, string $class, array $tags)
 	{
-		$cachedUnit = $this->cachePool->getItem($this->getSourceUnitHash($name));
+		$cachedUnit = $this->cachePool->getItem($this->getSourceUnitHash($unit));
 		if (!$cachedUnit->isHit()) return null;
 		$cachedItem = $this->cachePool->getItem($this->getSourceUnitItemHash($unit, $type, $class));
-		if (!$cachedItem->isHit()) return null
+		if (!$cachedItem->isHit()) return null;
 		return (new TagMatcher($tags, unserialize($cachedUnit->get())))->findBestMatch(unserialize($cachedItem->get()));
 	}
 
