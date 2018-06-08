@@ -5,10 +5,9 @@ namespace Sturdy\Activity\Meta;
 /**
  * A taggable
  */
-class Taggable
+abstract class Taggable
 {
 	private $tags = [];
-	private $keyorder = [];
 
 	/**
 	 * Set that the object is only valid if the given tag is there.
@@ -87,7 +86,6 @@ class Taggable
 			$tags[$key] = $this->tags[$key] ?? null;
 		}
 		$this->tags = $tags;
-		$this->keyorder = $keyorder;
 	}
 
 	/**

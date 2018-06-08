@@ -44,37 +44,42 @@ final class Cache implements CacheInterface
 	public function updateSourceUnit(CacheSourceUnit $unit): void
 	{
 		$name = $unit->getName();
-
-		// save the tagorder in which the tags are stored
 		$tagorder = $unit->getTagOrder();
 		$wildcards = $unit->getWildCardTags();
 
-		$cachedUnit = $this->getSourceUnit($name);
-		$data = $cachedUnit->get();
-		if (!empty($data)) {
-			$cachedItems = $data[2];
-		}
+		$unitHash = $this->getSourceUnitHash($name);
+		$cachedUnit = $this->cachePool->getItem($unitHash);
+		$cachedItems = $this->cachePool->getItem($unitHash."items");
+		$oldItems = $cachedItems->get();
+		$oldItems = !empty($oldItems) ? array_flip(unserialize($oldItems)) : [];
+		$newItems = [];
 
 		foreach ($unit->getCacheItems() as $variants) {
 			$variant = reset($variants);
-			$hash = $this->getSourceUnitItemHash($name, $variant->getType(), $variant->getClass());
-			$cacheItem = $this->cachePool->getItem($hash);
-			$updated = [];
+			$itemHash = $this->getSourceUnitItemHash($name, $variant->getType(), $variant->getClass());
+			unset($oldItems[$itemHash]);
+			$newItems[] = $itemHash;
+
 			foreach ($variants as $variant) {
-				$tags = $variant->getTags();
-				$hash = md5(serialize($tags));
-				$tags['@'] = $variant;
-				$updated[$hash] = $tags;
+				$variant->setKeyOrder($tagorder);
 			}
-			$cacheItem->set(serialize($updated));
-			$this->cachePool->saveDeferred($cacheItem);
+
+			$cachedItem = $this->cachePool->getItem($itemHash);
+			$cachedItem->set(serialize($variants));
+			$this->cachePool->saveDeferred($cachedItem);
 		}
 
-		$cachedUnit->set(serialize([$tagorder, $wildcards, $items]));
+		$cachedItems->set(serialize($newItems));
+		$this->cachePool->saveDeferred($cachedItems);
+		$cachedUnit->set(serialize($tagorder));
 		$this->cachePool->saveDeferred($cachedUnit);
 
 		// commit cache
 		$this->cachePool->commit();
+
+		foreach ($oldItems as $itemHash) {
+			$this->cachePool->deleteItem($itemHash);
+		}
 	}
 
 	/**
@@ -126,79 +131,11 @@ final class Cache implements CacheInterface
 	 */
 	private function getItem(string $unit, string $type, string $class, array $tags)
 	{
-		$item = $this->getSourceUnit($unit);
-		if (!$item->isHit()) {
-			return null;
-		}
-		[$order, $wildcards] = unserialize($item->get());
-
-		$tags = $this->reorder($tags, $order);
-
-		$item = $this->getSourceUnitItem($unit, $type, $class, $tags);
-
-		if (!$item->isHit()) { // try wildcards
-			// filter out any tag that are already wildcards
-			foreach ($wildcards as $ix => &$wildcard) {
-				if ($tags[$wildcard] === true || $tags[$wildcard] === null) {
-					unset($wildcards[$ix]);
-				}
-			}
-
-			// iterate all wildcard permutations
-			foreach ($this->wildcardPermutations($wildcards) as $wcs) {
-				$dup = $tags;
-				foreach ($wcs as $wc) {
-					$dup[$wc] = true; // set tag to wildcard
-				}
-
-				// check if an item exists
-				$item = $this->getSourceUnitItem($unit, $type, $class, $dup);
-				if ($item->isHit()) {
-					break;
-				}
-			}
-		}
-
-		if (!$item->isHit()) {
-			return null;
-		}
-
-		$item = unserialize($item->get());
-		if (!$item) {
-			return null;
-		}
-
-		return $item;
-	}
-
-
-	/**
-	 * Return all permutations of wildcards without duplicates.
-	 *
-	 * @param  array  $wildcards  the wildcards to return the permutations for
-	 * @return iterable  to iterate over the permutations
-	 */
-	private function wildcardPermutations(array $array): iterable
-	{
-		$l = count($array);
-		switch ($l) {
-			case 0:
-				break;
-			case 1:
-				yield $array;
-				break;
-			default:
-				foreach ($array as $value) {
-					yield [$value];
-				}
-				for ($i = 0; $i < $l; ++$i) {
-					$value = array_shift($array);
-					foreach ($this->wildcardPermutations($array) as $sub) {
-						array_unshift($sub, $value);
-						yield $sub;
-					}
-				}
-		}
+		$cachedUnit = $this->cachePool->getItem($this->getSourceUnitHash($name));
+		if (!$cachedUnit->isHit()) return null;
+		$cachedItem = $this->cachePool->getItem($this->getSourceUnitItemHash($unit, $type, $class));
+		if (!$cachedItem->isHit()) return null
+		return (new TagMatcher($tags, unserialize($cachedUnit->get())))->findBestMatch(unserialize($cachedItem->get()));
 	}
 
 	/**
@@ -206,9 +143,9 @@ final class Cache implements CacheInterface
 	 *
 	 * @param $unit  the unit name
 	 */
-	private function getSourceUnit(string $unit)
+	private function getSourceUnitHash(string $unit): string
 	{
-		return $this->cachePool->getItem(hash("sha256", "/sturdy-activity/$unit"));
+		return hash("sha256", "/sturdy-activity/$unit");
 	}
 
 	/**
@@ -223,28 +160,9 @@ final class Cache implements CacheInterface
 	{
 		switch ($type) {
 			case "RootResource":
-				return hash("sha256", "/sturdy-activity/$unit/$type"));
+				return hash("sha256", "/sturdy-activity/$unit/$type");
 			default:
 				return hash("sha256", "/sturdy-activity/$unit/$type/$class");
 		}
-	}
-
-	/**
-	 * Reorder array, any missing keys will be added and have a value of null.
-	 *
-	 * @param $array  the original array
-	 * @param $order  the order of the new array
-	 * @return reordered array
-	 */
-	public function reorder(array $array, array $order): array
-	{
-		$reordered = [];
-		foreach ($order as $key) {
-			$reordered[$key] = $array[$key] ?? null;
-			if ($reordered[$key] === false) {
-				$reordered[$key] = null;
-			}
-		}
-		return $reordered;
 	}
 }

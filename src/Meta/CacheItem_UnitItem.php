@@ -7,10 +7,9 @@ namespace Sturdy\Activity\Meta;
  *
  * Intended as package private class
  */
-abstract class CacheItem_UnitItem implements CacheItem
+abstract class CacheItem_UnitItem extends Taggable implements CacheItem
 {
 	private $class;
-	private $tags;
 
 	/**
 	 * Set class
@@ -32,27 +31,5 @@ abstract class CacheItem_UnitItem implements CacheItem
 	public function getClass(): string
 	{
 		return $this->class;
-	}
-
-	/**
-	 * Set tags
-	 *
-	 * @param array $tags
-	 * @return self
-	 */
-	public function setTags(array $tags): self
-	{
-		$this->tags = $tags;
-		return $this;
-	}
-
-	/**
-	 * Get tags
-	 *
-	 * @return array
-	 */
-	public function getTags(): array
-	{
-		return $this->tags;
 	}
 }
