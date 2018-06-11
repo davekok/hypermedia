@@ -93,7 +93,7 @@ final class Worker
 		$this->cleanEnvironment();
 
 		if ($this->checkRunning($this->pidfile)) {
-			throw new Exception("{$this->name} is already running, quiting");
+			exit("{$this->name} is already running, quiting\n");
 		}
 
 		// reset umask, adopting user's default umask may mess things up
@@ -116,7 +116,7 @@ final class Worker
 		// directory will fail, which is annoying to debug for
 		// a system administrator
 		if (chdir("/") === false)
-			throw new Exception("failed to change directory");
+			exit("failed to change directory\n");
 
 		cli_set_process_title($this->name);
 	}
@@ -216,7 +216,7 @@ final class Worker
 		$pidfile = $this->pidfile ?? (sys_get_temp_dir()."/".basename($_SERVER['PHP_SELF'],'.php').".pid");
 		$rundir = dirname($pidfile);
 		if (!is_dir($rundir) && !mkdir($rundir, 0775, true))
-			throw new Exception("unable to make directory ".$rundir);
+			exit("unable to make directory $rundir\n");
 
 		if (file_exists($pidfile) && file_exists("/proc/".file_get_contents($pidfile))) {
 			return true;
@@ -231,7 +231,7 @@ final class Worker
 	public function detach(): void
 	{
 		if ($this->detached === true)
-			throw new Exception("process is already detached");
+			exit("process is already detached\n");
 
 		// fork process, so parent can exit
 		if (!$this->fork()) {
@@ -241,7 +241,7 @@ final class Worker
 
 		// become session leader
 		if (posix_setsid() < 0) {
-			throw new Exception("failed to become session leader");
+			exit("failed to become session leader\n");
 		}
 
 		// fork again, so parent can exit
@@ -258,6 +258,9 @@ final class Worker
 		// write new pid to pidfile as previous one is no longer valid
 		if ($this->pidfile) {
 			file_put_contents($this->pidfile, posix_getpid());
+			register_shutdown_function(function(){
+				unlink($this->pidfile);
+			});
 		}
 	}
 
@@ -279,42 +282,58 @@ final class Worker
 
 		if ($this->inputfile) {
 			$inputdir = dirname($this->inputfile);
-			if (!is_dir($inputdir) && !mkdir($inputdir, 02770, true))
-				throw new Exception("unable to make directory ".$inputdir);
+			if (!is_dir($inputdir) && !mkdir($inputdir, 02770, true)) {
+				file_put_contents("php://stderr", "unable to make directory $inputdir\n", FILE_APPEND);
+				exit(1);
+			}
 
 			// close file descriptor slot 0, stdin
-			if (fclose($this->stdin) === false)
-				throw new Exception("failed to close stdin");
+			if (fclose($this->stdin) === false) {
+				file_put_contents("php://stderr", "failed to close stdin\n", FILE_APPEND);
+				exit(1);
+			}
 
 			// first empty file descriptor slot will be used, which is slot 0, the stdin
 			$this->stdin = fopen($this->inputfile, "r");
-			if ($this->stdin === false)
-				throw new Exception("failed to reopen stdin");
+			if ($this->stdin === false) {
+				file_put_contents("php://stderr", "failed to reopen stdin\n", FILE_APPEND);
+				exit(1);
+			}
 		}
 
 		if ($this->outputfile) {
 			$outputdir = dirname($this->outputfile);
-			if (!is_dir($outputdir) && !mkdir($outputdir, 02770, true))
-				throw new Exception("unable to make directory ".$outputdir);
+			if (!is_dir($outputdir) && !mkdir($outputdir, 02770, true)) {
+				file_put_contents("php://stderr", "unable to make directory $outputdir\n", FILE_APPEND);
+				exit(1);
+			}
 
 			// close file descriptor slot 1, stdout
-			if (fclose($this->stdout) === false)
-				throw new Exception("failed to close stdout");
+			if (fclose($this->stdout) === false) {
+				file_put_contents("php://stderr", "failed to close stdout\n", FILE_APPEND);
+				exit(1);
+			}
 
 			// first empty file descriptor slot will be used, which is slot 1, the stdout
 			$this->stdout = fopen($this->outputfile, "a");
-			if ($this->stdout === false)
-				throw new Exception("failed to reopen stdout");
+			if ($this->stdout === false) {
+				file_put_contents("php://stderr", "failed to reopen stdout\n", FILE_APPEND);
+				exit(1);
+			}
 		}
 
 		if ($this->errorfile) {
 			$errordir = dirname($this->errorfile);
-			if (!is_dir($errordir) && !mkdir($errordir, 02770, true))
-				throw new Exception("unable to make directory ".$errordir);
+			if (!is_dir($errordir) && !mkdir($errordir, 02770, true)) {
+				file_put_contents("php://stdout", "unable to make directory $errordir\n", FILE_APPEND);
+				exit(1);
+			}
 
 			// close file descriptor slot 2, stderr
-			if (fclose($this->stderr) === false)
-				throw new Exception("failed to close stderr");
+			if (fclose($this->stderr) === false) {
+				file_put_contents("php://stdout", "failed to close stderr\n", FILE_APPEND);
+				exit(1);
+			}
 
 			if ($this->outputfile === $this->errorfile) {
 				// as per documentation, when using the php:// wrapper the stream is duplicated
@@ -323,11 +342,17 @@ final class Worker
 				// thus opening php://stdout now will duplicate slot 1 to slot 2 making both php://stdout
 				// and php://stderr point to the same stream
 				$this->stderr = fopen("php://stdout", "a"); // so this is not a typo
+				if ($this->stderr === false) {
+					file_put_contents("php://stdout", "failed to duplicate stderr\n", FILE_APPEND);
+					exit(1);
+				}
 			} else {
 				// first empty file descriptor slot will be used, which is slot 2, the stderr
 				$this->stderr = fopen($this->errorfile, "a");
-				if ($this->stderr === false)
-					throw new Exception("failed to reopen stderr");
+				if ($this->stderr === false) {
+					file_put_contents("php://stdout", "failed to reopen stderr\n", FILE_APPEND);
+					exit(1);
+				}
 			}
 		}
 	}
@@ -347,7 +372,7 @@ final class Worker
 		// ignore SIGCHLD so children get auto reaped
 		pcntl_signal(SIGCHLD, SIG_IGN);
 		$pid = pcntl_fork();
-		if ($pid < 0) throw new Exception(pcntl_strerror(pcntl_errno()), pcntl_errno());
+		if ($pid < 0) exit(pcntl_strerror(pcntl_errno()));
 		$ischild = $pid === 0;
 		return $ischild;
 	}
@@ -458,7 +483,7 @@ final class Worker
 	public static function init(): array
 	{
 		$args = self::args();
-		$worker = new \Sturdy\Activity\Worker($args);
+		$worker = new self($args);
 		switch ($args["command"]) {
 			case "restart":
 				$worker->stop();
