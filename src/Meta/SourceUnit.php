@@ -2,8 +2,6 @@
 
 namespace Sturdy\Activity\Meta;
 
-use stdClass;
-
 /**
  * A source unit represents a bunch of source files
  * containing Action, Resource and Field annotations.
@@ -178,41 +176,54 @@ final class SourceUnit implements CacheSourceUnit
 	 */
 	public function getCacheItems(): iterable
 	{
-		$tagMatchers = [];
-
-		foreach ([$this->activities??[], $this->resources??[]] as $items) {
+		$actcompiler = new ActivityCompiler();
+		$rescompiler = new ResourceCompiler();
+		foreach ([$this->resources??[], $this->activities??[]] as $items) {
 			foreach ($items as $item) {
-				$variants = [];
+				$combinations = [];
 				foreach ($item->getTaggables() as $taggable) {
-					$taggable->setKeyOrder($this->tagorder);
 					$tags = $taggable->getTags();
-					$hash = hash("md5", serialize($tags), true);
-					if (!isset($tagMatchers[$hash])) {
-						$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
+					foreach ($tags as $k => $v) {
+						if ($v !== null) {
+							if (!in_array($v, $combinations[$k] ?? [])) {
+								$combinations[$k][] = $v;
+							}
+						}
 					}
 				}
-			}
-		}
 
-		$compiler = new ActivityCompiler();
-		foreach ($this->activities??[] as $activity) {
-			$variants = [];
-			foreach ($tagMatchers as $tagMatcher) {
-				$cacheItem = $compiler->compile($activity, $tagMatcher);
-				if (!$cacheItem->valid()) continue;
-				$variants[] = $cacheItem;
+				$tagMatchers = [ md5(serialize([])) => new TagMatcher([], $this->tagorder) ];
+				if (!empty($combinations)) {
+					$flat = [];
+					foreach ($combinations as $k => $s) {
+						foreach ($s as $v) {
+							$flat[] = [$k, $v];
+						}
+					}
+					foreach ($this->permutations($flat) as $l) {
+						$tags = [];
+						foreach ($l as $s) {
+							[$k, $v] = $s;
+							$tags[$k] = $v;
+						}
+						$hash = md5(serialize($tags));
+						if (!isset($tagMatchers[$hash])) {
+							$tagMatchers[$hash] = new TagMatcher($tags, $this->tagorder);
+						}
+					}
+				}
+
+				$compiler = $item instanceof Activity ? $actcompiler : $rescompiler;
+				$variants = [];
+				foreach ($tagMatchers as $tagMatcher) {
+					$cacheItem = $compiler->compile($item, $tagMatcher);
+					if (!$cacheItem->valid()) continue;
+					$variants[] = $cacheItem;
+				}
+				if (!empty($variants)) {
+					yield $variants;
+				}
 			}
-			yield $variants;
-		}
-		$compiler = new ResourceCompiler();
-		foreach ($this->resources??[] as $resource) {
-			$variants = [];
-			foreach ($tagMatchers as $tagMatcher) {
-				$cacheItem = $compiler->compile($resource, $tagMatcher);
-				if (!$cacheItem->valid()) continue;
-				$variants[] = $cacheItem;
-			}
-			yield $variants;
 		}
 	}
 

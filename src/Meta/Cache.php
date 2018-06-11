@@ -60,10 +60,6 @@ final class Cache implements CacheInterface
 			unset($oldItems[$itemHash]);
 			$newItems[] = $itemHash;
 
-			foreach ($variants as $variant) {
-				$variant->setKeyOrder($tagorder);
-			}
-
 			$cachedItem = $this->cachePool->getItem($itemHash);
 			$cachedItem->set(serialize($variants));
 			$this->cachePool->saveDeferred($cachedItem);
