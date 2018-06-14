@@ -61,6 +61,8 @@ final class Worker
 	private $outputfile;
 	private $inputfile;
 	private $errorfile;
+	private $user;
+	private $group;
 	private $safeEnvironmentVariables;
 	private $environmentVariableDefaults;
 
@@ -81,6 +83,8 @@ final class Worker
 		$this->outputfile = $config['outputfile'] ?? sys_get_temp_dir()."/{$this->name}.log";
 		$this->inputfile = $config['inputfile'] ?? "/dev/zero";
 		$this->errorfile = $config['errorfile'] ?? $this->outputfile;
+		$this->user = $config['user'] ?? null;
+		$this->group = $config['group'] ?? null;
 		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["ENVIRONMENT", "LANG"];
 		$this->environmentVariableDefaults = $config['environmentVariableDefaults'] ?? ["ENVIRONMENT"=>"prod", "LANG"=>"en_US.UTF-8"];
 	}
@@ -119,6 +123,10 @@ final class Worker
 			exit("failed to change directory\n");
 
 		cli_set_process_title($this->name);
+
+		if ($this->user !== null) {
+			$this->setUser($this->user, $this->group);
+		}
 	}
 
 	/**
@@ -265,6 +273,34 @@ final class Worker
 	}
 
 	/**
+	 * Set the user this process should run under.
+	 *
+	 * @param string $user   the user name
+	 * @param string $group  the group name
+	 */
+	public function setUser(string $user, string $group = null): void
+	{
+		if (posix_geteuid() === 0) { // are we root
+			$pw = posix_getpwnam($user);
+			if ($pw === false) {
+				exit("$user not found or insufficient privileges to search for users.");
+			}
+
+			if ($group !== null) {
+				$gr = posix_getgrnam($group);
+				if ($gr === false) {
+					exit("$group not found or insufficient privileges to search for groups.");
+				}
+				posix_setgid($gr['gid']); // set group id of process
+			} else {
+				posix_setgid($pw['gid']); // set group id of process
+			}
+
+			posix_setuid($pw['uid']); // set user id of process
+		}
+	}
+
+	/**
 	 * Redirect standard input, output and error streams.
 	 *
 	 * @param $outputfile  the file to write to
@@ -380,9 +416,10 @@ final class Worker
 	/**
 	 * Parse the command line arguments.
 	 *
+	 * @param array $defaults
 	 * @return array with arguments found
 	 */
-	public static function args(): array
+	public static function args(array $defaults = []): array
 	{
 		global $argv;
 		$progname = basename($argv[0]);
@@ -405,9 +442,16 @@ final class Worker
 		$usage.= "        redirect output, default\n";
 		$usage.= " -R, --no-redirect\n";
 		$usage.= "        don't redirect output\n";
+		$usage.= " -v, --var-dir\n";
+		$usage.= "        set var dir\n";
+		$usage.= " -p, --pid-file\n";
+		$usage.= "        set process id file\n";
+		$usage.= " -l, --log-file\n";
+		$usage.= "        set log file\n";
+		$usage.= " -u, --user\n";
+		$usage.= "        set user\n";
 		$usage.= "\n";
 		$l = count($argv);
-		$args = [];
 		for ($i = 1; $i < $l; ++$i) {
 			$arg = $argv[$i];
 			if ($arg === "--env") {
@@ -420,6 +464,14 @@ final class Worker
 				$background = true;
 			} else if ($arg === "--no-background") {
 				$background = false;
+			} else if ($arg === "--var-dir") {
+				$vardir = $argv[++$i];
+			} else if ($arg === "--pid-file") {
+				$pidfile = $argv[++$i];
+			} else if ($arg === "--log-file") {
+				$logfile = $argv[++$i];
+			} else if ($arg === "--user") {
+				$user = $argv[++$i];
 			} else if ($arg[0] == "-" && $arg[1] != "-") {
 				$cl = strlen($arg);
 				for ($c = 1; $c < $cl; ++$c) {
@@ -443,7 +495,19 @@ final class Worker
 							$redirect = false;
 							break;
 						case "e":
-							$env = $args[++$c];
+							$env = $argv[++$i];
+							break;
+						case "v":
+							$vardir = $argv[++$i];
+							break;
+						case "p":
+							$pidfile = $argv[++$i];
+							break;
+						case "l":
+							$logfile = $argv[++$i];
+							break;
+						case "u":
+							$user = $argv[++$i];
 							break;
 						default:
 							echo "unknown option {$arg[$c]}\n";
@@ -469,28 +533,42 @@ final class Worker
 				exit($usage);
 			}
 		}
+		if (isset($vardir)) {
+			if (!isset($pidfile)) {
+				$pidfile = "{$vardir}/run/{$name}.pid";
+			}
+			if (!isset($logfile)) {
+				$logfile = "{$vardir}/log/{$name}.log";
+			}
+		}
 		return [
-			"name" => $name ?? "default",
-			"command" => $command ?? "start",
-			"instance" => $instance ?? null,
-			"env" => $env ?? getenv("ENVIRONMENT") ?: "prod",
-			"debug" => $debug ?? false,
-			"background" => $background ?? true,
-			"redirect" => $redirect ?? $background ?? true,
+			"name" => $name ?? $defaults["name"] ?? "default",
+			"command" => $command ?? $defaults["command"] ?? "start",
+			"instance" => $instance ?? $defaults["instance"] ?? null,
+			"env" => $env ?? $defaults["env"] ?? getenv("ENVIRONMENT") ?: "prod",
+			"debug" => $debug ?? $defaults["debug"] ?? false,
+			"background" => $background ?? $defaults["background"] ?? true,
+			"redirect" => $redirect ?? $defaults["redirect"] ?? true,
+			"pidfile" => $pidfile ?? $defaults["pidfile"] ?? null,
+			"inputfile" => $defaults["inputfile"] ?? null,
+			"outputfile" => $logfile ?? $defaults["outputfile"] ?? null,
+			"errorfile" => $defaults["errorfile"] ?? null,
+			"user" => $user ?? $defaults["user"] ?? null,
+			"group" => $defaults["group"] ?? null,
 		];
 	}
 
-	public static function init(): array
+	public static function init(array $defaults = []): array
 	{
-		$args = self::args();
-		$worker = new self($args);
-		switch ($args["command"]) {
+		$config = self::args($defaults);
+		$worker = new self($config);
+		switch ($config["command"]) {
 			case "restart":
 				$worker->stop();
 				// no break
 			case "start":
 				$worker->boot();
-				return $args;
+				return $config;
 
 			case "stop":
 				$worker->stop();
@@ -498,9 +576,9 @@ final class Worker
 
 			case "status":
 				if ($worker->checkRunning()) {
-					echo $args["name"] . " is running.\n";
+					echo $config["name"] . " is running.\n";
 				} else {
-					echo $args["name"] . " is not running.\n";
+					echo $config["name"] . " is not running.\n";
 				}
 				exit;
 

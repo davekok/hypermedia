@@ -224,11 +224,15 @@ final class Resource
 		if ($flags->isMeta() || $flags->isState()) {
 			if ($flags->isShared()) {
 				$v = $this->sharedStateStore->get($pool, $name);
-				if ($v !== null) {
-					$query[$name] = $v;
+				if ($v === null) {
+					if ($flags->isRequired()) {
+						$badRequest->addMessage("$path is required");
+					}
+					return null;
+				} else {
+					return $v;
 				}
-			}
-			if ($flags->isRequired() && (!isset($query[$name]) || $query[$name] === "")) {
+			} else if ($flags->isRequired() && (!isset($query[$name]) || $query[$name] === "")) {
 				$badRequest->addMessage("$path is required");
 				return null;
 			} else {
