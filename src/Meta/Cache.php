@@ -70,12 +70,12 @@ final class Cache implements CacheInterface
 		$cachedUnit->set(serialize($tagorder));
 		$this->cachePool->saveDeferred($cachedUnit);
 
-		// commit cache
-		$this->cachePool->commit();
-
 		foreach ($oldItems as $itemHash) {
 			$this->cachePool->deleteItem($itemHash);
 		}
+
+		// commit cache
+		$this->cachePool->commit();
 	}
 
 	/**
@@ -145,7 +145,7 @@ final class Cache implements CacheInterface
 	}
 
 	/**
-	 * Get a unit item from cache
+	 * Get a unit item from cache.
 	 *
 	 * @param string $unit   the unit name
 	 * @param string $type   the item type

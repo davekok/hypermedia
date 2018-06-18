@@ -266,6 +266,7 @@ final class Worker
 		// write new pid to pidfile as previous one is no longer valid
 		if ($this->pidfile) {
 			file_put_contents($this->pidfile, posix_getpid());
+			chmod($this->pidfile, 0750);
 			register_shutdown_function(function(){
 				unlink($this->pidfile);
 			});
@@ -318,7 +319,7 @@ final class Worker
 
 		if ($this->inputfile) {
 			$inputdir = dirname($this->inputfile);
-			if (!is_dir($inputdir) && !mkdir($inputdir, 02770, true)) {
+			if (!is_dir($inputdir) && !mkdir($inputdir, 0750, true)) {
 				file_put_contents("php://stderr", "unable to make directory $inputdir\n", FILE_APPEND);
 				exit(1);
 			}
@@ -339,7 +340,7 @@ final class Worker
 
 		if ($this->outputfile) {
 			$outputdir = dirname($this->outputfile);
-			if (!is_dir($outputdir) && !mkdir($outputdir, 02770, true)) {
+			if (!is_dir($outputdir) && !mkdir($outputdir, 0750, true)) {
 				file_put_contents("php://stderr", "unable to make directory $outputdir\n", FILE_APPEND);
 				exit(1);
 			}
@@ -360,7 +361,7 @@ final class Worker
 
 		if ($this->errorfile) {
 			$errordir = dirname($this->errorfile);
-			if (!is_dir($errordir) && !mkdir($errordir, 02770, true)) {
+			if (!is_dir($errordir) && !mkdir($errordir, 0750, true)) {
 				file_put_contents("php://stdout", "unable to make directory $errordir\n", FILE_APPEND);
 				exit(1);
 			}
