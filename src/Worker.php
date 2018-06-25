@@ -266,7 +266,10 @@ final class Worker
 		// write new pid to pidfile as previous one is no longer valid
 		if ($this->pidfile) {
 			file_put_contents($this->pidfile, posix_getpid());
-			chmod($this->pidfile, 0750);
+			if ($this->user) {
+				chown($this->pidfile, $this->user);
+			}
+			chmod($this->pidfile, 0440);
 			register_shutdown_function(function(){
 				unlink($this->pidfile);
 			});
@@ -534,7 +537,7 @@ final class Worker
 				exit($usage);
 			}
 		}
-		if (isset($vardir)) {
+		if ($vardir = $vardir ?? $defaults["vardir"] ?? false) {
 			if (!isset($pidfile)) {
 				$pidfile = "{$vardir}/run/{$name}.pid";
 			}

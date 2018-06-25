@@ -27,9 +27,15 @@ class SourceUnitManager
 	 */
 	public function updateCache(): void
 	{
-		foreach ($this->sourceUnits as $sourceUnit) {
-			$this->cache->updateSourceUnit($sourceUnit);
+		$fp = fopen(sys_get_temp_dir()."/sturdy-activity-cache.lock", "w");
+		if ($fp === false) return;
+		if (flock($fp, LOCK_EX|LOCK_NB)) {
+			foreach ($this->sourceUnits as $sourceUnit) {
+				$this->cache->updateSourceUnit($sourceUnit);
+			}
+			flock($fp, LOCK_UN);
 		}
+		fclose($fp);
 	}
 
 	/**
