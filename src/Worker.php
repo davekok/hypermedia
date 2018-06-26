@@ -108,6 +108,8 @@ final class Worker
 			$this->detach();
 		}
 
+		$this->writePid();
+
 		if ($this->redirect) {
 			$this->redirectStdIO($this->outputfile, $this->inputfile, $this->errorfile);
 		}
@@ -141,11 +143,11 @@ final class Worker
 	}
 
 	/**
-	 * Stop the worker instance
+	 * Kill the worker instance
 	 */
-	public function stop(): void
+	public function kill(): void
 	{
-		if ($this->checkRunning($this->pidfile)) {
+		if ($this->checkRunning()) {
 			$pid = (int)file_get_contents($this->pidfile);
 			posix_kill($pid, SIGTERM);
 		}
@@ -221,12 +223,7 @@ final class Worker
 	 */
 	public function checkRunning(): bool
 	{
-		$pidfile = $this->pidfile ?? (sys_get_temp_dir()."/".basename($_SERVER['PHP_SELF'],'.php').".pid");
-		$rundir = dirname($pidfile);
-		if (!is_dir($rundir) && !mkdir($rundir, 0775, true))
-			exit("unable to make directory $rundir\n");
-
-		if (file_exists($pidfile) && file_exists("/proc/".file_get_contents($pidfile))) {
+		if (file_exists($this->pidfile) && file_exists("/proc/".file_get_contents($this->pidfile))) {
 			return true;
 		} else {
 			return false;
@@ -262,18 +259,6 @@ final class Worker
 		// no longer can we regain a controlling process
 
 		$this->detached = true;
-
-		// write new pid to pidfile as previous one is no longer valid
-		if ($this->pidfile) {
-			file_put_contents($this->pidfile, posix_getpid());
-			if ($this->user) {
-				chown($this->pidfile, $this->user);
-			}
-			chmod($this->pidfile, 0440);
-			register_shutdown_function(function(){
-				unlink($this->pidfile);
-			});
-		}
 	}
 
 	/**
@@ -305,6 +290,25 @@ final class Worker
 	}
 
 	/**
+	 * Write pid to pid file
+	 */
+	public function writePid(): void
+	{
+		// write new pid to pidfile as previous one is no longer valid
+		if ($this->pidfile) {
+			$rundir = dirname($this->pidfile);
+			if (!is_dir($rundir) && !mkdir($rundir, 0755, true))
+				exit("unable to make directory $rundir\n");
+			if (file_put_contents($this->pidfile, posix_getpid()) === false)
+				exit("unable to write to {$this->pidfile}\n");
+			chmod($this->pidfile, 0644);
+			register_shutdown_function(function(){
+				unlink($this->pidfile);
+			});
+		}
+	}
+
+	/**
 	 * Redirect standard input, output and error streams.
 	 *
 	 * @param $outputfile  the file to write to
@@ -322,7 +326,7 @@ final class Worker
 
 		if ($this->inputfile) {
 			$inputdir = dirname($this->inputfile);
-			if (!is_dir($inputdir) && !mkdir($inputdir, 0750, true)) {
+			if (!is_dir($inputdir) && !mkdir($inputdir, 0755, true)) {
 				file_put_contents("php://stderr", "unable to make directory $inputdir\n", FILE_APPEND);
 				exit(1);
 			}
@@ -343,7 +347,7 @@ final class Worker
 
 		if ($this->outputfile) {
 			$outputdir = dirname($this->outputfile);
-			if (!is_dir($outputdir) && !mkdir($outputdir, 0750, true)) {
+			if (!is_dir($outputdir) && !mkdir($outputdir, 0755, true)) {
 				file_put_contents("php://stderr", "unable to make directory $outputdir\n", FILE_APPEND);
 				exit(1);
 			}
@@ -364,7 +368,7 @@ final class Worker
 
 		if ($this->errorfile) {
 			$errordir = dirname($this->errorfile);
-			if (!is_dir($errordir) && !mkdir($errordir, 0750, true)) {
+			if (!is_dir($errordir) && !mkdir($errordir, 0755, true)) {
 				file_put_contents("php://stdout", "unable to make directory $errordir\n", FILE_APPEND);
 				exit(1);
 			}
@@ -562,27 +566,31 @@ final class Worker
 		];
 	}
 
-	public static function init(array $defaults = []): array
+	/**
+	 * Initialize worker
+	 *
+	 * @param array $config  the config
+	 */
+	public static function init(array $config): void
 	{
-		$config = self::args($defaults);
-		$worker = new self($config);
+		$worker = new Worker($config);
 		switch ($config["command"]) {
 			case "restart":
-				$worker->stop();
+				$worker->kill();
 				// no break
 			case "start":
 				$worker->boot();
-				return $config;
+				return;
 
 			case "stop":
-				$worker->stop();
+				$worker->kill();
 				exit;
 
 			case "status":
 				if ($worker->checkRunning()) {
-					echo $config["name"] . " is running.\n";
+					echo $worker->name . " is running.\n";
 				} else {
-					echo $config["name"] . " is not running.\n";
+					echo $worker->name . " is not running.\n";
 				}
 				exit;
 
