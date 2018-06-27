@@ -41,6 +41,10 @@ final class SourceUnitFactory
 	 */
 	public function createSourceUnit(string $unitName, string $dirs): SourceUnit
 	{
+		// clear annotation cache, if possible
+		if (method_exists($this->annotationReader, "reset")) {
+			$this->annotationReader->reset();
+		}
 		$parser = new ActionParser();
 		$unit = new SourceUnit($unitName);
 		foreach ($this->iterateDirectory($dirs, ["php"]) as $file) {
