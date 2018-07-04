@@ -2,7 +2,7 @@
 
 namespace Sturdy\Activity;
 
-use Exception;
+use Exception, DateTime;
 
 /**
  * A worker implementation
@@ -50,6 +50,7 @@ use Exception;
  */
 final class Worker
 {
+	private static $worker;
 	private $stdin = STDIN;
 	private $stdout = STDOUT;
 	private $stderr = STDERR;
@@ -85,6 +86,11 @@ final class Worker
 		$this->errorfile = $config['errorfile'] ?? $this->outputfile;
 		$this->user = $config['user'] ?? null;
 		$this->group = $config['group'] ?? null;
+		if ($this->group === null && $this->user !== null) {
+			$user = posix_getpwnam($this->user);
+			$gr = posix_getgrgid($user["gid"]);
+			$this->group = $gr["name"];
+		}
 		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["ENVIRONMENT", "LANG"];
 		$this->environmentVariableDefaults = $config['environmentVariableDefaults'] ?? ["ENVIRONMENT"=>"prod", "LANG"=>"en_US.UTF-8"];
 	}
@@ -101,7 +107,7 @@ final class Worker
 		}
 
 		// reset umask, adopting user's default umask may mess things up
-		umask(0);
+		umask(022);
 
 		// should the script boot into the background
 		if ($this->background) {
@@ -132,24 +138,24 @@ final class Worker
 	}
 
 	/**
-	 * Clean stuff up, simply removes the pidfile.
-	 */
-	public function shutdown(): void
-	{
-		// remove pid file
-		if ($this->pidfile) {
-			unlink($this->pidfile);
-		}
-	}
-
-	/**
 	 * Kill the worker instance
 	 */
 	public function kill(): void
 	{
 		if ($this->checkRunning()) {
+			if (!file_exists("/tmp/{$this->name}")) {
+				file_put_contents("/tmp/{$this->name}", "");
+			}
+			$sem = sem_get(ftok("/tmp/{$this->name}", "S"));
+			sem_acquire($sem);
 			$pid = (int)file_get_contents($this->pidfile);
 			posix_kill($pid, SIGTERM);
+			sleep(1);
+			if ($this->checkRunning()) {
+				posix_kill($pid, SIGKILL);
+			}
+			unlink($this->pidfile);
+			sem_release($sem);
 		}
 	}
 
@@ -231,6 +237,48 @@ final class Worker
 	}
 
 	/**
+	 * Get status of current instance
+	 *
+	 * @return array if running, false otherwise
+	 */
+	public function getStatus()
+	{
+		if (file_exists($this->pidfile)) {
+			$pid = file_get_contents($this->pidfile);
+			$piddir = "/proc/$pid";
+			if (file_exists($piddir)) {
+				$st = stat($piddir);
+				$status = [];
+				$status["pid"] = $pid;
+				$status["starttime"] = date("Y-m-d H:i:s", $st[10]);
+				$interval = (new DateTime("now"))->diff(new DateTime($status["starttime"]));
+				$diff = "";
+				if ($interval->y) $diff.= $interval->y . "Y ";
+				if ($interval->m) $diff.= $interval->m . "M ";
+				if ($interval->d) $diff.= $interval->d . "D ";
+				if ($interval->h) $diff.= $interval->h . "H ";
+				if ($interval->i) $diff.= $interval->i . "m ";
+				if ($interval->s) $diff.= $interval->s . "s ";
+				if (empty($diff)) $diff.= "0s";
+				$status["uptime"] = trim($diff);
+				$user = posix_getpwuid($st[4]);
+				$status["uid"] = $st[4];
+				$status["user"] = $user["name"];
+				$group = posix_getgrgid($st[5]);
+				$status["gid"] = $st[5];
+				$status["group"] = $group["name"];
+				$status["pidfile"] = $this->pidfile;
+				if (posix_getuid() === 0) {
+					$status["inputfile"] = readlink("$piddir/fd/0");
+					$status["outputfile"] = readlink("$piddir/fd/1");
+					$status["errorfile"] = readlink("$piddir/fd/2");
+				}
+			}
+		}
+		return $status ?? false;
+	}
+
+	/**
 	 * Detach from controlling process.
 	 */
 	public function detach(): void
@@ -302,9 +350,6 @@ final class Worker
 			if (file_put_contents($this->pidfile, posix_getpid()) === false)
 				exit("unable to write to {$this->pidfile}\n");
 			chmod($this->pidfile, 0644);
-			register_shutdown_function(function(){
-				unlink($this->pidfile);
-			});
 		}
 	}
 
@@ -327,20 +372,23 @@ final class Worker
 		if ($this->inputfile) {
 			$inputdir = dirname($this->inputfile);
 			if (!is_dir($inputdir) && !mkdir($inputdir, 0755, true)) {
-				file_put_contents("php://stderr", "unable to make directory $inputdir\n", FILE_APPEND);
+				// file_put_contents("php://stderr", "unable to make directory $inputdir\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "unable to make directory $inputdir\n", FILE_APPEND);
 				exit(1);
 			}
 
 			// close file descriptor slot 0, stdin
 			if (fclose($this->stdin) === false) {
-				file_put_contents("php://stderr", "failed to close stdin\n", FILE_APPEND);
+				// file_put_contents("php://stderr", "failed to close stdin\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "failed to close stdin\n", FILE_APPEND);
 				exit(1);
 			}
 
 			// first empty file descriptor slot will be used, which is slot 0, the stdin
 			$this->stdin = fopen($this->inputfile, "r");
 			if ($this->stdin === false) {
-				file_put_contents("php://stderr", "failed to reopen stdin\n", FILE_APPEND);
+				// file_put_contents("php://stderr", "failed to reopen stdin\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "failed to reopen stdin\n", FILE_APPEND);
 				exit(1);
 			}
 		}
@@ -348,20 +396,28 @@ final class Worker
 		if ($this->outputfile) {
 			$outputdir = dirname($this->outputfile);
 			if (!is_dir($outputdir) && !mkdir($outputdir, 0755, true)) {
-				file_put_contents("php://stderr", "unable to make directory $outputdir\n", FILE_APPEND);
+				// file_put_contents("php://stderr", "unable to make directory $outputdir\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "unable to make directory $outputdir\n", FILE_APPEND);
 				exit(1);
+			}
+			if (!file_exists($this->outputfile)) {
+				file_put_contents($this->outputfile, "");
+				if ($this->user) chown($this->outputfile, $this->user);
+				if ($this->group) chgrp($this->outputfile, $this->group);
 			}
 
 			// close file descriptor slot 1, stdout
 			if (fclose($this->stdout) === false) {
-				file_put_contents("php://stderr", "failed to close stdout\n", FILE_APPEND);
+				// file_put_contents("php://stderr", "failed to close stdout\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "failed to close stdout\n", FILE_APPEND);
 				exit(1);
 			}
 
 			// first empty file descriptor slot will be used, which is slot 1, the stdout
 			$this->stdout = fopen($this->outputfile, "a");
 			if ($this->stdout === false) {
-				file_put_contents("php://stderr", "failed to reopen stdout\n", FILE_APPEND);
+				// file_put_contents("php://stderr", "failed to reopen stdout\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "failed to reopen stdout\n", FILE_APPEND);
 				exit(1);
 			}
 		}
@@ -369,13 +425,20 @@ final class Worker
 		if ($this->errorfile) {
 			$errordir = dirname($this->errorfile);
 			if (!is_dir($errordir) && !mkdir($errordir, 0755, true)) {
-				file_put_contents("php://stdout", "unable to make directory $errordir\n", FILE_APPEND);
+				// file_put_contents("php://stdout", "unable to make directory $errordir\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "unable to make directory $errordir\n", FILE_APPEND);
 				exit(1);
+			}
+			if (!file_exists($this->errorfile)) {
+				file_put_contents($this->errorfile, "");
+				if ($this->user) chown($this->errorfile, $this->user);
+				if ($this->group) chgrp($this->errorfile, $this->group);
 			}
 
 			// close file descriptor slot 2, stderr
 			if (fclose($this->stderr) === false) {
-				file_put_contents("php://stdout", "failed to close stderr\n", FILE_APPEND);
+				// file_put_contents("php://stdout", "failed to close stderr\n", FILE_APPEND);
+				file_put_contents($this->outputfile, "failed to close stderr\n", FILE_APPEND);
 				exit(1);
 			}
 
@@ -387,14 +450,16 @@ final class Worker
 				// and php://stderr point to the same stream
 				$this->stderr = fopen("php://stdout", "a"); // so this is not a typo
 				if ($this->stderr === false) {
-					file_put_contents("php://stdout", "failed to duplicate stderr\n", FILE_APPEND);
+					// file_put_contents("php://stdout", "failed to duplicate stderr\n", FILE_APPEND);
+					file_put_contents($this->outputfile, "failed to duplicate stderr\n", FILE_APPEND);
 					exit(1);
 				}
 			} else {
 				// first empty file descriptor slot will be used, which is slot 2, the stderr
 				$this->stderr = fopen($this->errorfile, "a");
 				if ($this->stderr === false) {
-					file_put_contents("php://stdout", "failed to reopen stderr\n", FILE_APPEND);
+					// file_put_contents("php://stdout", "failed to reopen stderr\n", FILE_APPEND);
+					file_put_contents($this->outputfile, "failed to reopen stderr\n", FILE_APPEND);
 					exit(1);
 				}
 			}
@@ -571,31 +636,58 @@ final class Worker
 	 *
 	 * @param array $config  the config
 	 */
-	public static function init(array $config): void
+	public static function init(array $config): self
 	{
-		$worker = new Worker($config);
+		$worker = self::createWorker($config);
 		switch ($config["command"]) {
 			case "restart":
 				$worker->kill();
 				// no break
 			case "start":
 				$worker->boot();
-				return;
+				return $worker;
 
 			case "stop":
 				$worker->kill();
 				exit;
 
 			case "status":
-				if ($worker->checkRunning()) {
-					echo $worker->name . " is running.\n";
+				if ($worker->getStatus()) {
+					echo "# ", $worker->name, " (running)\n";
+					foreach ($worker->getStatus() as $key => $value) {
+						echo "$key: $value\n";
+					}
 				} else {
-					echo $worker->name . " is not running.\n";
+					echo "# ", $worker->name, " (not running)\n";
 				}
 				exit;
 
 			default:
 				exit;
 		}
+	}
+
+	/**
+	 * Get the initialized worker.
+	 *
+	 * @param array  $config
+	 * @return Worker  the worker
+	 */
+	public static function createWorker(array $config): self
+	{
+		if (!self::$worker) {
+			self::$worker = new self($config);
+		}
+		return self::$worker;
+	}
+
+	/**
+	 * Get the initialized worker.
+	 *
+	 * @return Worker  the worker
+	 */
+	public static function getWorker(): self
+	{
+		return self::$worker;
 	}
 }

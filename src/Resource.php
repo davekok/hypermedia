@@ -221,37 +221,36 @@ final class Resource
 
 		// flags check
 		$flags = new FieldFlags($flags);
-		if ($flags->isMeta() || $flags->isState()) {
-			if ($flags->isShared()) {
-				$v = $this->sharedStateStore->get($pool, $name);
-				if ($v === null) {
-					if ($flags->isRequired()) {
-						$badRequest->addMessage("$path is required");
-					}
-					return null;
-				} else {
-					return $v;
-				}
-			} else if ($flags->isRequired() && (!isset($query[$name]) || $query[$name] === "")) {
+		if ($flags->isPrivate()) {
+			return $flags->isShared() ? $this->sharedStateStore->get($pool, $name) : null;
+		} else if ($flags->isMeta() || $flags->isState()) {
+			$queryValue = $query[$name] ?? null;
+			if ($queryValue === "") {
+				$queryValue = null;
+			}
+
+			if ($flags->isRequired() && $queryValue === null) {
 				$badRequest->addMessage("$path is required");
-				return null;
+				$queryValue = null;
 			} else {
 				$type = Type::createType($type);
-				$queryValue = $query[$name] ?? null;
-				if ($queryValue === "") {
-					$queryValue = null;
-				}
-				if (isset($queryValue)) {
+				if ($queryValue !== null) {
 					if ($type->filter($queryValue)) {
 						$queryValue = $this->jsonDeserializer->jsonDeserialize($type::type, $queryValue);
 					} else {
 						$badRequest->addMessage("$path does not have a valid value: ".print_r($queryValue, true));
+						$queryValue = null;
 					}
-					return $queryValue;
 				} else {
-					return $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
+					$queryValue = $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
 				}
 			}
+
+			if ($flags->isShared() && !$flags->isReadonly()) {
+				$this->sharedStateStore->set($pool, $name, $queryValue);
+			}
+
+			return $queryValue;
 		} else {
 			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {
 				$badRequest->addMessage("$path is required");
@@ -412,12 +411,16 @@ final class Resource
 						$this->sharedStateStore->set($pool, $name, $state[$name]);
 					}
 				}
+			} else if ($flags->isPrivate()) {
+				if ($flags->isShared() && !$flags->isReadOnly()) {
+					$this->sharedStateStore->set($pool, $name, $source->$name ?? null);
+				}
 			}
 		}
 
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
-			if ($flags->isState()) {
+			if ($flags->isState() || $flags->isPrivate()) {
 				continue;
 			} else if ($flags->isMeta()) {
 				if (!isset($content->meta)) {
@@ -521,6 +524,8 @@ final class Resource
 					if (!array_key_exists($name, $conditions) && array_key_exists($name, $query)) {
 						$conditions[$name] = $query[$name];
 					}
+				} else if ($flags->isPrivate()) {
+					continue;
 				} else {
 					if (!array_key_exists($prefix.$name, $conditions) && array_key_exists($name, $values)) {
 						$conditions[$prefix.$name] = $values[$name];

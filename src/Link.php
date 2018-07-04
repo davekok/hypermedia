@@ -57,7 +57,7 @@ final class Link
 			$class = $this->resource->getClass();
 			$path = strtolower(preg_replace('/([a-zA-Z])(?=[A-Z])/', '$1-', substr($class, strlen($this->namespace))));
 			$obj->href = $this->basePath . trim(strtr($path, "\\", "/"), "/");
-			$store = "";
+			$store = $values["store"] ? "?store={$values['store']}" : "";
 			$known = "";
 			$unknown = "";
 			$selectedTrue = false;
@@ -98,7 +98,7 @@ final class Link
 					} else if ($this->mainClass && isset($this->mainQuery[$name])) {
 						$selectedFalse = true;
 					}
-				} else if ($flags->isPersistent()) {
+				} else if ($flags->isPersistent() && empty($store)) {
 					$store = "?store=" . ($this->store->getPersistentStoreId() ?? $this->store->createPersistentStore());
 				}
 			}

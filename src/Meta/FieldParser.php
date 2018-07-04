@@ -46,6 +46,7 @@ final class FieldParser
 	private $stateToken;
 	private $sharedToken;
 	private $persistentToken;
+	private $privateToken;
 	private $reconToken;
 	private $lookupToken;
 	private $autoSubmitToken;
@@ -127,6 +128,7 @@ final class FieldParser
 		$this->stateToken         = "/^state/";
 		$this->sharedToken        = "/^shared/";
 		$this->persistentToken    = "/^persistent/";
+		$this->privateToken       = "/^private/";
 		$this->reconToken         = "/^recon/";
 		$this->lookupToken        = "/^lookup/";
 		$this->autoSubmitToken    = "/^autosubmit/";
@@ -233,7 +235,7 @@ final class FieldParser
 
 		$mask = ~0;
 		// bit 1: type
-		// bit 2: meta, data, state, lookup or autosubmit field
+		// bit 2: meta, data, state, private, lookup or autosubmit field
 		// bit 3: required/readonly/disabled
 		// bit 4: multiple token
 		// bit 5: min token
@@ -261,7 +263,7 @@ final class FieldParser
 		$this->clearbit($mask, 11); // autocomplete token
 		$this->clearbit($mask, 17); // minDate token
 		$this->clearbit($mask, 18); // maxDate token
-		$this->clearbit($mask, 19); // shared token requires state token
+		$this->clearbit($mask, 19); // shared token requires state or private token
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -422,6 +424,10 @@ final class FieldParser
 				$this->clearbit($mask, 2);
 				$this->setbit($mask, 19);
 				$flags->setState();
+			} elseif ($this->isbitset($mask, 2) && $this->match('privateToken')) {
+				$this->clearbit($mask, 2);
+				$this->setbit($mask, 19);
+				$flags->setPrivate();
 			} elseif ($this->match('persistentToken')) {
 				$flags->setPersistent();
 			} elseif ($this->isbitset($mask, 14) && $this->match('reconToken')) {
