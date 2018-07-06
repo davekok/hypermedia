@@ -131,6 +131,7 @@ final class HyperMedia
 				$response = new MethodNotAllowed();
 				break;
 		}
+		$this->sharedStateStore->closePersistentStore();
 		return Http::response($response);
 	}
 
@@ -151,14 +152,14 @@ final class HyperMedia
 			$this->sharedStateStore->fill("query", $query);
 			$path = substr($path, strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				$resource = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))
-					->createRootResource($verb, $conditions);
-				$response = $resource->call($values, $query, $preserve);
+				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))
+					->createRootResource($verb, $conditions)
+					->call($values, $query, $preserve);
 			} else { // if normal resource
 				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
-				$resource = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query, $this->di))
-					->createResource($class, $verb, $conditions);
-				$response = $resource->call($values, $query, $preserve);
+				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query, $this->di))
+					->createResource($class, $verb, $conditions)
+					->call($values, $query, $preserve);
 			}
 		} catch (Response $e) {
 			$response = $e;

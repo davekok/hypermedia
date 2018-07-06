@@ -322,4 +322,25 @@ final class FieldFlags
 		if ($this->isMatrix    ()) $meta->matrix     = true;
 		if ($this->isAutoSubmit()) $meta->autosubmit = true;
 	}
+
+	public function __toString(): string
+	{
+		$r = "";
+		if ($this->isPrivate()   ) $r.="private ";
+		if ($this->isState()     ) $r.="state ";
+		if ($this->isMeta()      ) $r.="meta ";
+		if ($this->isData()      ) $r.="data ";
+		if ($this->isPersistent()) $r.="persistent ";
+		if ($this->isRequired  ()) $r.="required ";
+		if ($this->isReadonly  ()) $r.="readonly ";
+		if ($this->isShared    ()) $r.="shared ";
+		if ($this->isDisabled  ()) $r.="disabled ";
+		if ($this->isMultiple  ()) $r.="multiple ";
+		if ($this->isArray     ()) $r.="array ";
+		if ($this->isRecon     ()) $r.="recon ";
+		if ($this->isLookup    ()) $r.="lookup ";
+		if ($this->isMatrix    ()) $r.="matrix ";
+		if ($this->isAutoSubmit()) $r.="autosubmit ";
+		return rtrim($r);
+	}
 }

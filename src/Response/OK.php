@@ -14,6 +14,8 @@ final class OK implements Response
 	private $resource;
 	private $parts;
 	private $part;
+	private $stack;
+	private $done;
 
 	/**
 	 * Constructor
@@ -26,6 +28,8 @@ final class OK implements Response
 		$this->parts = new stdClass;
 		$this->parts->main = new stdClass;
 		$this->part = $this->parts->main;
+		$this->stack = ["main"];
+		$this->done = ["main" => false];
 	}
 
 	/**
@@ -113,9 +117,20 @@ final class OK implements Response
 	 */
 	public function setContent(stdClass $content): void
 	{
+		$this->done[end($this->stack)] = true;
 		foreach ($content as $key => $value) {
 			$this->part->$key = $value;
 		}
+	}
+
+	/**
+	 * Whether or not the part is already done.
+	 *
+	 * @return boolean  is done
+	 */
+	public function isDone(): bool
+	{
+		return $this->done[end($this->stack)] ?? false;
 	}
 
 	/**
@@ -170,9 +185,11 @@ final class OK implements Response
 	public function attach(string $name, string $class, array $query = []): void
 	{
 		if ($this->link($name, $class, ["values"=>$query])) {
-			$resource = $this->resource->createAttachedResource($class);
+			array_push($this->stack, $name);
 			$previous = $this->part;
+
 			$this->parts->$name = $this->part = new stdClass;
+
 			foreach ($query as &$value) {
 				if ($value instanceof \JsonSerializable) {
 					$value = $value->jsonSerialize();
@@ -180,8 +197,13 @@ final class OK implements Response
 					$value = (string)$value;
 				}
 			}
-			$resource->call([], $query, null);
+
+			$this->resource
+				->createAttachedResource($class, $name === "main")
+				->call([], $query, null);
+
 			$this->part = $previous;
+			array_pop($this->stack);
 		}
 	}
 

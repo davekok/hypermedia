@@ -118,10 +118,11 @@ final class Resource
 		return $self;
 	}
 
-	public function createAttachedResource(string $class): self
+	public function createAttachedResource(string $class, bool $main = false): self
 	{
+		$this->updateStore();
 		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
-		$self->main = false;
+		$self->main = $main;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
@@ -179,24 +180,27 @@ final class Resource
 
 	public function call(array $values, array $query, ?array $preserve): Response
 	{
+		// pre call
 		$badRequest = new BadRequest();
 		$badRequest->setResource($this->class);
 		$this->preRecon($values, $query);
 		foreach ($this->fields as $field) {
-			$this->object->{$field[0]} = $this->checkField($field, $values[$field[0]]??null, $query, $badRequest, $field[0]);
+			$this->object->{$field[0]} = $this->checkField($field, $values[$field[0]] ?? null, $query, $badRequest, $field[0]);
 		}
 		if ($badRequest->hasMessages()) {
 			throw $badRequest;
 		}
 
+		// call
 		$this->object->{$this->method}($this->journaling, $this->response, $this->di);
 
-		if ($this->verbflags->hasFields() && $this->response instanceof OK) {
+		// post call
+		if ($this->verbflags->hasFields() && $this->response instanceof OK && !$this->response->isDone()) {
 			$this->postRecon();
 
 			$translatorParameters = get_object_vars($this->object);
 			foreach ($translatorParameters as $key => $value) {
-				if (!is_scalar($value)) {
+				if (!is_scalar($value) && $value !== null) {
 					unset($translatorParameters[$key]);
 				}
 			}
@@ -390,6 +394,16 @@ final class Resource
 		return $value ?? $defaultValue;
 	}
 
+	private function updateStore()
+	{
+		foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
+			$flags = new FieldFlags($flags);
+			if ($flags->isShared() && !$flags->isReadOnly()) {
+				$this->sharedStateStore->set($pool, $name, $this->object->$name ?? null, $flags->isPersistent());
+			}
+		}
+	}
+
 	/**
 	 * Recurse field to configure a response.
 	 *
@@ -408,12 +422,12 @@ final class Resource
 				if (isset($source->$name)) {
 					$state[$name] = $preserve[$name] ?? $source->$name ?? null;
 					if ($flags->isShared() && !$flags->isReadOnly()) {
-						$this->sharedStateStore->set($pool, $name, $state[$name]);
+						$this->sharedStateStore->set($pool, $name, $state[$name], $flags->isPersistent());
 					}
 				}
 			} else if ($flags->isPrivate()) {
 				if ($flags->isShared() && !$flags->isReadOnly()) {
-					$this->sharedStateStore->set($pool, $name, $source->$name ?? null);
+					$this->sharedStateStore->set($pool, $name, $source->$name ?? null, $flags->isPersistent());
 				}
 			}
 		}

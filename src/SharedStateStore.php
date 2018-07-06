@@ -29,6 +29,11 @@ interface SharedStateStore
 	public function loadPersistentStore(string $id): void;
 
 	/**
+	 * Close the persistent store.
+	 */
+	public function closePersistentStore(): void;
+
+	/**
 	 * Fill a pool overriding existing
 	 *
 	 * @param string $pool        shared state pool name

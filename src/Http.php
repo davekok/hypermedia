@@ -13,6 +13,7 @@ final class Http
 	private static $request;
 	private static $mediaTypes;
 	private static $logger;
+	private static $backlog;
 
 	/**
 	 * Abort
@@ -112,10 +113,20 @@ final class Http
 	public static function setLogger($logger)
 	{
 		self::$logger = $logger;
+		if (isset(self::$backlog)) {
+			foreach (self::$backlog as $data) {
+				self::$logger->log(...$data);
+			}
+			self::$backlog = null;
+		}
 	}
 
 	public static function log(...$data)
 	{
-		self::$logger->log(...$data);
+		if (!isset(self::$logger)) {
+			self::$backlog[] = $data;
+		} else {
+			self::$logger->log(...$data);
+		}
 	}
 }

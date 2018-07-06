@@ -14,6 +14,7 @@ use Doctrine\Common\Annotations\Reader;
  */
 final class SourceUnitFactory
 {
+	private $actionParser;
 	private $annotationReader;
 	private $di;
 
@@ -29,6 +30,7 @@ final class SourceUnitFactory
 		class_exists('Sturdy\Activity\Meta\Field');
 		class_exists('Sturdy\Activity\Meta\Get');
 		class_exists('Sturdy\Activity\Meta\Post');
+		$this->actionParser = new ActionParser();
 		$this->annotationReader = $annotationReader;
 		$this->di = $di;
 	}
@@ -45,7 +47,6 @@ final class SourceUnitFactory
 		if (method_exists($this->annotationReader, "reset")) {
 			$this->annotationReader->reset();
 		}
-		$parser = new ActionParser();
 		$unit = new SourceUnit($unitName);
 		foreach ($this->iterateDirectory($dirs, ["php"]) as $file) {
 			try {
@@ -59,7 +60,7 @@ final class SourceUnitFactory
 					}
 				}
 				if (is_subclass_of($className, ResourceBuilder::class)) {
-					foreach ((new $className($this->di))->getResources() as $resource) {
+					foreach ((new $className($this, $this->di))->getResources() as $resource) {
 						$unit->addResource($resource);
 					}
 					$resource = null;
@@ -75,33 +76,8 @@ final class SourceUnitFactory
 							$resource->addOrder($annotation);
 						}
 					}
-					$defaults = $reflect->getDefaultProperties();
-					foreach ($reflect->getProperties() as $property) {
-						foreach ($this->annotationReader->getPropertyAnnotations($property) as $annotation) {
-							if ($annotation instanceof Field) {
-								$annotation->setName($property->getName());
-								$annotation->setDefaultValue($defaults[$property->getName()]);
-								$annotation->setDescription($this->getDescription($property->getDocComment()?:""));
-								if (!isset($resource)) $resource = new Resource($className, $this->getDescription($reflect->getDocComment()?:""));
-								$resource->addField($annotation);
-							}
-						}
-					}
-					foreach ($reflect->getMethods() as $method) {
-						foreach ($this->annotationReader->getMethodAnnotations($method) as $annotation) {
-							if ($annotation instanceof Action) {
-								$annotation->setName($method->getName());
-								$annotation->setDescription($this->getDescription($method->getDocComment()?:""));
-								if (!isset($activity)) $activity = new Activity($className, $this->getDescription($reflect->getDocComment()?:""));
-								$activity->addAction($parser->parse($annotation));
-							} elseif ($annotation instanceof Verb) {
-								$annotation->setMethod($method->getName());
-								$annotation->setDescription($this->getDescription($method->getDocComment()?:""));
-								if (!isset($resource)) $resource = new Resource($className, $this->getDescription($reflect->getDocComment()?:""));
-								$resource->addVerb($annotation);
-							}
-						}
-					}
+					$this->reflectProperties($reflect, $resource);
+					$this->reflectMethods($reflect, $resource, $activity);
 				}
 				if (isset($activity)) {
 					$unit->addActivity($activity);
@@ -118,6 +94,41 @@ final class SourceUnitFactory
 			}
 		}
 		return $unit;
+	}
+
+	public function reflectProperties(ReflectionClass $reflect, ?Resource &$resource)
+	{
+		$defaults = $reflect->getDefaultProperties();
+		foreach ($reflect->getProperties() as $property) {
+			foreach ($this->annotationReader->getPropertyAnnotations($property) as $annotation) {
+				if ($annotation instanceof Field) {
+					$annotation->setName($property->getName());
+					$annotation->setDefaultValue($defaults[$property->getName()]);
+					$annotation->setDescription($this->getDescription($property->getDocComment()?:""));
+					if (!isset($resource)) $resource = new Resource($reflect->getName(), $this->getDescription($reflect->getDocComment()?:""));
+					$resource->addField($annotation);
+				}
+			}
+		}
+	}
+
+	public function reflectMethods(ReflectionClass $reflect, ?Resource &$resource, ?Activity &$activity): void
+	{
+		foreach ($reflect->getMethods() as $method) {
+			foreach ($this->annotationReader->getMethodAnnotations($method) as $annotation) {
+				if ($annotation instanceof Action) {
+					$annotation->setName($method->getName());
+					$annotation->setDescription($this->getDescription($method->getDocComment()?:""));
+					if (!isset($activity)) $activity = new Activity($reflect->getName(), $this->getDescription($reflect->getDocComment()?:""));
+					$activity->addAction($this->actionParser->parse($annotation));
+				} else if ($annotation instanceof Verb) {
+					$annotation->setMethod($method->getName());
+					$annotation->setDescription($this->getDescription($method->getDocComment()?:""));
+					if (!isset($resource)) $resource = new Resource($reflect->getName(), $this->getDescription($reflect->getDocComment()?:""));
+					$resource->addVerb($annotation);
+				}
+			}
+		}
 	}
 
 	/**

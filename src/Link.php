@@ -62,6 +62,7 @@ final class Link
 			$unknown = "";
 			$selectedTrue = false;
 			$selectedFalse = false;
+
 			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 				$flags = new FieldFlags($flags);
 				if ($flags->isMeta()) {
@@ -98,8 +99,8 @@ final class Link
 					} else if ($this->mainClass && isset($this->mainQuery[$name])) {
 						$selectedFalse = true;
 					}
-				} else if ($flags->isPersistent() && empty($store)) {
-					$store = "?store=" . ($this->store->getPersistentStoreId() ?? $this->store->createPersistentStore());
+				} else if ($flags->isPersistent() && empty($store) && $this->store->getPersistentStoreId()) {
+					$store = "?store=" . $this->store->getPersistentStoreId();
 				}
 			}
 			if ($store) {
@@ -111,8 +112,8 @@ final class Link
 			} else if ($unknown) {
 				$unknown[0] = "?";
 			}
-			if ($storeId) {
-				$obj->href.= $storeId;
+			if ($store) {
+				$obj->href.= $store;
 			}
 			if ($known) {
 				$obj->href.= $known;
