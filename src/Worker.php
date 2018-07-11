@@ -10,43 +10,8 @@ use Exception, DateTime;
  * Usefull for running stuff in the background.
  *
  * Example:
- *   $worker = new Worker(["name"=>"myscript", "instance"=>1]);
- *   $worker->boot(); // boot your script into the background, if not already running
- *   // do your stuff
- *   $worker->shutdown();
- *
- * Example:
- *   $worker = new Worker(["name"=>"myscript", "instance"=>1]);
- *   $worker->stop(); // stop running worker
- *
- * Complete example:
  *   // include your autoloader
- *   $args = Worker::args();
- *   $worker = new Worker(["name"=>"myscript", "instance"=>1]);
- *   switch ($args['command']) {
- *       case "restart":
- *           $worker->stop();
- *       case "start":
- *           try {
- *               $worker->boot();
- *               // do your stuff
- *           } catch(Throwable $e) {
- *               echo $e->getMessage(), "\n";
- *           } finally {
- *               $worker->shutdown();
- *           }
- *           break;
- *       case "stop":
- *           $worker->stop();
- *           break;
- *       case "status":
- *           if ($worker->checkRunning()) {
- *               // connect to worker some how and output status
- *           } else {
- *               // worker not running
- *           }
- *           break;
- *   }
+ *   Worker::init(Worker::args());
  */
 final class Worker
 {
@@ -102,8 +67,8 @@ final class Worker
 	{
 		$this->cleanEnvironment();
 
-		if ($this->checkRunning($this->pidfile)) {
-			exit("{$this->name} is already running, quiting\n");
+		if (null !== $pid = $this->getPid()) {
+			exit("{$this->name} is already running under process id $pid, quiting\n");
 		}
 
 		// reset umask, adopting user's default umask may mess things up
@@ -142,20 +107,22 @@ final class Worker
 	 */
 	public function kill(): void
 	{
-		if ($this->checkRunning()) {
-			if (!file_exists("/tmp/{$this->name}")) {
-				file_put_contents("/tmp/{$this->name}", "");
+		$pid = $this->getPid();
+		if ($pid !== null) {
+			$key = ftok(__FILE__, "S");
+			if ($key >= 0) {
+				$sem = sem_get($key);
+				sem_acquire($sem);
 			}
-			$sem = sem_get(ftok("/tmp/{$this->name}", "S"));
-			sem_acquire($sem);
-			$pid = (int)file_get_contents($this->pidfile);
 			posix_kill($pid, SIGTERM);
 			sleep(1);
-			if ($this->checkRunning()) {
+			if (null !== $pid = $this->getPid()) {
 				posix_kill($pid, SIGKILL);
 			}
 			unlink($this->pidfile);
-			sem_release($sem);
+			if ($key >= 0) {
+				sem_release($sem);
+			}
 		}
 	}
 
@@ -222,18 +189,20 @@ final class Worker
 	}
 
 	/**
-	 * Check if script is already running.
+	 * Get the pid of currently running worker.
 	 *
-	 * @param $pidfile  the path where the process id of the program may be stored
-	 * @return boolean  indicating that program is running or not
+	 * @return int  the process id
 	 */
-	public function checkRunning(): bool
+	public function getPid(): ?int
 	{
-		if (file_exists($this->pidfile) && file_exists("/proc/".file_get_contents($this->pidfile))) {
-			return true;
-		} else {
-			return false;
+		// scan proc directory for worker
+		foreach (glob("/proc/*/cmdline") as $file) {
+			$cmdline = trim(file_get_contents($file));
+			if ($cmdline === $this->name) {
+				return (int)substr($file, 6, -8);
+			}
 		}
+		return null;
 	}
 
 	/**
@@ -243,8 +212,8 @@ final class Worker
 	 */
 	public function getStatus()
 	{
-		if (file_exists($this->pidfile)) {
-			$pid = file_get_contents($this->pidfile);
+		$pid = $this->getPid();
+		if ($pid !== null) {
 			$piddir = "/proc/$pid";
 			if (file_exists($piddir)) {
 				$st = stat($piddir);
@@ -267,7 +236,6 @@ final class Worker
 				$group = posix_getgrgid($st[5]);
 				$status["gid"] = $st[5];
 				$status["group"] = $group["name"];
-				$status["pidfile"] = $this->pidfile;
 				if (posix_getuid() === 0) {
 					$status["inputfile"] = readlink("$piddir/fd/0");
 					$status["outputfile"] = readlink("$piddir/fd/1");
@@ -595,6 +563,8 @@ final class Worker
 				$command = $arg;
 			} else if ($arg === "reload") {
 				$command = "restart";
+			} else if ($arg === "quit") {
+				$command = "stop";
 			} else if ($arg[0] == "-") {
 				echo "unknown option: $arg\n";
 				exit($usage);
@@ -616,7 +586,7 @@ final class Worker
 		}
 		return [
 			"name" => $name ?? $defaults["name"] ?? "default",
-			"command" => $command ?? $defaults["command"] ?? "start",
+			"command" => $command ?? $defaults["command"] ?? "status",
 			"instance" => $instance ?? $defaults["instance"] ?? null,
 			"env" => $env ?? $defaults["env"] ?? getenv("ENVIRONMENT") ?: "prod",
 			"debug" => $debug ?? $defaults["debug"] ?? false,
