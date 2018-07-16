@@ -152,12 +152,18 @@ final class OK implements Response
 	 *                       from 0 to 10 to specify the phase variance of the link
 	 * ]
 	 */
-	public function link(string $name, ?string $class, array $optionals = []): bool
+	public function link(string $name, ?string $class, array $optionals = [], array &$values = null): bool
 	{
 		$link = $this->resource->createLink($class);
 		if ($link === null) return false;
 		$link->setName($name);
-		$values = $optionals['values'] ?? [];
+		if ($values !== null) {
+			if (array_key_exists('values', $optionals)) {
+				$values = array_merge($optionals['values'], $values);
+			}
+		} else {
+			$values = $optionals['values'] ?? [];
+		}
 		if (isset($optionals['slot'    ])) $link->setSlot    ($optionals['slot'    ]);
 		if (isset($optionals['label'   ])) $link->setLabel   ($optionals['label'   ], $values);
 		if (isset($optionals['icon'    ])) $link->setIcon    ($optionals['icon'    ]);
@@ -184,7 +190,7 @@ final class OK implements Response
 	 */
 	public function attach(string $name, string $class, array $query = []): void
 	{
-		if ($this->link($name, $class, ["values"=>$query])) {
+		if ($this->link($name, $class, [], $query)) {
 			array_push($this->stack, $name);
 			$previous = $this->part;
 

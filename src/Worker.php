@@ -21,6 +21,7 @@ final class Worker
 	private $stderr = STDERR;
 	private $detached = false;
 	private $name;
+	private $instance;
 	private $background;
 	private $redirect;
 	private $pidfile;
@@ -42,6 +43,9 @@ final class Worker
 		$this->name = $config['name'] ?? basename(tempnam(sys_get_temp_dir(), "worker"));
 		if (isset($config['instance'])) {
 			$this->name .= "-".$config['instance'];
+			$this->instance = $config['instance'];
+		} else {
+			$this->instance = $this->name[0];
 		}
 		$this->background = $config['background'] ?? true;
 		$this->redirect = $config['redirect'] ?? true;
@@ -109,7 +113,7 @@ final class Worker
 	{
 		$pid = $this->getPid();
 		if ($pid !== null) {
-			$key = ftok(__FILE__, "S");
+			$key = ftok(__FILE__, $this->instance[0]);
 			if ($key >= 0) {
 				$sem = sem_get($key);
 				sem_acquire($sem);

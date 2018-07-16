@@ -31,13 +31,13 @@ final class Link
 
 	public function __construct(SharedStateStore $store, Translator $translator, string $basePath, string $namespace, ?CacheItem_Resource $resource, bool $mainClass = false, array $mainQuery = [])
 	{
-		$this->store = $store;
+		$this->store      = $store;
 		$this->translator = $translator;
-		$this->basePath = $basePath;
-		$this->namespace = $namespace;
-		$this->resource = $resource;
-		$this->mainClass = $mainClass;
-		$this->mainQuery = $mainQuery;
+		$this->basePath   = $basePath;
+		$this->namespace  = $namespace;
+		$this->resource   = $resource;
+		$this->mainClass  = $mainClass;
+		$this->mainQuery  = $mainQuery;
 		if ($this->resource) {
 			foreach ($this->resource->getFields()??[] as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 				$flags = new FieldFlags($flags);
@@ -49,7 +49,14 @@ final class Link
 		}
 	}
 
-	public function expand(array $values = [], bool $allowTemplated = true)/*: object */
+	/**
+	 * Expand link with values.
+	 *
+	 * @param  array   &$values          the values, is updated if shared state is in play
+	 * @param  bool     $allowTemplated  whether a templated link is allowed
+	 * @return object
+	 */
+	public function expand(array &$values = [], bool $allowTemplated = true)/*: object */
 	{
 		$obj = new stdClass;
 
@@ -68,12 +75,9 @@ final class Link
 				if ($flags->isMeta()) {
 					if ($flags->isReadonly() || $flags->isDisabled()) continue;
 					if (array_key_exists($name, $values)) {
-						$known.= "&" . $name . "=" . $this->getValue($values, $name);
-						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {
-							$selectedTrue = true;
-						} else {
-							$selectedFalse = true;
-						}
+						$value = $this->getValue($values, $name);
+					} else if ($flags->isShared() && $this->store->has($pool, $name)) {
+						$value = $values[$name] = $this->store->get($pool, $name);
 					} else if ($allowTemplated) {
 						$unknown.= "," . $name;
 						if ($this->mainClass && !isset($this->mainQuery[$name])) {
@@ -81,28 +85,45 @@ final class Link
 						} else {
 							$selectedFalse = true;
 						}
+						continue;
 					} else if ($flags->isRequired()) {
 						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
 					} else if ($this->mainClass && isset($this->mainQuery[$name])) {
 						$selectedFalse = true;
+						continue;
+					} else {
+						continue;
+					}
+					$known.= "&" . $name . "=" . $value;
+					if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $value) {
+						$selectedTrue = true;
+					} else {
+						$selectedFalse = true;
 					}
 				} else if ($flags->isState()) {
 					if (array_key_exists($name, $values)) {
-						$known.= "&" . $name . "=" . $this->getValue($values, $name);
-						if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $values[$name]) {
-							$selectedTrue = true;
-						} else {
-							$selectedFalse = true;
-						}
+						$value = $this->getValue($values, $name);
+					} else if ($flags->isShared() && $this->store->has($pool, $name)) {
+						$value = $values[$name] = $this->store->get($pool, $name);
 					} else if (!$allowTemplated && $flags->isRequired()) {
 						throw new InternalServerError("Attempted to create link to $class but required field $name is missing.");
 					} else if ($this->mainClass && isset($this->mainQuery[$name])) {
+						$selectedFalse = true;
+						continue;
+					} else {
+						continue;
+					}
+					$known.= "&" . $name . "=" . $value;
+					if ($this->mainClass && isset($this->mainQuery[$name]) && $this->mainQuery[$name] === $value) {
+						$selectedTrue = true;
+					} else {
 						$selectedFalse = true;
 					}
 				} else if ($flags->isPersistent() && empty($store) && $this->store->getPersistentStoreId()) {
 					$store = "?store=" . $this->store->getPersistentStoreId();
 				}
 			}
+
 			if ($store) {
 				if ($known) $known[0] = "&";
 				if ($unknown) $unknown[0] = "&";

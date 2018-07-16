@@ -70,6 +70,17 @@ final class Resource
 	}
 
 	/**
+	 * Enrich state with additional values.
+	 *
+	 * @param  array  $query [description]
+	 * @return [type]        [description]
+	 */
+	public function enrich(array $query)
+	{
+		$this->updateStore();
+	}
+
+	/**
 	 * Create a link to be used inside the data section.
 	 *
 	 * @param  string $class  the class of the resource
@@ -120,7 +131,6 @@ final class Resource
 
 	public function createAttachedResource(string $class, bool $main = false): self
 	{
-		$this->updateStore();
 		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
 		$self->main = $main;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
@@ -195,24 +205,30 @@ final class Resource
 		$this->object->{$this->method}($this->journaling, $this->response, $this->di);
 
 		// post call
-		if ($this->verbflags->hasFields() && $this->response instanceof OK && !$this->response->isDone()) {
-			$this->postRecon();
+		if ($this->verbflags->hasFields()) {
+			if ($this->response instanceof OK) {
+				if (!$this->response->isDone()) {
+					$this->postRecon();
 
-			$translatorParameters = get_object_vars($this->object);
-			foreach ($translatorParameters as $key => $value) {
-				if (!is_scalar($value) && $value !== null) {
-					unset($translatorParameters[$key]);
+					$translatorParameters = get_object_vars($this->object);
+					foreach ($translatorParameters as $key => $value) {
+						if (!is_scalar($value) && $value !== null) {
+							unset($translatorParameters[$key]);
+						}
+					}
+					if (isset($this->hints[0])) {
+						$this->hints[0] = ($this->translator)($this->hints[0], $translatorParameters);
+					}
+					$this->response->hints(...$this->hints);
+
+					[$content, $state] = $this->createContent($this->object, $this->fields, $translatorParameters, $preserve);
+					$this->response->setContent($content);
+					if ($this->main && $this->verbflags->hasSelfLink()) {
+						$this->response->link("self", $this->class, ["values"=>$state]);
+					}
 				}
-			}
-			if (isset($this->hints[0])) {
-				$this->hints[0] = ($this->translator)($this->hints[0], $translatorParameters);
-			}
-			$this->response->hints(...$this->hints);
-
-			[$content, $state] = $this->createContent($this->object, $this->fields, $translatorParameters, $preserve);
-			$this->response->setContent($content);
-			if ($this->main && $this->verbflags->hasSelfLink()) {
-				$this->response->link("self", $this->class, ["values"=>$state]);
+			} else {
+				$this->updateStore();
 			}
 		}
 
@@ -226,8 +242,11 @@ final class Resource
 		// flags check
 		$flags = new FieldFlags($flags);
 		if ($flags->isPrivate()) {
+
 			return $flags->isShared() ? $this->sharedStateStore->get($pool, $name) : null;
+
 		} else if ($flags->isMeta() || $flags->isState()) {
+
 			$queryValue = $query[$name] ?? null;
 			if ($queryValue === "") {
 				$queryValue = null;
@@ -235,7 +254,6 @@ final class Resource
 
 			if ($flags->isRequired() && $queryValue === null) {
 				$badRequest->addMessage("$path is required");
-				$queryValue = null;
 			} else {
 				$type = Type::createType($type);
 				if ($queryValue !== null) {
@@ -255,11 +273,15 @@ final class Resource
 			}
 
 			return $queryValue;
+
 		} else {
+
 			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {
 				$badRequest->addMessage("$path is required");
 			}
+
 		}
+
 		if ($flags->isReadonly() && isset($value)) {
 			$badRequest->addMessage("$path is readonly");
 		}
@@ -269,6 +291,7 @@ final class Resource
 
 		// type check
 		$type = Type::createType($type);
+
 		if (isset($value)) {
 
 			// object type
@@ -388,10 +411,14 @@ final class Resource
 					$badRequest->addMessage("$path does not have a valid value: ".print_r($value, true));
 				}
 			}
+
+			return $value;
+
 		} else {
-			$defaultValue = $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
+
+			return $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
+
 		}
-		return $value ?? $defaultValue;
 	}
 
 	private function updateStore()
