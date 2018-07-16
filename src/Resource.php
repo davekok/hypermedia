@@ -70,17 +70,6 @@ final class Resource
 	}
 
 	/**
-	 * Enrich state with additional values.
-	 *
-	 * @param  array  $query [description]
-	 * @return [type]        [description]
-	 */
-	public function enrich(array $query)
-	{
-		$this->updateStore();
-	}
-
-	/**
 	 * Create a link to be used inside the data section.
 	 *
 	 * @param  string $class  the class of the resource
@@ -88,6 +77,7 @@ final class Resource
 	 */
 	public function createLink(?string $class): ?Link
 	{
+		$this->updateStore();
 		if ($class === null) {
 			return new Link($this->sharedStateStore, $this->translator, $this->basePath, $this->namespace, null);
 		} else {
