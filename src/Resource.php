@@ -258,10 +258,6 @@ final class Resource
 				}
 			}
 
-			if ($flags->isShared() && !$flags->isReadonly()) {
-				$this->sharedStateStore->set($pool, $name, $queryValue);
-			}
-
 			return $queryValue;
 
 		} else {
@@ -550,13 +546,23 @@ final class Resource
 	{
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
+			if ($flags->isShared() && !$flags->isReadonly() && !$flags->isPrivate()) {
+				$value = $query[$name] === "" ? null : $query[$name];
+				$this->sharedStateStore->set($pool, $name, $value);
+			}
 			if ($flags->isRecon()) {
 				if ($flags->isMeta() || $flags->isState()) {
-					if (!array_key_exists($name, $conditions) && array_key_exists($name, $query)) {
-						$conditions[$name] = $query[$name];
+					if (!array_key_exists($name, $conditions)) {
+						if (array_key_exists($name, $query)) {
+							$conditions[$name] = $query[$name];
+						} else if ($flags->isShared()) {
+							$conditions[$name] = $this->sharedStateStore->get($pool, $name);
+						}
 					}
 				} else if ($flags->isPrivate()) {
-					continue;
+					if ($flags->isShared()) {
+						$conditions[$name] = $this->sharedStateStore->get($pool, $name);
+					}
 				} else {
 					if (!array_key_exists($prefix.$name, $conditions) && array_key_exists($name, $values)) {
 						$conditions[$prefix.$name] = $values[$name];

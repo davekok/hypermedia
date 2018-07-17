@@ -70,16 +70,7 @@ final class SourceUnitFactory
 				} else if (!$classes->contains($className)) { // don't overwrite classes already added
 					$classes->add($className);
 					$reflect = new ReflectionClass($className);
-					foreach ($this->annotationReader->getClassAnnotations($reflect) as $annotation) {
-						if ($annotation instanceof Hints) {
-							if (!isset($resource)) $resource = new Resource($className, $this->getDescription($reflect->getDocComment()?:""));
-							$resource->addHints($annotation);
-						}
-						if ($annotation instanceof Order) {
-							if (!isset($resource)) $resource = new Resource($className, $this->getDescription($reflect->getDocComment()?:""));
-							$resource->addOrder($annotation);
-						}
-					}
+					$this->reflectClass($reflect, $resource);
 					$this->reflectProperties($reflect, $resource);
 					$this->reflectMethods($reflect, $resource, $activity);
 				}
@@ -100,7 +91,21 @@ final class SourceUnitFactory
 		return $unit;
 	}
 
-	public function reflectProperties(ReflectionClass $reflect, ?Resource &$resource)
+	public function reflectClass(ReflectionClass $reflect, ?Resource &$resource): void
+	{
+		foreach ($this->annotationReader->getClassAnnotations($reflect) as $annotation) {
+			if ($annotation instanceof Hints) {
+				if (!isset($resource)) $resource = new Resource($reflect->getName(), $this->getDescription($reflect->getDocComment()?:""));
+				$resource->addHints($annotation);
+			}
+			if ($annotation instanceof Order) {
+				if (!isset($resource)) $resource = new Resource($reflect->getName(), $this->getDescription($reflect->getDocComment()?:""));
+				$resource->addOrder($annotation);
+			}
+		}
+	}
+
+	public function reflectProperties(ReflectionClass $reflect, ?Resource &$resource): void
 	{
 		$defaults = $reflect->getDefaultProperties();
 		foreach ($reflect->getProperties() as $property) {
@@ -116,7 +121,7 @@ final class SourceUnitFactory
 		}
 	}
 
-	public function reflectMethods(ReflectionClass $reflect, ?Resource &$resource, ?Activity &$activity): void
+	public function reflectMethods(ReflectionClass $reflect, ?Resource &$resource, ?Activity &$activity = null): void
 	{
 		foreach ($reflect->getMethods() as $method) {
 			foreach ($this->annotationReader->getMethodAnnotations($method) as $annotation) {
