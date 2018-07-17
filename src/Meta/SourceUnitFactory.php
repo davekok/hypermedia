@@ -7,6 +7,7 @@ use Exception;
 use Generator;
 use ReflectionClass;
 use Doctrine\Common\Annotations\Reader;
+use Ds\Set;
 
 /**
  * Create a source unit from one or more directories and
@@ -47,6 +48,7 @@ final class SourceUnitFactory
 		if (method_exists($this->annotationReader, "reset")) {
 			$this->annotationReader->reset();
 		}
+		$classes = new Set();
 		$unit = new SourceUnit($unitName);
 		foreach ($this->iterateDirectory($dirs, ["php"]) as $file) {
 			try {
@@ -61,10 +63,12 @@ final class SourceUnitFactory
 				}
 				if (is_subclass_of($className, ResourceBuilder::class)) {
 					foreach ((new $className($this, $this->di))->getResources() as $resource) {
+						$classes->add($resource->getClass());
 						$unit->addResource($resource);
 					}
 					$resource = null;
-				} else {
+				} else if (!$classes->contains($className)) { // don't overwrite classes already added
+					$classes->add($className);
 					$reflect = new ReflectionClass($className);
 					foreach ($this->annotationReader->getClassAnnotations($reflect) as $annotation) {
 						if ($annotation instanceof Hints) {
