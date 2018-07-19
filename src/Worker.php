@@ -81,9 +81,8 @@ final class Worker
 		// should the script boot into the background
 		if ($this->background) {
 			$this->detach();
+			$this->writePid();
 		}
-
-		$this->writePid();
 
 		if ($this->redirect) {
 			$this->redirectStdIO($this->outputfile, $this->inputfile, $this->errorfile);
@@ -251,6 +250,24 @@ final class Worker
 	}
 
 	/**
+	 * Get status as string
+	 *
+	 * @return string  status
+	 */
+	public function getStatusAsString(): string
+	{
+		if ($this->getStatus()) {
+			$r = "# {$this->name} (running)\n";
+			foreach ($this->getStatus() as $key => $value) {
+				$r.= "$key: $value\n";
+			}
+		} else {
+			$r = "# {$this->name} (not running)\n";
+		}
+		return $r;
+	}
+
+	/**
 	 * Detach from controlling process.
 	 */
 	public function detach(): void
@@ -321,6 +338,10 @@ final class Worker
 				exit("unable to make directory $rundir\n");
 			if (file_put_contents($this->pidfile, posix_getpid()) === false)
 				exit("unable to write to {$this->pidfile}\n");
+			if (posix_getuid() === 0) {
+				chown($this->pidfile, $this->user);
+				chgrp($this->pidfile, $this->group);
+			}
 			chmod($this->pidfile, 0644);
 		}
 	}
@@ -374,8 +395,10 @@ final class Worker
 			}
 			if (!file_exists($this->outputfile)) {
 				file_put_contents($this->outputfile, "");
-				if ($this->user) chown($this->outputfile, $this->user);
-				if ($this->group) chgrp($this->outputfile, $this->group);
+				if (posix_getuid() === 0) {
+					if ($this->user) chown($this->outputfile, $this->user);
+					if ($this->group) chgrp($this->outputfile, $this->group);
+				}
 			}
 
 			// close file descriptor slot 1, stdout
@@ -403,8 +426,10 @@ final class Worker
 			}
 			if (!file_exists($this->errorfile)) {
 				file_put_contents($this->errorfile, "");
-				if ($this->user) chown($this->errorfile, $this->user);
-				if ($this->group) chgrp($this->errorfile, $this->group);
+				if (posix_getuid() === 0) {
+					if ($this->user) chown($this->errorfile, $this->user);
+					if ($this->group) chgrp($this->errorfile, $this->group);
+				}
 			}
 
 			// close file descriptor slot 2, stderr
