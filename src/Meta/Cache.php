@@ -70,7 +70,7 @@ final class Cache implements CacheInterface
 		$cachedUnit->set(serialize($tagorder));
 		$this->cachePool->saveDeferred($cachedUnit);
 
-		foreach ($oldItems as $itemHash) {
+		foreach ($oldItems as $itemHash => $v) {
 			$this->cachePool->deleteItem($itemHash);
 		}
 
