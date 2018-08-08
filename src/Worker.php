@@ -613,13 +613,14 @@ final class Worker
 				$logfile = "{$vardir}/log/{$name}.log";
 			}
 		}
+		$background = $background ?? $defaults["background"] ?? true;
 		return [
 			"name" => $name ?? $defaults["name"] ?? "default",
-			"command" => $command ?? $defaults["command"] ?? "status",
+			"command" => $command ?? $defaults["command"] ?? ($background ? "status" : "start"),
 			"instance" => $instance ?? $defaults["instance"] ?? null,
 			"env" => $env ?? $defaults["env"] ?? getenv("ENVIRONMENT") ?: "prod",
 			"debug" => $debug ?? $defaults["debug"] ?? false,
-			"background" => $background ?? $defaults["background"] ?? true,
+			"background" => $background,
 			"redirect" => $redirect ?? $defaults["redirect"] ?? true,
 			"pidfile" => $pidfile ?? $defaults["pidfile"] ?? null,
 			"inputfile" => $defaults["inputfile"] ?? null,

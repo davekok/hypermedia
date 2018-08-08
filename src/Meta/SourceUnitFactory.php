@@ -189,6 +189,7 @@ final class SourceUnitFactory
 						$type = $token[0];
 					}
 					break;
+
 				case 1: // append strings to $className until another token is found
 					switch ($token[0]) {
 						case T_WHITESPACE: // skip white space

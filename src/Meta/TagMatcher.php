@@ -72,14 +72,14 @@ class TagMatcher
 				}
 			}
 			foreach ($this->shouldHave as $tag => $value) {
-				if ($taggable->hasTag($tag) && $taggable->getTag($tag) !== $value && $taggable->getTag($tag) !== true) {
+				if ($taggable->hasTag($tag) && $taggable->getTag($tag) != $value && $taggable->getTag($tag) !== true) {
 					continue 2;
 				}
 			}
 			$specific = 0;
 			foreach ($this->shouldHave as $tag => $value) {
 				if ($taggable->hasTag($tag)) {
-					if ($taggable->getTag($tag) === $value) {
+					if ($taggable->getTag($tag) == $value) {
 						$specific += 2;
 					} elseif ($taggable->getTag($tag) === true) {
 						++$specific;
