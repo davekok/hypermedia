@@ -60,7 +60,7 @@ final class Worker
 			$gr = posix_getgrgid($user["gid"]);
 			$this->group = $gr["name"];
 		}
-		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["ENVIRONMENT", "LANG"];
+		$this->safeEnvironmentVariables = $config['safeEnvironmentVariables'] ?? ["ENVIRONMENT", "CACHEDIR", "LOGDIR", "LANG"];
 		$this->environmentVariableDefaults = $config['environmentVariableDefaults'] ?? ["ENVIRONMENT"=>"prod", "LANG"=>"en_US.UTF-8"];
 	}
 
@@ -152,7 +152,7 @@ final class Worker
 
 		$reload = false;
 
-		$cenv = getenv();
+		$cenv = $_ENV;
 		$env = $unsafe;
 
 		// check unsafe environment variables
@@ -605,20 +605,18 @@ final class Worker
 				exit($usage);
 			}
 		}
-		if ($vardir = $vardir ?? $defaults["vardir"] ?? false) {
-			if (!isset($pidfile)) {
-				$pidfile = "{$vardir}/run/{$name}.pid";
-			}
-			if (!isset($logfile)) {
-				$logfile = "{$vardir}/log/{$name}.log";
-			}
+		if (!isset($logfile) && isset($defaults["logdir"])) {
+			$logfile = "{$defaults["logdir"]}/{$name}.log";
+		}
+		if (!isset($pidfile) && isset($defaults["rundir"])) {
+			$pidfile = "{$defaults["rundir"]}/{$name}.pid";
 		}
 		$background = $background ?? $defaults["background"] ?? true;
 		return [
 			"name" => $name ?? $defaults["name"] ?? "default",
 			"command" => $command ?? $defaults["command"] ?? ($background ? "status" : "start"),
 			"instance" => $instance ?? $defaults["instance"] ?? null,
-			"env" => $env ?? $defaults["env"] ?? getenv("ENVIRONMENT") ?: "prod",
+			"env" => $env ?? $defaults["env"] ?: "prod",
 			"debug" => $debug ?? $defaults["debug"] ?? false,
 			"background" => $background,
 			"redirect" => $redirect ?? $defaults["redirect"] ?? true,
