@@ -152,7 +152,7 @@ final class Worker
 
 		$reload = false;
 
-		$cenv = $_ENV;
+		$cenv = getenv();
 		$env = $unsafe;
 
 		// check unsafe environment variables
