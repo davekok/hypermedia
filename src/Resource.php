@@ -37,7 +37,6 @@ final class Resource
 	private $sourceUnit;
 	private $tags;
 	private $basePath;
-	private $di;
 
 	private $response;
 
@@ -53,20 +52,18 @@ final class Resource
 	private $mainClass;
 	private $query;
 
-	public function __construct(SharedStateStore $sharedStateStore, Cache $cache, Translator $translator, JsonDeserializer $jsonDeserializer, Journaling $journaling, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query, $di)
+	public function __construct(SharedStateStore $sharedStateStore, Cache $cache, Translator $translator, JsonDeserializer $jsonDeserializer, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query)
 	{
 		$this->sharedStateStore = $sharedStateStore;
 		$this->cache = $cache;
 		$this->translator = $translator;
 		$this->jsonDeserializer = $jsonDeserializer;
-		$this->journaling = $journaling;
 		$this->sourceUnit = $sourceUnit;
 		$this->tags = $tags;
 		$this->basePath = $basePath;
 		$this->namespace = $namespace;
 		$this->mainClass = $mainClass;
 		$this->query = $query;
-		$this->di = $di;
 	}
 
 	/**
@@ -91,7 +88,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query);
 		$self->main = true;
 		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -108,7 +105,7 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query);
 		$self->main = true;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
 		if ($resource === null) {
@@ -121,7 +118,7 @@ final class Resource
 
 	public function createAttachedResource(string $class, bool $main = false): self
 	{
-		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query, $this->di);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query);
 		$self->main = $main;
 		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
 		if ($resource === null) {
@@ -192,7 +189,7 @@ final class Resource
 		}
 
 		// call
-		$this->object->{$this->method}($this->journaling, $this->response, $this->di);
+		$this->object->{$this->method}($this->response);
 
 		// post call
 		if ($this->verbflags->hasFields()) {

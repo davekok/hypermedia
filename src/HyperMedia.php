@@ -20,7 +20,6 @@ final class HyperMedia
 	// dependencies/configuration
 	private $sharedStateStore;
 	private $cache;
-	private $journaling;
 	private $translator;
 	private $jsonDeserializer;
 	private $sourceUnit;
@@ -31,36 +30,30 @@ final class HyperMedia
 	 * Constructor
 	 *
 	 * @param Cache             $cache              the cache provider
-	 * @param JournalRepository $journalRepository  the journal repository
 	 * @param Translator        $translator         the translator
 	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
 	 * @param string            $sourceUnit         the source unit to use
 	 * @param string            $basePath           the prefix to remove from the path before processing
 	 *                                              and appended for generating links
 	 * @param string            $namespace          namespace to remove from class name
-	 * @param object            $di                 your dependency injection object, should contain all
 	 *                                              dependencies for your actions
 	 */
 	public function __construct(
 		SharedStateStore $sharedStateStore,
 		Cache $cache,
-		JournalRepository $journalRepository,
 		Translator $translator,
 		JsonDeserializer $jsonDeserializer,
 		string $sourceUnit,
 		string $basePath,
-		string $namespace,
-		/*object*/ $di)
+		string $namespace)
 	{
 		$this->sharedStateStore = $sharedStateStore;
 		$this->cache = $cache;
-		$this->journaling = new Journaling($journalRepository, $di);
 		$this->translator = $translator;
 		$this->jsonDeserializer = $jsonDeserializer;
 		$this->sourceUnit = $sourceUnit;
 		$this->basePath = rtrim($basePath, "/") . "/";
 		$this->namespace = !empty($namespace) ? (rtrim($namespace, "\\") . "\\") : '';
-		$this->di = $di;
 	}
 
 	/**
@@ -152,12 +145,12 @@ final class HyperMedia
 			$this->sharedStateStore->fill("query", $query);
 			$path = substr($path, strlen($this->basePath));
 			if ($path === "" || $path === "/") { // if root resource
-				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query, $this->di))
+				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query))
 					->createRootResource($verb, $conditions)
 					->call($values, $query, $preserve);
 			} else { // if normal resource
 				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
-				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->journaling, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query, $this->di))
+				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query))
 					->createResource($class, $verb, $conditions)
 					->call($values, $query, $preserve);
 			}
