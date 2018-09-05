@@ -39,6 +39,7 @@ final class FieldParser
 	private $htmlToken;
 	private $dataToken;
 	private $metaToken;
+	private $hiddenToken;
 	private $requiredToken;
 	private $readonlyToken;
 	private $disabledToken;
@@ -121,6 +122,7 @@ final class FieldParser
 		$this->htmlToken          = "/^html/";
 		$this->dataToken          = "/^data/";
 		$this->metaToken          = "/^meta/";
+		$this->hiddenToken        = "/^hidden/";
 		$this->requiredToken      = "/^required/";
 		$this->readonlyToken      = "/^readonly/";
 		$this->disabledToken      = "/^disabled/";
@@ -235,7 +237,7 @@ final class FieldParser
 
 		$mask = ~0;
 		// bit 1: type
-		// bit 2: meta, data, state, private, lookup or autosubmit field
+		// bit 2: meta, data, state, private, hidden, lookup or autosubmit field
 		// bit 3: required/readonly/disabled
 		// bit 4: multiple token
 		// bit 5: min token
@@ -412,6 +414,10 @@ final class FieldParser
 				$this->clearbit($mask, 2);
 				$this->clearbit($mask, 14);
 				$flags->setMeta();
+			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('hiddenToken')) {
+				$this->clearbit($mask, 2);
+				$this->clearbit($mask, 14);
+				$flags->setHidden();
 			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('lookupToken')) {
 				$this->clearbit($mask, 2);
 				$this->clearbit($mask, 14);
