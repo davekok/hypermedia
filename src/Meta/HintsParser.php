@@ -163,9 +163,11 @@ final class HintsParser
 			case 0:
 				$taggable->needsTag($tag);
 				return;
+
 			case 1:
 				$taggable->matchTagValue($tag, "");
 				return;
+
 			case 2:
 				$taggable->matchTagValue($tag, $value);
 				return;
@@ -175,13 +177,14 @@ final class HintsParser
 	private function parseClear()
 	{
 		$sequence = 0;
-		$sections = [];
+		$sections = true;
 		while ($this->valid()) {
 			switch ($sequence) {
 				case 0:
 					if ($this->match('spaceToken')) {
 						// do nothing
 					} elseif ($this->match('listStartToken')) {
+						$sections = [];
 						++$sequence;
 					} else {
 						return true;
