@@ -32,6 +32,7 @@ final class FieldFlags
 	const persistent =  8192; // whether the value of the field should be persisted
 	const _private   = 16384; // indicates that the field is private to the resource and should not be shared through
 	                          // either state section of the link or in the body of the response
+	const hidden     = 32768; // indicates that the field is hidden and should not be shown
 
 	private $flags;           // bitmask of the above constants
 
@@ -300,6 +301,23 @@ final class FieldFlags
 		return (bool)($this->flags & self::_private);
 	}
 
+	public function setHidden(): self
+	{
+		$this->flags |= self::hidden;
+		return $this;
+	}
+
+	public function clearHidden(): self
+	{
+		$this->flags &= ~self::hidden;
+		return $this;
+	}
+
+	public function isHidden(): bool
+	{
+		return (bool)($this->flags & self::hidden);
+	}
+
 	public function toInt(): int
 	{
 		return $this->flags;
@@ -321,26 +339,28 @@ final class FieldFlags
 		if ($this->isLookup    ()) $meta->lookup     = true;
 		if ($this->isMatrix    ()) $meta->matrix     = true;
 		if ($this->isAutoSubmit()) $meta->autosubmit = true;
+		if ($this->isHidden    ()) $meta->hidden     = true;
 	}
 
 	public function __toString(): string
 	{
 		$r = "";
-		if ($this->isPrivate()   ) $r.="private ";
-		if ($this->isState()     ) $r.="state ";
-		if ($this->isMeta()      ) $r.="meta ";
-		if ($this->isData()      ) $r.="data ";
-		if ($this->isPersistent()) $r.="persistent ";
-		if ($this->isRequired  ()) $r.="required ";
-		if ($this->isReadonly  ()) $r.="readonly ";
-		if ($this->isShared    ()) $r.="shared ";
-		if ($this->isDisabled  ()) $r.="disabled ";
-		if ($this->isMultiple  ()) $r.="multiple ";
-		if ($this->isArray     ()) $r.="array ";
-		if ($this->isRecon     ()) $r.="recon ";
-		if ($this->isLookup    ()) $r.="lookup ";
-		if ($this->isMatrix    ()) $r.="matrix ";
-		if ($this->isAutoSubmit()) $r.="autosubmit ";
+		if ($this->isPrivate   ()) $r .= "private ";
+		if ($this->isHidden    ()) $r .= "hidden ";
+		if ($this->isState     ()) $r .= "state ";
+		if ($this->isMeta      ()) $r .= "meta ";
+		if ($this->isData      ()) $r .= "data ";
+		if ($this->isPersistent()) $r .= "persistent ";
+		if ($this->isRequired  ()) $r .= "required ";
+		if ($this->isReadonly  ()) $r .= "readonly ";
+		if ($this->isShared    ()) $r .= "shared ";
+		if ($this->isDisabled  ()) $r .= "disabled ";
+		if ($this->isMultiple  ()) $r .= "multiple ";
+		if ($this->isArray     ()) $r .= "array ";
+		if ($this->isRecon     ()) $r .= "recon ";
+		if ($this->isLookup    ()) $r .= "lookup ";
+		if ($this->isMatrix    ()) $r .= "matrix ";
+		if ($this->isAutoSubmit()) $r .= "autosubmit ";
 		return rtrim($r);
 	}
 }
