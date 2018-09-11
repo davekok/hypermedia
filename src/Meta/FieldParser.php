@@ -44,6 +44,7 @@ final class FieldParser
 	private $readonlyToken;
 	private $disabledToken;
 	private $multipleToken;
+	private $mapToken;
 	private $stateToken;
 	private $sharedToken;
 	private $persistentToken;
@@ -125,6 +126,7 @@ final class FieldParser
 		$this->hiddenToken        = "/^hidden/";
 		$this->requiredToken      = "/^required/";
 		$this->readonlyToken      = "/^readonly/";
+		$this->mapToken      	  = "/^map/";
 		$this->disabledToken      = "/^disabled/";
 		$this->multipleToken      = "/^multiple/";
 		$this->stateToken         = "/^state/";
@@ -157,6 +159,10 @@ final class FieldParser
 		$this->escapedQuote       = '/^\'\'/';
 		$this->iconToken          = '/^icon/';
 		$this->name               = "/^($name)/";
+
+		$this->keyToken   	      = "/^($name)/";
+		$this->valToken  		  = '/^(\"[^\v\"]*\"|\'[^\v\']*\'|[1-9][0-9]*(?=\.[0-9]+)?|0\.[0-9]+|true|false)/';
+		$this->colonToken 		  = '/^:/';
 
 		$this->listStartToken     = '/^\(/';
 		$this->listDelimiterToken = '/^,/';
@@ -390,6 +396,12 @@ final class FieldParser
 				$field->setType($type = new Type\ListType());
 				$this->parseArray($flags);
 				$this->parseList($type);
+			} elseif ($this->isbitset($mask, 1) && $this->match('mapToken')) {
+				$this->clearbit($mask, 1);
+				$this->setbit($mask, 12);
+				$field->setType($type = new Type\MapType());
+				$this->parseArray($flags);
+				$this->parseMapOptions($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('objectToken')) {
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\ObjectType());
@@ -648,6 +660,52 @@ final class FieldParser
 		}
 		if (0 === $sequence) {
 			throw new ParserError($this->parseError("Expected options"));
+		}
+	}
+
+	private function parseMapOptions(Type\MapType $type)
+	{
+		$sequence = 0;
+		while ($this->valid()) {
+			if ($this->match('spaceToken')) {
+				// do nothing
+			} elseif (1 === $sequence && $this->match('keyToken', $key)) {
+				$sequence = 2;
+
+			} elseif (2 === $sequence && $this->match('colonToken')) {
+				$sequence = 3;
+
+			} elseif (3 === $sequence && $this->match('valToken', $val)) {
+				$sequence = 4;
+
+				// Remove the singgle qoutes from the input string
+				if (substr($val, 0, 1) == "'" ) {
+					$length = strlen($val);
+					$val = substr($val, 1, $length );
+					$val = substr(trim($val), 0, -1);
+				};
+
+				$type->addOption($key, $val);
+
+			} elseif (4 === $sequence && $this->match('listDelimiterToken')) {
+				$sequence = 1;
+
+			} elseif ((1 === $sequence || 4 === $sequence) && $this->match('listEndToken')) {
+				$sequence = 5;
+				break;
+			} elseif (0 === $sequence && $this->match('listStartToken')) {
+				$sequence = 1;
+			} else {
+				break;
+			}
+		}
+
+		if (0 === $sequence  ) {
+			throw new ParserError($this->parseError("Expected options for MapType"));
+		}
+
+		else if (5 !== $sequence  ) {
+			throw new ParserError($this->parseError("Not completed maptoken"));
 		}
 	}
 

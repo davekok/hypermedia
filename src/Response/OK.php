@@ -213,6 +213,18 @@ final class OK implements Response
 		}
 	}
 
+
+	public function attachList(string $name, array $list, string $valueType = "uuid", string $labelType = "string")
+	{
+		$obj = new stdClass;
+		$obj->fields = [["name"=>"list", "type"=>"object", "array"=>true, "data"=>true, "defaultValue"=>[], "fields"=>[
+			["name"=>"value", "type"=>"$valueType"],
+			["name"=>"label", "type"=>"$labelType"],
+		]]];
+		$obj->data = $list;
+		$this->parts->$name = $obj;
+	}
+
 	/**
 	 * Request additional resources.
 	 *
@@ -241,6 +253,20 @@ final class OK implements Response
 			$values = array_merge(...$values);
 		}
 		return $link->expand($values, false);
+	}
+
+
+	/**
+	 * Notify the user with response text
+	 * Type can be 'error', 'warning', 'info', 'success'
+	 *
+	 * @param string $type
+	 * @param string $title
+	 * @param string $text
+	 * @param string|null $icon
+	 */
+	public function notifyUser(string $type, string $title, string $text, string $icon = null) {
+		$this->part->notifications[] = ['type' => $type, 'title' => ucfirst($title), 'text' => ucfirst($text), 'icon' => $icon];
 	}
 
 	/**
