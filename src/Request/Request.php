@@ -15,6 +15,27 @@ interface Request
 	public function getProtocolVersion(): string;
 
 	/**
+	 * Get the http scheme
+	 *
+	 * @return string  the http scheme
+	 */
+	public function getScheme(): string;
+
+	/**
+	 * Get the http host
+	 *
+	 * @return string  the http host
+	 */
+	public function getHost(): string;
+
+	/**
+	 * Get the http port
+	 *
+	 * @return int  the http port
+	 */
+	public function getPort(): int;
+
+	/**
 	 * Get the HTTP verb used.
 	 *
 	 * @return string  the HTTP verb

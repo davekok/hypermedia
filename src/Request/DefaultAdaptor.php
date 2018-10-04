@@ -30,6 +30,56 @@ final class DefaultAdaptor implements Request
 	}
 
 	/**
+	 * Get http scheme
+	 *
+	 * @return string
+	 */
+	public function getScheme(): string
+	{
+		return isset($this->server["HTTPS"]) ? "https" : "http";
+	}
+
+	/**
+	 * Get http host
+	 *
+	 * @return string
+	 */
+	public function getHost(): string
+	{
+		if (isset($this->server["HTTP_HOST"])) {
+			return $this->server["HTTP_HOST"];
+		} else if (isset($this->server["HOST"])) {
+			return $this->server["HOST"];
+		} else if (isset($this->server["SERVER_NAME"])) {
+			return $this->server["SERVER_NAME"];
+		} else if (isset($this->server["SERVER_NAME"])) {
+			return $this->server["SERVER_ADDR"];
+		} else {
+			return "localhost";
+		}
+	}
+
+	/**
+	 * Get http port
+	 *
+	 * @return string
+	 */
+	public function getPort(): int
+	{
+		if (isset($this->server["HTTP_PORT"])) {
+			return (int)$this->server["HTTP_HOST"];
+		} else if (isset($this->server["PORT"])) {
+			return (int)$this->server["PORT"];
+		} else if (isset($this->server["SERVER_PORT"])) {
+			return (int)$this->server["SERVER_PORT"];
+		} else if (isset($this->server["HTTPS"])) {
+			return 443;
+		} else {
+			return 80;
+		}
+	}
+
+	/**
 	 * Get verb
 	 *
 	 * @return string

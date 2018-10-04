@@ -20,6 +20,21 @@ final class SymfonyAdaptor implements Request
 		return substr($version, strpos($version, "/") + 1);
 	}
 
+	public function getScheme(): string
+	{
+		return $this->request->getScheme();
+	}
+
+	public function getHost(): string
+	{
+		return $this->request->getHost();
+	}
+
+	public function getPort(): int
+	{
+		return $this->request->getPort();
+	}
+
 	public function getVerb(): string
 	{
 		return $this->request->getMethod();

@@ -90,6 +90,14 @@ final class HyperMedia
 		$request = Http::request($request, $responseAdaptor);
 		$verb = $request->getVerb();
 		$path = $request->getPath();
+		$this->sharedStateStore->fill("request", [
+			"protocolVersion"=>$request->getProtocolVersion(),
+			"scheme"=>$request->getScheme(),
+			"host"=>$request->getHost(),
+			"port"=>$request->getPort(),
+			"verb"=>$request->getVerb(),
+			"path"=>$request->getPath()
+		]);
 		$query = $this->getQuery($request);
 		if (isset($query['store'])) {
 			$this->sharedStateStore->loadPersistentStore($query['store']);

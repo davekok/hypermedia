@@ -32,6 +32,49 @@ final class PsrAdaptor implements Request
 	}
 
 	/**
+	 * Get the http scheme
+	 *
+	 * @return string  the http scheme
+	 */
+	public function getScheme(): string
+	{
+		$params = $this->request->getServerParams();
+		return isset($params["HTTPS"]) ? "https" : "https";
+	}
+
+	/**
+	 * Get the http host
+	 *
+	 * @return string  the http host
+	 */
+	public function getHost(): string
+	{
+		$host = $this->request->getHeader("Content-Type");
+		return empty($host) ? null : array_shift($host);
+	}
+
+	/**
+	 * Get the http port
+	 *
+	 * @return int  the http port
+	 */
+	public function getPort(): int
+	{
+		$params = $this->request->getServerParams();
+		if (isset($params["HTTP_PORT"])) {
+			return (int)$params["HTTP_PORT"];
+		} else if (isset($params["PORT"])) {
+			return (int)$params["PORT"];
+		} else if (isset($params["SERVER_PORT"])) {
+			return (int)$params["SERVER_PORT"];
+		} else if (isset($params["HTTPS"])) {
+			return 443;
+		} else {
+			return 80;
+		}
+	}
+
+	/**
 	 * Get the HTTP verb used.
 	 *
 	 * @return string  the HTTP verb
