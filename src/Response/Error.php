@@ -113,6 +113,6 @@ abstract class Error extends Exception implements Response
 				"trace" => explode("\n", mb_convert_encoding("## ".$previous->getFile()."(".$previous->getLine().")\n".$previous->getTraceAsString(), 'UTF-8', 'UTF-8'))
 			];
 		}
-		return json_encode(["error" => $error], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		return json_encode(["error" => $error], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 	}
 }

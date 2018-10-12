@@ -69,7 +69,12 @@ final class OK implements Response
 	 */
 	public function getContent(): string
 	{
-		return json_encode($this->parts, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		$content = json_encode($this->parts, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+		if ($content === false) {
+			return json_encode(["error"=>["message"=>"unable to encode response"]]);
+		} else {
+			return $content;
+		}
 	}
 
 	/**

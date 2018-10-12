@@ -35,6 +35,7 @@ final class FieldParser
 	private $linkToken;
 	private $listToken;
 	private $objectToken;
+	private $componentToken;
 	private $tupleToken;
 	private $htmlToken;
 	private $dataToken;
@@ -116,7 +117,7 @@ final class FieldParser
 		$this->urlToken           = "/^url/";
 		$this->linkToken          = "/^link/";
 		$this->listToken          = "/^list/";
-		$this->objectToken        = "/^object/";
+		$this->objectToken        = "/^object(:$name)?/";
 		$this->referenceToken     = "/^reference/";
 		$this->startTupleToken    = "/^\[/";
 		$this->endTupleToken      = "/^\]/";
@@ -402,9 +403,12 @@ final class FieldParser
 				$field->setType($type = new Type\MapType());
 				$this->parseArray($flags);
 				$this->parseMapOptions($type);
-			} elseif ($this->isbitset($mask, 1) && $this->match('objectToken')) {
+			} elseif ($this->isbitset($mask, 1) && $this->match('objectToken', $component)) {
 				$this->clearbit($mask, 1);
-				$field->setType($type = new Type\ObjectType());
+				$this->setbit($mask, 20);
+				$type = new Type\ObjectType();
+				$type->setComponent(ltrim($component ?? "", ":"));
+				$field->setType($type);
 				$this->parseArray($flags);
 				$this->parseFields($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('referenceToken')) {

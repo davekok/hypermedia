@@ -16,6 +16,7 @@ final class ObjectType extends Type
 
 	private $fieldDescriptors;
 	private $fields; // only used for during compilation
+	private $component = "";
 
 	/**
 	 * Constructor
@@ -25,7 +26,11 @@ final class ObjectType extends Type
 	public function __construct(string $state = null)
 	{
 		if ($state !== null) {
-			$this->fieldDescriptors = unserialize($state);
+			$p = strpos($state, ":");
+			if ($p !== false) {
+				$this->component = substr($state, 0, $p);
+				$this->fieldDescriptors = unserialize(substr($state, $p+1));
+			}
 		}
 	}
 
@@ -38,6 +43,29 @@ final class ObjectType extends Type
 	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
+		if (isset($this->component)) {
+			$meta->component = $this->component;
+		}
+	}
+
+	/**
+	 * Set component
+	 *
+	 * @param string $component
+	 */
+	public function setComponent(string $component): void
+	{
+		$this->component = $component;
+	}
+
+	/**
+	 * Get component
+	 *
+	 * @return string
+	 */
+	public function getComponent(): string
+	{
+		return $this->component;
 	}
 
 	/**
@@ -47,7 +75,7 @@ final class ObjectType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.":".serialize($this->fieldDescriptors);
+		return self::type.":{$this->component}:".serialize($this->fieldDescriptors);
 	}
 
 	/**
