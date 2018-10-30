@@ -1,29 +1,20 @@
 # Sturdy Activity
 
-A component to journal activities as they execute and update activity diagrams when you code.
+Sturdy Activity is a project to help developers write great micro services. Currently it
+features two essential components. The HyperMedia component helping developers to write
+a HyperMedia API and the Activity component which is aimed to help developers write complex
+long running backend activities.
 
-Sturdy Activity contains two essentials a class to easily create a HyperMedia API and a class
-to easily write activities. Sturdy works by using annotations.
+Currently the HyperMedia component is in good fashion and very useable, though documentation
+is lacking. The Activity component is still work in progress.
 
-## Usage
 
-Write classes to implement the Journal interfaces: Journal, JournalBranch, JournalEntry and JournalRepository.
-
-Scan your source code for annotations using SourceUnitFactory.
-
-```php
-
-$annotationReader = // implementation of \Doctrine\Common\Annotations\Reader
-$factory = new \Sturdy\Activity\Meta\SourceUnitFactory($annotationReader);
-$unit = $factory->createSourceUnit("app", "/srv/app/src/Activity:/srv/app/src/Resource:...");
-
-$cachepool = // implementation of \Psr\Cache\CacheItemPoolInterface
-$cache = new \Sturdy\Activity\Meta\Cache($cachepool);
-$cache->updateSourceUnit($unit);
-
-```
 
 ## HyperMedia
+
+The HyperMedia class is equiped with several adaptor factory functions. For instance if you
+wish to use the Symfony framework you can use the HyperMedia::createSymfonyAdaptor to easily
+work with that framework.
 
 Example:
 
@@ -67,21 +58,14 @@ class Person
 
 ```php
 
-class HttpKernel
-{
-	private $hypermedia;
-
-	public function __construct(\Psr\Cache\CacheItemPoolInterface $cachepool, \Sturdy\Activity\JournalRepository $journalRepository, $di)
-	{
-		$cache = new \Sturdy\Activity\Meta\Cache($cachepool);
-		$this->hypermedia = new \Sturdy\Activity\HyperMedia($cache, $journalRepository, "app", "/", $di);
-	}
-
-	public function handle(\Psr\Http\Message\ServerRequestInterface|\Symfony\Component\HttpFoundation\Request $request): \Psr\Http\Message\ResponseInterface|\Symfony\Component\HttpFoundation\Response
-	{
-		$tags = []; // get features/privileges from your session/environment
-		return $this->hypermedia->handle($tags, $request);
-	}
-}
+HyperMedia::createEchoAdaptor(
+	new MySharedStateStore(),
+	new MyCache(),
+	new MyTranslator(),
+	new MyJsonDeserializer(),
+	"MySourceUnit",
+	"/api/",
+	"MyNameSpace"
+)->handle($_SERVER)->send()
 
 ```

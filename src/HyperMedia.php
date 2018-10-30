@@ -104,13 +104,17 @@ class HyperMedia
 		implements \Symfony\Component\HttpKernel\HttpKernelInterface {
 			public function handle(\Symfony\Component\HttpFoundation\Request $request, $type = self::MASTER_REQUEST, $catch = true): \Symfony\Component\HttpFoundation\Response
 			{
+				// please note that $type and $catch are ignored
 				return new Response\SymfonyAdaptor(parent::realHandle(new Request\SymfonyAdaptor($request)));
 			}
 		};
 	}
 
 	/**
-	 * Create laravel adaptor
+	 * Create laravel adaptor.
+	 *
+	 * Laravel's http kernel has some additional stuff I don't really know what
+	 * it is about. So this implementation may not work properly.
 	 *
 	 * @param SharedStateStore  $sharedStateStore   shared state store
 	 * @param Cache             $cache              the cache provider
