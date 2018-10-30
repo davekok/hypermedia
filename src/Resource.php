@@ -35,7 +35,6 @@ final class Resource
 	private $jsonDeserializer;
 	private $journaling;
 	private $sourceUnit;
-	private $tags;
 	private $basePath;
 
 	private $response;
@@ -52,14 +51,13 @@ final class Resource
 	private $mainClass;
 	private $query;
 
-	public function __construct(SharedStateStore $sharedStateStore, Cache $cache, Translator $translator, JsonDeserializer $jsonDeserializer, string $sourceUnit, array $tags, string $basePath, string $namespace, string $mainClass, array $query)
+	public function __construct(SharedStateStore $sharedStateStore, Cache $cache, Translator $translator, JsonDeserializer $jsonDeserializer, string $sourceUnit, string $basePath, string $namespace, string $mainClass, array $query)
 	{
 		$this->sharedStateStore = $sharedStateStore;
 		$this->cache = $cache;
 		$this->translator = $translator;
 		$this->jsonDeserializer = $jsonDeserializer;
 		$this->sourceUnit = $sourceUnit;
-		$this->tags = $tags;
 		$this->basePath = $basePath;
 		$this->namespace = $namespace;
 		$this->mainClass = $mainClass;
@@ -78,7 +76,7 @@ final class Resource
 		if ($class === null) {
 			return new Link($this->sharedStateStore, $this->translator, $this->basePath, $this->namespace, null);
 		} else {
-			$resource = $this->cache->getResource($this->sourceUnit, $class, $this->tags);
+			$resource = $this->cache->getResource($this->sourceUnit, $class, $this->sharedStateStore->getTags());
 			return $resource ? new Link($this->sharedStateStore, $this->translator, $this->basePath, $this->namespace, $resource, $this->mainClass === $class, $this->query) : null;
 		}
 	}
@@ -88,9 +86,9 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->basePath, $this->namespace, $this->mainClass, $this->query);
 		$self->main = true;
-		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $self->tags));
+		$resource = $self->cache->getRootResource($self->sourceUnit, array_merge($conditions, $this->sharedStateStore->getTags()));
 		if ($resource === null) {
 			throw new FileNotFound("Root resource not found.");
 		}
@@ -105,9 +103,9 @@ final class Resource
 		if ($verb !== "GET" && $verb !== "POST") {
 			throw new MethodNotAllowed("$verb not allowed.");
 		}
-		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->basePath, $this->namespace, $this->mainClass, $this->query);
 		$self->main = true;
-		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $self->tags));
+		$resource = $self->cache->getResource($self->sourceUnit, $class, array_merge($conditions, $this->sharedStateStore->getTags()));
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
 		}
@@ -118,9 +116,9 @@ final class Resource
 
 	public function createAttachedResource(string $class, bool $main = false): self
 	{
-		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->tags, $this->basePath, $this->namespace, $this->mainClass, $this->query);
+		$self = new self($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->basePath, $this->namespace, $this->mainClass, $this->query);
 		$self->main = $main;
-		$resource = $self->cache->getResource($self->sourceUnit, $class, $self->tags);
+		$resource = $self->cache->getResource($self->sourceUnit, $class, $this->sharedStateStore->getTags());
 		if ($resource === null) {
 			throw new FileNotFound("Resource $class not found.");
 		}
@@ -149,7 +147,7 @@ final class Resource
 		switch ($this->verbflags->getStatus()) {
 			case Meta\Verb::OK:
 				$this->response = new OK($this);
-				Http::setLogger($this->response);
+				Log::setLogger($this->response);
 				break;
 
 			case Meta\Verb::NO_CONTENT:
@@ -527,7 +525,7 @@ final class Resource
 		$cascadeConditions = $this->preReconRecurse($this->fields, $this->conditions, $values, $query);
 		do {
 			$conditions = $cascadeConditions;
-			$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->tags));
+			$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->sharedStateStore->getTags()));
 			if ($resource !== null) {
 				$this->class = $resource->getClass();
 				$this->hints = $resource->getHints();
@@ -586,7 +584,7 @@ final class Resource
 		$cascadeConditions = $this->postReconRecurse($this->fields, $this->conditions, $this->object);
 		do {
 			$conditions = $cascadeConditions;
-			$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->tags));
+			$resource = $this->cache->getResource($this->sourceUnit, $this->class, array_merge($conditions, $this->sharedStateStore->getTags()));
 			if ($resource !== null) {
 				$this->class = $resource->getClass();
 				$this->hints = $resource->getHints();

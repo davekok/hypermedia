@@ -10,22 +10,15 @@ use ArrayAccess, Countable, Iterator;
 final class EchoAdaptor
 {
 	private $response;
-	private $send = false;
 
 	public function __construct(Response $response)
 	{
 		$this->response = $response;
-	}
 
-	public function __destruct()
-	{
-		$this->send();
 	}
-
 	public function send()
 	{
-		if ($this->send || headers_sent()) return;
-		$this->send = true;
+		if (headers_sent()) return;
 		header("HTTP/".$this->response->getProtocolVersion()." ".$this->response->getStatusCode()." ".$this->response->getStatusText());
 		header("Date: ".$this->response->getDate()->format("r"));
 		if ($location = $this->response->getLocation()) {

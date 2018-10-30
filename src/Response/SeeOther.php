@@ -3,6 +3,7 @@
 namespace Sturdy\Activity\Response;
 
 use Sturdy\Activity\Resource;
+use UriTemplate\UriTemplate;
 
 final class SeeOther implements Response
 {
@@ -25,9 +26,9 @@ final class SeeOther implements Response
 	/**
 	 * The contructor
 	 *
-	 * @param Resource $resource  the resource
+	 * @param ?Resource $resource  the resource
 	 */
-	public function __construct(Resource $resource)
+	public function __construct(?Resource $resource = null)
 	{
 		$this->resource = $resource;
 	}
@@ -70,9 +71,13 @@ final class SeeOther implements Response
 	 *
 	 * @param string $url   the url to redirect to
 	 */
-	public function setLocationURL(string $url): void
+	public function setLocationURL(string $url, array $parameters = null): void
 	{
-		$this->location = $url;
+		if (empty($parameters)) {
+			$this->location = $url;
+		} else {
+			$this->location = UriTemplate::expand($url, $parameters)
+		}
 	}
 
 	/**

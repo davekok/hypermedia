@@ -3,20 +3,239 @@
 namespace Sturdy\Activity;
 
 use Throwable, Exception, InvalidArgumentException;
-use Sturdy\Activity\Request\Request;
-use Sturdy\Activity\Response\{
-	Response,
-	BadRequest,
-	MethodNotAllowed,
-	InternalServerError,
-	UnsupportedMediaType
-};
+use Sturdy\Activity\Request;
+use Sturdy\Activity\Response;
 
 /**
  * A hyper media middle ware for your resources.
  */
-final class HyperMedia
+class HyperMedia
 {
+	/**
+	 * Create an instance
+	 *
+	 * @param SharedStateStore  $sharedStateStore   shared state store
+	 * @param Cache             $cache              the cache provider
+	 * @param Translator        $translator         the translator
+	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
+	 * @param string            $sourceUnit         the source unit to use
+	 * @param string            $basePath           the prefix to remove from the path before processing
+	 *                                              and appended for generating links
+	 * @param string            $namespace          namespace to remove from class name
+	 *                                              dependencies for your actions
+	 * @return HyperMedia  a hyper media instance
+	 */
+	public static function createInstance(
+		SharedStateStore $sharedStateStore,
+		Cache $cache,
+		Translator $translator,
+		JsonDeserializer $jsonDeserializer,
+		string $sourceUnit,
+		string $basePath,
+		string $namespace): HyperMedia
+	{
+		return new class ($sharedStateStore, $cache, $translator, $jsonDeserializer, $sourceUnit, $basePath, $namespace)
+		extends HyperMedia {
+			public function handle(Request\Request $request): Response\Response
+			{
+				return parent::realHandle($request);
+			}
+		};
+	}
+
+	/**
+	 * Create Psr adaptor
+	 *
+	 * @param SharedStateStore  $sharedStateStore   shared state store
+	 * @param Cache             $cache              the cache provider
+	 * @param Translator        $translator         the translator
+	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
+	 * @param string            $sourceUnit         the source unit to use
+	 * @param string            $basePath           the prefix to remove from the path before processing
+	 *                                              and appended for generating links
+	 * @param string            $namespace          namespace to remove from class name
+	 *                                              dependencies for your actions
+	 * @return \Psr\Http\Server\RequestHandlerInterface  the adaptation
+	 */
+	public static function createPsrAdaptor(
+		SharedStateStore $sharedStateStore,
+		Cache $cache,
+		Translator $translator,
+		JsonDeserializer $jsonDeserializer,
+		string $sourceUnit,
+		string $basePath,
+		string $namespace): \Psr\Http\Server\RequestHandlerInterface
+	{
+		return new class ($sharedStateStore, $cache, $translator, $jsonDeserializer, $sourceUnit, $basePath, $namespace)
+		extends HyperMedia
+		implements \Psr\Http\Server\RequestHandlerInterface {
+			public function handle(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ResponseInterface
+			{
+				return new Response\PsrAdaptor(parent::realHandle(new Request\PsrAdaptor($request)));
+			}
+		};
+	}
+
+	/**
+	 * Create symfony adaptor
+	 *
+	 * @param SharedStateStore  $sharedStateStore   shared state store
+	 * @param Cache             $cache              the cache provider
+	 * @param Translator        $translator         the translator
+	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
+	 * @param string            $sourceUnit         the source unit to use
+	 * @param string            $basePath           the prefix to remove from the path before processing
+	 *                                              and appended for generating links
+	 * @param string            $namespace          namespace to remove from class name
+	 *                                              dependencies for your actions
+	 * @return \Symfony\Component\HttpKernel\HttpKernelInterface  the adaptation
+	 */
+	public static function createSymfonyAdaptor(
+		SharedStateStore $sharedStateStore,
+		Cache $cache,
+		Translator $translator,
+		JsonDeserializer $jsonDeserializer,
+		string $sourceUnit,
+		string $basePath,
+		string $namespace): \Symfony\Component\HttpKernel\HttpKernelInterface
+	{
+		return new class ($sharedStateStore, $cache, $translator, $jsonDeserializer, $sourceUnit, $basePath, $namespace)
+		extends HyperMedia
+		implements \Symfony\Component\HttpKernel\HttpKernelInterface {
+			public function handle(\Symfony\Component\HttpFoundation\Request $request, $type = self::MASTER_REQUEST, $catch = true): \Symfony\Component\HttpFoundation\Response
+			{
+				return new Response\SymfonyAdaptor(parent::realHandle(new Request\SymfonyAdaptor($request)));
+			}
+		};
+	}
+
+	/**
+	 * Create laravel adaptor
+	 *
+	 * @param SharedStateStore  $sharedStateStore   shared state store
+	 * @param Cache             $cache              the cache provider
+	 * @param Translator        $translator         the translator
+	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
+	 * @param string            $sourceUnit         the source unit to use
+	 * @param string            $basePath           the prefix to remove from the path before processing
+	 *                                              and appended for generating links
+	 * @param string            $namespace          namespace to remove from class name
+	 *                                              dependencies for your actions
+	 * @param \Illuminate\Contracts\Foundation\Application $app
+	 * @param array $bootstrappers
+	 * @return \Illuminate\Contracts\Http\Kernel
+	 */
+	public static function createLaravelAdaptor(
+		SharedStateStore $sharedStateStore,
+		Cache $cache,
+		Translator $translator,
+		JsonDeserializer $jsonDeserializer,
+		string $sourceUnit,
+		string $basePath,
+		string $namespace,
+		\Illuminate\Contracts\Foundation\Application $app,
+		array $bootstrappers = []): \Illuminate\Contracts\Http\Kernel
+	{
+		return new class ($sharedStateStore, $cache, $translator, $jsonDeserializer, $sourceUnit, $basePath, $namespace, $app, $bootstrappers)
+		extends HyperMedia
+		implements \Illuminate\Contracts\Http\Kernel {
+			private $app;
+			private $bootstrappers;
+
+			private function __construct(HyperMedia $hyperMedia, \Illuminate\Contracts\Foundation\Application $app, array $bootstrappers = []) {
+				parent::__construct($hyperMedia);
+				$this->app = $app;
+				$this->bootstrappers = $bootstrappers;
+			}
+
+			public function bootstrap()
+			{
+				if (!$this->app->hasBeenBootstrapped()) {
+					$this->app->bootstrapWith($this->bootstrappers);
+				}
+			}
+
+			public function handle(\Symfony\Component\HttpFoundation\Request $request): Request\SymfonyAdaptor
+			{
+				return new Response\SymfonyAdaptor(parent::realHandle(new Request\SymfonyAdaptor($request)));
+			}
+
+			public function terminate($request, $response)
+			{
+				$this->app->terminate();
+			}
+
+			public function getApplication()
+			{
+				return $this->app;
+			}
+		};
+	}
+
+	/**
+	 * Create an array adaptor to be used with $_SERVER like array.
+	 *
+	 * @param SharedStateStore  $sharedStateStore   shared state store
+	 * @param Cache             $cache              the cache provider
+	 * @param Translator        $translator         the translator
+	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
+	 * @param string            $sourceUnit         the source unit to use
+	 * @param string            $basePath           the prefix to remove from the path before processing
+	 *                                              and appended for generating links
+	 * @param string            $namespace          namespace to remove from class name
+	 *                                              dependencies for your actions
+	 * @return object  the adaptation
+	 */
+	public static function createArrayAdaptor(
+		SharedStateStore $sharedStateStore,
+		Cache $cache,
+		Translator $translator,
+		JsonDeserializer $jsonDeserializer,
+		string $sourceUnit,
+		string $basePath,
+		string $namespace): HyperMedia
+	{
+		return new class ($sharedStateStore, $cache, $translator, $jsonDeserializer, $sourceUnit, $basePath, $namespace)
+		extends HyperMedia {
+			public function handle(array $request = null): Response\ArrayAdaptor
+			{
+				return new Response\ArrayAdaptor(parent::realHandle(new Request\DefaultAdaptor($request ?? $_SERVER)));
+			}
+		};
+	}
+
+	/**
+	 * Create an echo adaptor to be used with $_SERVER like array.
+	 *
+	 * @param SharedStateStore  $sharedStateStore   shared state store
+	 * @param Cache             $cache              the cache provider
+	 * @param Translator        $translator         the translator
+	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
+	 * @param string            $sourceUnit         the source unit to use
+	 * @param string            $basePath           the prefix to remove from the path before processing
+	 *                                              and appended for generating links
+	 * @param string            $namespace          namespace to remove from class name
+	 *                                              dependencies for your actions
+	 * @return object  the adaptation
+	 */
+	public static function createEchoAdaptor(
+		SharedStateStore $sharedStateStore,
+		Cache $cache,
+		Translator $translator,
+		JsonDeserializer $jsonDeserializer,
+		string $sourceUnit,
+		string $basePath,
+		string $namespace): HyperMedia
+	{
+		return new class ($sharedStateStore, $cache, $translator, $jsonDeserializer, $sourceUnit, $basePath, $namespace)
+		extends HyperMedia {
+			public function handle(array $request = null): Response\ArrayAdaptor
+			{
+				return new Response\EchoAdaptor(parent::realHandle(new Request\DefaultAdaptor($request ?? $_SERVER)));
+			}
+		};
+	}
+
 	// dependencies/configuration
 	private $sharedStateStore;
 	private $cache;
@@ -25,10 +244,12 @@ final class HyperMedia
 	private $sourceUnit;
 	private $basePath;
 	private $di;
+	private $exceptionHandlers;
 
 	/**
 	 * Constructor
 	 *
+	 * @param SharedStateStore  $sharedStateStore   shared state store
 	 * @param Cache             $cache              the cache provider
 	 * @param Translator        $translator         the translator
 	 * @param JsonDeserializer  $jsonDeserializer   the deserializer
@@ -38,7 +259,7 @@ final class HyperMedia
 	 * @param string            $namespace          namespace to remove from class name
 	 *                                              dependencies for your actions
 	 */
-	public function __construct(
+	protected function __construct(
 		SharedStateStore $sharedStateStore,
 		Cache $cache,
 		Translator $translator,
@@ -53,87 +274,62 @@ final class HyperMedia
 		$this->jsonDeserializer = $jsonDeserializer;
 		$this->sourceUnit = $sourceUnit;
 		$this->basePath = rtrim($basePath, "/") . "/";
-		$this->namespace = !empty($namespace) ? (rtrim($namespace, "\\") . "\\") : '';
+		$this->namespace = !empty($namespace) ? (rtrim($namespace, "\\") . "\\") : "";
 	}
 
 	/**
 	 * Handle a request
 	 *
-	 * The $request argument can be either an instance of
-	 * - \Psr\Http\Message\ServerRequestInterface
-	 * - \Symfony\Component\HttpFoundation\Request
-	 * - \Sturdy\Activity\Request\Request
-	 * or be
-	 * - an array in the structure of $_SERVER
-	 * - null, in which case $_SERVER should be used
-	 *
-	 * The $responseAdaptor argument can be either:
-	 * - "psr" returns a \Psr\Http\Message\ResponseInterface
-	 * - "symfony" returns a \Symfony\Component\HttpFoundation\Response
-	 * - "sturdy" returns a \Sturdy\Activity\Response\Response
-	 * - "array" returns ["protocolVersion" => string, "statusCode" => int, "statusText" => string, "headers" => [string => string], "content" => ?string]
-	 * - "echo" returns void, echo's response to output instead using header and echo functions
-	 * - null, a matching response adaptor is choosen based on your request:
-	 *   + psr for \Psr\Http\Message\ServerRequestInterface
-	 *   + symfony for \Symfony\Component\HttpFoundation\Request
-	 *   + sturdy for \Sturdy\Activity\Request\Request
-	 *   + array for array
-	 *   + echo for null
-	 *
-	 * @param array    $tags             the tags to use
-	 * @param mixed    $request          the request object
-	 * @param ?string  $responseAdaptor  the response adaptor you would like to use
-	 * @return mixed   a response
+	 * @param Request\Request $request   the request object
+	 * @return Response\Response         the response object
 	 */
-	public function handle(array $tags, $request, ?string $responseAdaptor = null)
+	protected function realHandle(Request\Request $request): Response\Response
 	{
-		$request = Http::request($request, $responseAdaptor);
-		$verb = $request->getVerb();
-		$path = $request->getPath();
-		$this->sharedStateStore->fill("request", [
-			"protocolVersion"=>$request->getProtocolVersion(),
-			"scheme"=>$request->getScheme(),
-			"host"=>$request->getHost(),
-			"port"=>$request->getPort(),
-			"verb"=>$request->getVerb(),
-			"path"=>$request->getPath()
-		]);
-		$query = $this->getQuery($request);
-		if (isset($query['store'])) {
-			$this->sharedStateStore->loadPersistentStore($query['store']);
-			unset($query['store']);
+		try {
+			$verb = $request->getVerb();
+			$path = substr($request->getPath(), strlen($this->basePath));
+			$query = $this->getQuery($request);
+			$this->sharedStateStore->fill("request", [
+				"protocolVersion"=>$request->getProtocolVersion(),
+				"scheme"=>$request->getScheme(),
+				"host"=>$request->getHost(),
+				"port"=>$request->getPort(),
+				"verb"=>$verb,
+				"path"=>$path
+			]);
+			switch ($verb) {
+				case "GET":
+					$values = [];
+					$response = $this->call($verb, $path, $values, $query);
+					break;
+
+				case "POST":
+					$values = $this->getBody($request);
+					$response = $this->call($verb, $path, $values, $query);
+					break;
+
+				case "RECON":
+					$body = $this->getBody($request);
+					$conditions = $body['conditions'];
+					$values = $body['data'];
+					$response = $this->call("GET", $path, $values, $query, $conditions, $body['data']);
+					break;
+
+				case "LOOKUP":
+					$values = $this->getBody($request);
+					$response = $this->call("GET", $path, $values, $query, [], $body);
+					break;
+
+				default:
+					$response = new Response\MethodNotAllowed();
+					break;
+			}
+			$this->sharedStateStore->closePersistentStore();
+		} catch (Throwable $e) {
+			$response = new Response\InternalServerError("Uncaught exception: $verb {$this->basePath}$path" . ($query ? "?".http_build_query($query) : ""), 0, $e);
 		}
-		switch ($verb) {
-			case "GET":
-				$values = [];
-				$response = $this->call($verb, $path, $values, $query, $tags);
-				break;
-
-			case "POST":
-				$values = $this->getBody($request);
-				$response = $this->call($verb, $path, $values, $query, $tags);
-				break;
-
-			case "RECON":
-				$verb = "GET";
-				$body = $this->getBody($request);
-				$conditions = $body['conditions'];
-				$values = $body['data'];
-				$response = $this->call($verb, $path, $values, $query, $tags, $conditions, $body['data']);
-				break;
-
-			case "LOOKUP":
-				$verb = "GET";
-				$values = $this->getBody($request);
-				$response = $this->call($verb, $path, $values, $query, $tags, [], $body);
-				break;
-
-			default:
-				$response = new MethodNotAllowed();
-				break;
-		}
-		$this->sharedStateStore->closePersistentStore();
-		return Http::response($response);
+		$response->setProtocolVersion($request->getProtocolVersion());
+		return $response;
 	}
 
 	/**
@@ -142,30 +338,22 @@ final class HyperMedia
 	 * @param  string $verb        the verb to use on the resource
 	 * @param  string $path        the path of the resouce
 	 * @param  array  $values      the input values
-	 * @param  array  $tags        tags
 	 * @param  array  $conditions  conditions
 	 * @param  array  $preserve    preserve field values
 	 * @return Response  the response
 	 */
-	private function call(string $verb, string $path, array $values, array $query, array $tags, array $conditions = [], array $preserve = null): Response
+	private function call(string $verb, string $path, array $values, array $query, array $conditions = [], array $preserve = null): Response\Response
 	{
-		try {
-			$this->sharedStateStore->fill("query", $query);
-			$path = substr($path, strlen($this->basePath));
-			if ($path === "" || $path === "/") { // if root resource
-				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $tags, $this->basePath, $this->namespace, "", $query))
-					->createRootResource($verb, $conditions)
-					->call($values, $query, $preserve);
-			} else { // if normal resource
-				$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
-				$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $tags, $this->basePath, $this->namespace, $class, $query))
-					->createResource($class, $verb, $conditions)
-					->call($values, $query, $preserve);
-			}
-		} catch (Response $e) {
-			$response = $e;
-		} catch (Throwable $e) {
-			$response = new InternalServerError("Uncaught exception: $verb {$this->basePath}$path" . ($query ? "?".http_build_query($query) : ""), 0, $e);
+		$this->sharedStateStore->fill("query", $query);
+		if ($path === "" || $path === "/") { // if root resource
+			$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->basePath, $this->namespace, "", $query))
+				->createRootResource($verb, $conditions)
+				->call($values, $query, $preserve);
+		} else { // if normal resource
+			$class = $this->namespace . strtr(trim(str_replace('-','',ucwords($path,'-/')),"/"),"/","\\");
+			$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->basePath, $this->namespace, $class, $query))
+				->createResource($class, $verb, $conditions)
+				->call($values, $query, $preserve);
 		}
 		return $response;
 	}
@@ -173,10 +361,10 @@ final class HyperMedia
 	/**
 	 * Get the body from request.
 	 *
-	 * @param  Request $request  the request
+	 * @param  Request\Request $request  the request
 	 * @return array  the body
 	 */
-	private function getBody(Request $request): array
+	private function getBody(Request\Request $request): array
 	{
 		$contentType = $request->getContentType();
 		switch (true) {
@@ -184,7 +372,7 @@ final class HyperMedia
 			case "application/sturdy" === $contentType:
 				$values = json_decode($request->getContent() ?? "", true);
 				if (!is_array($values)) {
-					throw new BadRequest("The content is not valid JSON.");
+					throw new Response\BadRequest("The content is not valid JSON.");
 				}
 				return $values;
 
@@ -192,17 +380,17 @@ final class HyperMedia
 				return [];
 
 			default:
-				throw new UnsupportedMediaType("Expected media type 'application/json', got '" . $request->getContentType() . "'.");
+				throw new Response\UnsupportedMediaType("Expected media type 'application/json', got '" . $request->getContentType() . "'.");
 		}
 	}
 
 	/**
 	 * Get query parameters from request.
 	 *
-	 * @param  Request $request  the request
-	 * @return array   the query parameters
+	 * @param  Request\Request $request  the request
+	 * @return array                     the query parameters
 	 */
-	private function getQuery(Request $request): array
+	private function getQuery(Request\Request $request): array
 	{
 		$query = $request->getQuery();
 		if ($query !== "") {
