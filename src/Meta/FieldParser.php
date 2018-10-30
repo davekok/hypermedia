@@ -48,7 +48,6 @@ final class FieldParser
 	private $mapToken;
 	private $stateToken;
 	private $sharedToken;
-	private $persistentToken;
 	private $privateToken;
 	private $reconToken;
 	private $lookupToken;
@@ -132,7 +131,6 @@ final class FieldParser
 		$this->multipleToken      = "/^multiple/";
 		$this->stateToken         = "/^state/";
 		$this->sharedToken        = "/^shared/";
-		$this->persistentToken    = "/^persistent/";
 		$this->privateToken       = "/^private/";
 		$this->reconToken         = "/^recon/";
 		$this->lookupToken        = "/^lookup/";
@@ -450,8 +448,6 @@ final class FieldParser
 				$this->clearbit($mask, 2);
 				$this->setbit($mask, 19);
 				$flags->setPrivate();
-			} elseif ($this->match('persistentToken')) {
-				$flags->setPersistent();
 			} elseif ($this->isbitset($mask, 14) && $this->match('reconToken')) {
 				$this->clearbit($mask, 14);
 				$flags->setRecon();

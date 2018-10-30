@@ -70,6 +70,11 @@ class Log
 		}
 	}
 
+	public static function getLogger()
+	{
+		return self::$logger;
+	}
+
 	public static function log(...$data)
 	{
 		if (empty(self::$logger)) {
@@ -77,5 +82,43 @@ class Log
 		} else {
 			self::$logger->log(...$args);
 		}
+	}
+
+	public static function useSysLog()
+	{
+		self::setLogger(new class() {
+			public function log(int $priority, ...$args) {
+				if (is_int($args[0])) {
+					$priority = array_shift($args);
+				} else {
+					$priority = LOG_DEBUG;
+				}
+				syslog($priority, implode(" ", $args));
+			}
+		});
+	}
+
+	public static function useEchoLog()
+	{
+		self::setLogger(new class() {
+			public function log(...$args) {
+				echo date("[d-M-Y H:i:s] ");
+				if (is_int($args[0])) {
+					$priority = array_shift($args);
+					switch ($args[0]) {
+						case LOG_EMERG: echo "EMERGENCY: "; break;
+						case LOG_ALERT: echo "ALERT: "; break;
+						case LOG_CRIT: echo "CRITICAL: "; break;
+						case LOG_ERR: echo "ERROR: "; break;
+						case LOG_WARNING: echo "WARNING: "; break;
+						case LOG_NOTICE: echo "NOTICE: "; break;
+						case LOG_INFO: echo "INFO: "; break;
+						case LOG_DEBUG: echo "DEBUG: "; break;
+						default: echo $args[0] . " "; break;
+					}
+				}
+				echo implode(" ", $args);
+			}
+		});
 	}
 }

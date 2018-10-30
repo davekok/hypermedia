@@ -29,7 +29,6 @@ final class FieldFlags
 	const matrix     =  1024; // field is a matrix or two dimensional array
 	const autosubmit =  2048; // auto submit field
 	const shared     =  4096; // whether the field is shared with other resources
-	const persistent =  8192; // whether the value of the field should be persisted
 	const _private   = 16384; // indicates that the field is private to the resource and should not be shared through
 	                          // either state section of the link or in the body of the response
 	const hidden     = 32768; // indicates that the field is hidden and should not be shown
@@ -267,23 +266,6 @@ final class FieldFlags
 		return (bool)($this->flags & self::shared);
 	}
 
-	public function setPersistent(): self
-	{
-		$this->flags |= self::persistent;
-		return $this;
-	}
-
-	public function clearPersistent(): self
-	{
-		$this->flags &= ~self::persistent;
-		return $this;
-	}
-
-	public function isPersistent(): bool
-	{
-		return (bool)($this->flags & self::persistent);
-	}
-
 	public function setPrivate(): self
 	{
 		$this->flags |= self::_private;
@@ -350,7 +332,6 @@ final class FieldFlags
 		if ($this->isState     ()) $r .= "state ";
 		if ($this->isMeta      ()) $r .= "meta ";
 		if ($this->isData      ()) $r .= "data ";
-		if ($this->isPersistent()) $r .= "persistent ";
 		if ($this->isRequired  ()) $r .= "required ";
 		if ($this->isReadonly  ()) $r .= "readonly ";
 		if ($this->isShared    ()) $r .= "shared ";

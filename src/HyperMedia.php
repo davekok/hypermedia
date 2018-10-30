@@ -324,7 +324,6 @@ class HyperMedia
 					$response = new Response\MethodNotAllowed();
 					break;
 			}
-			$this->sharedStateStore->closePersistentStore();
 		} catch (Throwable $e) {
 			$response = new Response\InternalServerError("Uncaught exception: $verb {$this->basePath}$path" . ($query ? "?".http_build_query($query) : ""), 0, $e);
 		}

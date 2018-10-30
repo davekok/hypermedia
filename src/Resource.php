@@ -407,7 +407,7 @@ final class Resource
 		foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isShared() && !$flags->isReadOnly()) {
-				$this->sharedStateStore->set($pool, $name, $this->object->$name ?? null, $flags->isPersistent());
+				$this->sharedStateStore->set($pool, $name, $this->object->$name ?? null);
 			}
 		}
 	}
@@ -430,12 +430,12 @@ final class Resource
 				if (isset($source->$name)) {
 					$state[$name] = $preserve[$name] ?? $source->$name ?? null;
 					if ($flags->isShared() && !$flags->isReadOnly()) {
-						$this->sharedStateStore->set($pool, $name, $state[$name], $flags->isPersistent());
+						$this->sharedStateStore->set($pool, $name, $state[$name]);
 					}
 				}
 			} else if ($flags->isPrivate()) {
 				if ($flags->isShared() && !$flags->isReadOnly()) {
-					$this->sharedStateStore->set($pool, $name, $source->$name ?? null, $flags->isPersistent());
+					$this->sharedStateStore->set($pool, $name, $source->$name ?? null);
 				}
 			}
 		}
