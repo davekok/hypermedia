@@ -76,7 +76,7 @@ final class SeeOther implements Response
 		if (empty($parameters)) {
 			$this->location = $url;
 		} else {
-			$this->location = UriTemplate::expand($url, $parameters)
+			$this->location = UriTemplate::expand($url, $parameters);
 		}
 	}
 
