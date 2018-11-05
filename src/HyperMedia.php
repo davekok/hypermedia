@@ -240,15 +240,15 @@ class HyperMedia
 		};
 	}
 
-	// dependencies/configuration
+	// dependencies
 	private $sharedStateStore;
 	private $cache;
 	private $translator;
 	private $jsonDeserializer;
+	// configuration
 	private $sourceUnit;
 	private $basePath;
-	private $di;
-	private $exceptionHandlers;
+	private $namespace;
 
 	/**
 	 * Constructor
@@ -321,7 +321,7 @@ class HyperMedia
 
 				case "LOOKUP":
 					$values = $this->getBody($request);
-					$response = $this->call("GET", $path, $values, $query, [], $body);
+					$response = $this->call("GET", $path, $values, $query, [], []);
 					break;
 
 				default:
@@ -348,7 +348,7 @@ class HyperMedia
 	private function call(string $verb, string $path, array $values, array $query, array $conditions = [], array $preserve = null): Response\Response
 	{
 		$this->sharedStateStore->fill("query", $query);
-		if ($path === "" || $path === "/") { // if root resource
+		if ($path === null || $path === "" || $path === "/") { // if root resource
 			$response = (new Resource($this->sharedStateStore, $this->cache, $this->translator, $this->jsonDeserializer, $this->sourceUnit, $this->basePath, $this->namespace, "", $query))
 				->createRootResource($verb, $conditions)
 				->call($values, $query, $preserve);

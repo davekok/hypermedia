@@ -176,14 +176,15 @@ final class Resource
 	public function call(array $values, array $query, ?array $preserve): Response
 	{
 		// pre call
-		$badRequest = new BadRequest();
-		$badRequest->setResource($this->class);
 		$this->preRecon($values, $query);
+
+		// check fields
+		$messages = [];
 		foreach ($this->fields as $field) {
-			$this->object->{$field[0]} = $this->checkField($field, $values[$field[0]] ?? null, $query, $badRequest, $field[0]);
+			$this->object->{$field[0]} = $this->checkField($messages, $field, $values[$field[0]] ?? null, $query, $field[0]);
 		}
-		if ($badRequest->hasMessages()) {
-			throw $badRequest;
+		if ($messages) {
+			throw new BadRequest($this->class, $messages);
 		}
 
 		// call
@@ -220,7 +221,7 @@ final class Resource
 		return $this->response;
 	}
 
-	private function checkField(array $fieldDescriptor, $value, array $query, BadRequest $badRequest, string $path = "")
+	private function checkField(array &$messages, array $fieldDescriptor, $value, array $query, string $path = "")
 	{
 		[$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool] = $fieldDescriptor;
 
@@ -238,14 +239,14 @@ final class Resource
 			}
 
 			if ($flags->isRequired() && $queryValue === null) {
-				$badRequest->addMessage("$path is required");
+				$messages[] = "$path is required";
 			} else {
 				$type = Type::createType($type);
 				if ($queryValue !== null) {
 					if ($type->filter($queryValue)) {
 						$queryValue = $this->jsonDeserializer->jsonDeserialize($type::type, $queryValue);
 					} else {
-						$badRequest->addMessage("$path does not have a valid value: ".print_r($queryValue, true));
+						$messages[] = "$path does not have a valid value: ".print_r($queryValue, true);
 						$queryValue = null;
 					}
 				} else {
@@ -258,16 +259,16 @@ final class Resource
 		} else {
 
 			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {
-				$badRequest->addMessage("$path is required");
+				$messages[] = "$path is required";
 			}
 
 		}
 
 		if ($flags->isReadonly() && isset($value)) {
-			$badRequest->addMessage("$path is readonly");
+			$messages[] = "$path is readonly";
 		}
 		if ($flags->isDisabled() && isset($value)) {
-			$badRequest->addMessage("$path is disabled");
+			$messages[] = "$path is disabled";
 		}
 
 		// type check
@@ -284,16 +285,16 @@ final class Resource
 						$l = count($value);
 						for ($i = 0; $i < $l; ++$i) {
 							if (!isset($value[$i])) {
-								$badRequest->addMessage("Expected type of $path\[$i\] is array, " . gettype($value) . " found.");
+								$messages[] = "Expected type of $path\[$i\] is array, " . gettype($value) . " found.";
 							}
 							$object[i] = new stdClass;
 							foreach ($type->getFieldDescriptors() as $field) {
-								$object[i]->{$field[0]} = $this->checkField($field, $value[$i][$field[0]], [], $badRequest, "$path\[$i\].{$field[0]}");
+								$object[i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}");
 							}
 						}
 						return $object;
 					} else {
-						$badRequest->addMessage("Expected type of $path is array, " . gettype($value) . " found.");
+						$messages[] = "Expected type of $path is array, " . gettype($value) . " found.";
 					}
 
 				// matrix of objects
@@ -309,24 +310,24 @@ final class Resource
 									if (isset($row[$y])) {
 										$matrix[$x][$y] = new stdClass;
 										foreach ($type->getFieldDescriptors() as $field) {
-											$matrix[$x][$y]->{$field[0]} = $this->checkField($field, $row[$y][$field[0]], [], $badRequest, "$path\[$x\]\[$y\].{$field[0]}");
+											$matrix[$x][$y]->{$field[0]} = $this->checkField($messages, $field, $row[$y][$field[0]], [], "$path\[$x\]\[$y\].{$field[0]}");
 										}
 									}
 								}
 							} else {
-								$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
+								$messages[] = "Expected type of $path is matrix, " . gettype($value) . " found.";
 							}
 						}
 						return $matrix;
 					} else {
-						$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
+						$messages[] = "Expected type of $path is matrix, " . gettype($value) . " found.";
 					}
 
 				// normal object
 				} else {
 					$object = new stdClass;
 					foreach ($type->getFieldDescriptors() as $field) {
-						$object->{$field[0]} = $this->checkField($field, $value[$field[0]], [], $badRequest, "$path.{$field[0]}");
+						$object->{$field[0]} = $this->checkField($messages, $field, $value[$field[0]] ?? null, [], "$path.{$field[0]}");
 					}
 					return $object;
 				}
@@ -335,7 +336,7 @@ final class Resource
 			} elseif ($type instanceof TupleType) {
 				$tuple = [];
 				foreach ($type->getFieldDescriptors() as $i => $field) {
-					$tuple[$i] = $this->checkField($field, $value[$i], [], $badRequest, "$path\[$i\]");
+					$tuple[$i] = $this->checkField($messages, $field, $value[$i], [], "$path\[$i\]");
 				}
 				return $tuple;
 
@@ -346,11 +347,11 @@ final class Resource
 						if ($type->filter($v)) {
 							$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
 						} else {
-							$badRequest->addMessage("$path does not have a valid value: {$v}");
+							$messages[] = "$path does not have a valid value: {$v}";
 						}
 					}
 				} else {
-					$badRequest->addMessage("Expected type of $path is array, " . gettype($value) . " found.");
+					$messages[] = "Expected type of $path is array, " . gettype($value) . " found.";
 				}
 
 			// matrix
@@ -362,15 +363,15 @@ final class Resource
 								if ($type->filter($value)) {
 									$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
 								} else {
-									$badRequest->addMessage("$path does not have a valid value: {$value}");
+									$messages[] = "$path does not have a valid value: {$value}";
 								}
 							}
 						} else {
-							$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
+							$messages[] = "Expected type of $path is matrix, " . gettype($value) . " found.";
 						}
 					}
 				} else {
-					$badRequest->addMessage("Expected type of $path is matrix, " . gettype($value) . " found.");
+					$messages[] = "Expected type of $path is matrix, " . gettype($value) . " found.";
 				}
 
 			// multiple
@@ -380,7 +381,7 @@ final class Resource
 					if ($type->filter($v)) {
 						$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
 					} else {
-						$badRequest->addMessage("$path does not have a valid value: {$value}");
+						$messages[] = "$path does not have a valid value: {$value}";
 					}
 				}
 
@@ -389,7 +390,7 @@ final class Resource
 				if ($type->filter($value)) {
 					$value = $this->jsonDeserializer->jsonDeserialize($type::type, $value);
 				} else {
-					$badRequest->addMessage("$path does not have a valid value: ".print_r($value, true));
+					$messages[] = "$path does not have a valid value: ".print_r($value, true);
 				}
 			}
 
