@@ -11,9 +11,6 @@ abstract class Error extends Exception implements Response
 	use DateTrait;
 	use NoLocationTrait;
 
-	private $resource;
-	private $messages;
-
 	/**
 	 * Error constructor.
 	 * @param string $message
@@ -23,49 +20,6 @@ abstract class Error extends Exception implements Response
 	public function __construct($message = "", $code = 0, Throwable $previous = null)
 	{
 		parent::__construct($message, $code, $previous);
-		if ($message) {
-			$this->messages = [$message];
-		}
-	}
-
-	/**
-	 * Set resource
-	 *
-	 * @param string $resource
-	 */
-	public function setResource(string $resource)
-	{
-		$this->resource = $resource;
-	}
-
-	/**
-	 * Add message
-	 *
-	 * @param string $message
-	 */
-	public function addMessage(string $message)
-	{
-		$this->messages[] = $message;
-	}
-
-	/**
-	 * Has messages
-	 *
-	 * @return bool
-	 */
-	public function hasMessages(): bool
-	{
-		return ($this->messages > 0);
-	}
-
-	/**
-	 * Get messages
-	 *
-	 * @return array
-	 */
-	public function getMessages(): array
-	{
-		return $this->messages;
 	}
 
 	/**
@@ -85,23 +39,13 @@ abstract class Error extends Exception implements Response
 	 */
 	public function getContent(): string
 	{
-		switch (count($this->messages)) {
-			case 0:
-				break;
-
-			case 1:
-				$error["message"] = $this->messages[0];
-				break;
-
-			default:
-				$error["messages"] = $this->messages;
-		}
 		$code = $this->getCode();
 		if ($code > 0) {
 			$error["code"] = $code;
 		}
-		if ($this->resource !== null) {
-			$error["resource"] = $this->resource;
+		$message = $this->getMessage();
+		if ($message) {
+			$error["message"] = $this->message;
 		}
 		$previous = $this->getPrevious();
 		if ($previous) {
