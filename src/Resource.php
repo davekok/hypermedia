@@ -249,6 +249,8 @@ final class Resource
 						$messages[] = "$path does not have a valid value: ".print_r($queryValue, true);
 						$queryValue = null;
 					}
+				} else if ($flags->isShared()) {
+					$queryValue = $this->sharedStateStore->get($pool, $name);
 				} else {
 					$queryValue = $this->jsonDeserializer->jsonDeserialize($type::type, $defaultValue);
 				}
@@ -405,12 +407,12 @@ final class Resource
 
 	private function updateStore()
 	{
-		foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
-			$flags = new FieldFlags($flags);
-			if ($flags->isShared() && !$flags->isReadOnly()) {
-				$this->sharedStateStore->set($pool, $name, $this->object->$name ?? null);
-			}
-		}
+//		foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
+//			$flags = new FieldFlags($flags);
+//			if ($flags->isShared() && !$flags->isReadOnly()) {
+//				$this->sharedStateStore->set($pool, $name, $this->object->$name ?? null);
+//			}
+//		}
 	}
 
 	/**
@@ -543,8 +545,11 @@ final class Resource
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isShared() && !$flags->isReadonly() && !$flags->isPrivate()) {
-				$value = $query[$name] === "" ? null : $query[$name];
-				$this->sharedStateStore->set($pool, $name, $value);
+				$value = $query[$name] ?? null;
+				if ($value === "") $value = null;
+				if ($value !== null) {
+					$this->sharedStateStore->set($pool, $name, $value);
+				}
 			}
 			if ($flags->isRecon()) {
 				if ($flags->isMeta() || $flags->isState()) {
