@@ -407,12 +407,12 @@ final class Resource
 
 	private function updateStore()
 	{
-//		foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
-//			$flags = new FieldFlags($flags);
-//			if ($flags->isShared() && !$flags->isReadOnly()) {
-//				$this->sharedStateStore->set($pool, $name, $this->object->$name ?? null);
-//			}
-//		}
+		foreach ($this->fields as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
+			$flags = new FieldFlags($flags);
+			if ($flags->isShared() && !$flags->isReadOnly()) {
+				$this->sharedStateStore->set($pool, $name, $this->object->$name ?? null);
+			}
+		}
 	}
 
 	/**
