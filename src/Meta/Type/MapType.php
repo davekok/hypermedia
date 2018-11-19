@@ -20,7 +20,18 @@ final class MapType extends Type
 		$this->options = new Map;
 		if ($state !== null) {
 			foreach (explode("\x1E", $state) as $option) {
-				$this->options->put(...explode("\x1F", $option));
+				[$value, $label, $_tags] = explode("\x1F", $option);
+				$_tags = $_tags ? explode("\x1C", $_tags) : [];
+				$tags = [];
+
+				foreach ($_tags as $tag) {
+					if (!empty($tag)){
+						[$key, $val] = explode("\x1D", $tag);
+						$tags[$key] = $val;
+					}
+				}
+
+				$this->options->put($value, [$label, $tags]);
 			}
 		}
 	}
@@ -34,9 +45,14 @@ final class MapType extends Type
 	{
 		$descriptor = self::type;
 		$i = 0;
-		foreach ($this->options->toArray() as $value => $label) {
+		foreach ($this->options->toArray() as $value => [$label, $tags]) {
 			$descriptor .= $i++ ? "\x1E" : ":";
-			$descriptor .= "$value\x1F$label";
+			$descriptor .= "$value\x1F$label\x1F";
+			$j = 0;
+			foreach ($tags as $key => $val) {
+				$descriptor .= $j++ ? "\x1C" : "";
+				$descriptor .= "$key\x1D$val";
+			}
 		}
 		return $descriptor;
 	}
@@ -56,11 +72,12 @@ final class MapType extends Type
 	 *
 	 * @param string $value
 	 * @param string $label
+	 * @param array $tags
 	 * @return MapType
 	 */
-	public function addOption(string $value, string $label): self
+	public function addOption(string $value, string $label, array $tags = []): self
 	{
-		$this->options->put($value, $label);
+		$this->options->put($value, [$label, $tags]);
 		return $this;
 	}
 
@@ -75,7 +92,12 @@ final class MapType extends Type
 		$meta->type = self::type;
 		if ($this->options->count()) {
 			$meta->options = [];
-			foreach ($this->options->toArray() as $value => $label) {
+			foreach ($this->options->toArray() as $value => [$label, $tags]) {
+				foreach ($tags as $key => $val) {
+					if (!isset($state[$key]) || $state[$key] !== $val) {
+						continue;
+					}
+				}
 				$meta->options[] = ["value" => $value, "label" => $label];
 			}
 		}

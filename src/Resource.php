@@ -159,7 +159,7 @@ final class Resource
 				break;
 
 			default:
-				throw new InternalServerError("[{$this->class}::{$method}] Unkown status code.");
+				throw new InternalServerError("[{$this->class}::{$this->method}] Unkown status code.");
 		}
 	}
 
@@ -543,7 +543,7 @@ final class Resource
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool]) {
 			$flags = new FieldFlags($flags);
 			if ($flags->isShared() && !$flags->isReadonly() && !$flags->isPrivate()) {
-				$value = $query[$name] === "" ? null : $query[$name];
+				$value = ($query[$name] === "") ? null : $query[$name];
 				$this->sharedStateStore->set($pool, $name, $value);
 			}
 			if ($flags->isRecon()) {
@@ -603,7 +603,7 @@ final class Resource
 			$flags = new FieldFlags($flags);
 			if ($flags->isRecon()) {
 				if (!array_key_exists($prefix.$name, $conditions)) {
-					$conditions[$prefix.$name] = $object->$name;
+					$conditions[$prefix.$name] = $object->$name ?? null;
 				}
 			}
 			$type = Type::createType($type);
