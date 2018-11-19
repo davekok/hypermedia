@@ -430,7 +430,6 @@ final class FieldParser
 				$flags->setMeta();
 			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('hiddenToken')) {
 				$this->clearbit($mask, 2);
-				$this->clearbit($mask, 14);
 				$flags->setHidden();
 			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('lookupToken')) {
 				$this->clearbit($mask, 2);
