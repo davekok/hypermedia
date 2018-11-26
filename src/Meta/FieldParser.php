@@ -4,6 +4,7 @@ namespace Sturdy\Activity\Meta;
 
 use Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
 use Exception;
+use Sturdy\Activity\Expression;
 use Sturdy\Activity\Meta\FieldParserError as ParserError;
 
 /**
@@ -77,6 +78,12 @@ final class FieldParser
 	private $quotedString;
 	private $quote;
 	private $escapedQuote;
+
+	private $exprToken;
+	private $exprVar;
+	private $exprOps;
+	private $exprProps;
+	private $exprValue;
 
 	private $field;
 	private $text;
@@ -170,6 +177,10 @@ final class FieldParser
 
 		$this->defaultValueToken  = '/^default=(\"[^\v\"]*\"|\'[^\v\']*\'|[1-9][0-9]*(?=\.[0-9]+)?|0\.[0-9]+|true|false)/';
 		$this->descriptionToken   = '/^(\"[^\v\"]*\"|\'[^\v\']*\')/';
+
+		$this->exprToken          = '/^expr/';
+		$this->exprVar            = "/^($name)/";
+		$this->exprValue          = '/^(true|false|[1-9][0-9]*(?:\.[0-9]+)?|0(?:\.[0-9]+)?|\'[^\v\']*\')/';
 	}
 
 	private function valid(): bool
@@ -260,6 +271,7 @@ final class FieldParser
 		// bit 17: minDate token
 		// bit 18: maxDate token
 		// bit 19: shared token
+		// bit 20: expression token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -517,6 +529,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 16) && $this->match('iconToken')) {
 				$this->clearbit($mask, 16);
 				$field->setIcon($this->parseNameToken());
+			} elseif ($this->isbitset($mask, 20) && $this->match('exprToken')) {
+				$this->clearbit($mask, 20);
+				$this->parseExpression($field);
 			} elseif ($subfield && $this->isbitset($mask, 12) && $this->match('defaultValueToken', $defaultValue)) {
 				$this->clearbit($mask, 12);
 				if ($defaultValue === "true") {
@@ -861,5 +876,208 @@ final class FieldParser
 	private function parseError(string $msg): string
 	{
 		return "$msg\n{$this->done}{$this->text}\n".str_repeat(" ",strlen($this->done))."^\n";
+	}
+
+	private function parseExpression(Field $field): void
+	{
+		// The actual codes don't matter as long as they are one character and are not special regex characters.
+		$t = [
+			"end"        => "0", // 0
+			"list"       => "1", // 1
+			"listitem"   => "2", // 2
+			"expr"       => "3", // 3
+			"variable"   => "4", // 4
+			"value"      => "5", // 5
+			"prop"       => "6", // 6
+			"==="        => "7", // 7
+			"!=="        => "8", // 8
+			"=="         => "9", // 9
+			"!="         => "A", // 10
+			"++"         => "B", // 11
+			"--"         => "C", // 12
+			"&&"         => "D", // 13
+			"||"         => "E", // 14
+			"*"          => "F", // 15
+			"/"          => "G", // 16
+			"+"          => "H", // 17
+			"-"          => "I", // 18
+			"!"          => "J", // 19
+			"("          => "K", // 20
+			")"          => "L", // 21
+			":"          => "M", // 22
+			","          => "N", // 23
+			"active"     => "O", // 24
+			"required"   => "P", // 25
+			"readonly"   => "Q", // 26
+			"disabled"   => "R", // 27
+		];
+		// $m = array_flip($t);
+		$keys = array_keys($t);
+		$ops = array_slice($keys, 7, 24-7);
+		$props = array_slice($keys, 24, 28-24);
+
+		$this->exprOps   = "/^(".implode("|", array_map(function(string $op){return preg_quote($op, "/");}, $ops)).")/";
+		$this->exprProps = "/^(".implode("|", array_map(function(string $prop){return preg_quote($prop, "/");}, $props)).")/";
+
+		// the rules, if one matches reduce the matched tokens to a $expr token
+		$rules = [
+			"{$t['++']}{$t['variable']}" => $t['expr'],
+			"{$t['--']}{$t['variable']}" => $t['expr'],
+			"{$t['variable']}{$t['++']}" => $t['expr'],
+			"{$t['variable']}{$t['--']}" => $t['expr'],
+			"{$t['variable']}" => $t['expr'],
+			"{$t['value']}" => $t['expr'],
+			"{$t['-']}{$t['expr']}" => $t['expr'],
+			"{$t['!']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['===']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['!==']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['==']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['!=']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['*']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['/']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['+']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['-']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['&&']}{$t['expr']}" => $t['expr'],
+			"{$t['expr']}{$t['||']}{$t['expr']}" => $t['expr'],
+			"{$t['(']}{$t['expr']}{$t[')']}" => $t['expr'],
+			"{$t['prop']}{$t[':']}{$t['expr']}{$t[',']}" => $t['list'],
+			"{$t['list']}{$t['list']}" => $t['list'],
+			"{$t['(']}{$t['prop']}{$t[':']}{$t['expr']}{$t[')']}" => $t['end'],
+			"{$t['(']}{$t['list']}{$t['prop']}{$t[':']}{$t['expr']}{$t[')']}" => $t['end'],
+		];
+
+		// create a regex pattern from the rules
+		$ruleregex = "/(?:" . implode("|", array_keys($rules)) . ")$/";
+
+		$abs = [];
+		$stack = [];
+		$buffer = "";
+		$variables = [];
+		$listCount = 0;
+		$previous = "";
+
+		$i = 0;
+		while ($this->valid()) {
+			// match a token and shift the token on the buffer
+			if ($this->match('spaceToken')) {
+				continue;
+			} else if ($this->match('exprOps', $text)) {
+				$stack[] = $text;
+				$buffer.= $t[$text];
+				if ($text === "(") {
+					++$listCount;
+				} else if ($text === ")") {
+					--$listCount;
+				}
+			} else if ($this->match('exprValue', $text)) {
+				$stack[] = $text;
+				$buffer.= $t['value'];
+			} else if ($this->match('exprProps', $text)) {
+				$stack[] = $text;
+				$buffer.= $t['prop'];
+			} else if ($this->match('exprVar', $name)) {
+				$variables[] = $name;
+				$stack[] = "$".$name;
+				$buffer.= $t['variable'];
+			} else {
+				throw new ParserError($this->parseError("lexer error while parsing expression"));
+			}
+
+			// keep going until there is no more to match
+			while (1 === preg_match($ruleregex, $buffer, $matches)) {
+				// $str = "";
+				// for ($i = 0; $i < strlen($buffer); ++$i) $str.= $m[$buffer[$i]] . " ";
+				// $str = trim($str);
+				// echo $str, str_repeat(" ", 40 - strlen($str));
+				// $str = "";
+				// for ($i = 0; $i < strlen($matches[0]); ++$i) $str.= $m[$matches[0][$i]] . " ";
+				// $str.= "=>";
+				// for ($i = 0; $i < strlen($rules[$matches[0]]); ++$i) $str.= " " . $m[$rules[$matches[0]][$i]];
+				// echo $str, str_repeat(" ", 40 - strlen($str));
+				// reduce
+				$buffer = substr($buffer, 0, strlen($buffer) - strlen($matches[0])) . $rules[$matches[0]];
+				// $str = "";
+				// for ($i = 0; $i < strlen($buffer); ++$i) $str.= $m[$buffer[$i]] . " ";
+				// echo trim($str), "\n";
+
+				switch ($matches[0]) {
+					case "{$t['variable']}":
+					case "{$t['value']}":
+						// nothing
+						break;
+					case "{$t['++']}{$t['variable']}":
+					case "{$t['--']}{$t['variable']}":
+					case "{$t['variable']}{$t['++']}":
+					case "{$t['variable']}{$t['--']}":
+					case "{$t['-']}{$t['expr']}":
+					case "{$t['!']}{$t['expr']}":
+						$lastArg = array_pop($stack);
+						$forLastArg = array_pop($stack);
+						$stack[] = $forLastArg.$lastArg;
+						break;
+					case "{$t['expr']}{$t['===']}{$t['expr']}":
+					case "{$t['expr']}{$t['!==']}{$t['expr']}":
+					case "{$t['expr']}{$t['==']}{$t['expr']}":
+					case "{$t['expr']}{$t['!=']}{$t['expr']}":
+					case "{$t['expr']}{$t['*']}{$t['expr']}":
+					case "{$t['expr']}{$t['/']}{$t['expr']}":
+					case "{$t['expr']}{$t['+']}{$t['expr']}":
+					case "{$t['expr']}{$t['-']}{$t['expr']}":
+					case "{$t['expr']}{$t['&&']}{$t['expr']}":
+					case "{$t['expr']}{$t['||']}{$t['expr']}":
+					case "{$t['(']}{$t['expr']}{$t[')']}":
+						$lastArg = array_pop($stack);
+						$forLastArg = array_pop($stack);
+						$forForLastArg = array_pop($stack);
+						$stack[] = $forForLastArg.$forLastArg.$lastArg;
+						break;
+					case "{$t['prop']}{$t[':']}{$t['expr']}{$t[',']}":
+						$comma = array_pop($stack);
+						$expr = array_pop($stack);
+						$colon = array_pop($stack);
+						$prop = array_pop($stack);
+						$stack[] = [$prop => $expr];
+						break;
+					case "{$t['list']}{$t['list']}":
+						$list2 = array_pop($stack);
+						$list1 = array_pop($stack);
+						$stack[] = array_merge($list1, $list2);
+						break;
+					case "{$t['(']}{$t['prop']}{$t[':']}{$t['expr']}{$t[')']}":
+						$close = array_pop($stack);
+						$expr = array_pop($stack);
+						$colon = array_pop($stack);
+						$prop = array_pop($stack);
+						$open = array_pop($stack);
+						$stack[] = [$prop => $expr];
+						break;
+					case "{$t['(']}{$t['list']}{$t['prop']}{$t[':']}{$t['expr']}{$t[')']}":
+						$close = array_pop($stack);
+						$expr = array_pop($stack);
+						$colon = array_pop($stack);
+						$prop = array_pop($stack);
+						$list = array_pop($stack);
+						$open = array_pop($stack);
+						$stack[] = array_merge($list, [$prop => $expr]);
+						break;
+				}
+			}
+
+			if ($listCount === 0 && $buffer === $t['end'] && count($stack) === 1) {
+				$field->setExpr(new Expression($stack[0], $variables));
+				return;
+			}
+
+			if ($buffer === $previous) {
+				throw new ParserError($this->parseError("no shift or reduce happened: $buffer"));
+			}
+
+			$previous = $buffer;
+
+			if (++$i > 1000) {
+				throw new ParserError($this->parseError("infinite loop protection"));
+			}
+		}
+		throw new ParserError($this->parseError("unexpected end of expression"));
 	}
 }

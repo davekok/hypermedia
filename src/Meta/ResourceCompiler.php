@@ -85,6 +85,7 @@ class ResourceCompiler
 					$field->getLabel(),
 					$field->getIcon(),
 					$field->getSharedStatePoolName(),
+					$field->getExpr(),
 				];
 			}
 		}
