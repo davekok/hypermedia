@@ -305,15 +305,14 @@ final class FieldFlags
 		return $this->flags;
 	}
 
-	public function meta(stdClass $meta, object $state, string $expr)
+	public function meta(stdClass $meta, array $properties)
 	{
 		if ($this->isState() || $this->isPrivate()) {
 			throw new \LogicException("State or private fields should not be visible to the client.");
 		}
-		$properties = Expression::evaluate($expr, $state);
-		if ($this->isRequired() || $properties->required) $meta->required = true;
-		if ($this->isReadonly() || $properties->readonly) $meta->readonly = true;
-		if ($this->isDisabled() || $properties->disabled) $meta->disabled = true;
+		if ($this->isRequired() || ($properties['required']??false)) $meta->required = true;
+		if ($this->isReadonly() || ($properties['readonly']??false)) $meta->readonly = true;
+		if ($this->isDisabled() || ($properties['disabled']??false)) $meta->disabled = true;
 		if ($this->isMultiple()) $meta->multiple = true;
 		if ($this->isArray()) $meta->{"array"} = true;
 		if ($this->isMeta()) $meta->meta = true;

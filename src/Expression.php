@@ -122,10 +122,10 @@ class Expression
 	 * @param  array|null $state    the object containing state
 	 * @return object               result of expression
 	 */
-	public static function evaluate(?string $expressions, ?array $state): object
+	public static function evaluate(?string $expressions, ?array $state): array
 	{
 		if ($expressions === null) return [];
 		if ($state === null) $state = [];
-		return (new self($expression))->eval($state);
+		return (new self($expressions))->eval($state);
 	}
 }
