@@ -305,23 +305,24 @@ final class FieldFlags
 		return $this->flags;
 	}
 
-	public function meta(stdClass $meta)
+	public function meta(stdClass $meta, object $state, string $expr)
 	{
 		if ($this->isState() || $this->isPrivate()) {
 			throw new \LogicException("State or private fields should not be visible to the client.");
 		}
-		if ($this->isRequired  ()) $meta->required   = true;
-		if ($this->isReadonly  ()) $meta->readonly   = true;
-		if ($this->isDisabled  ()) $meta->disabled   = true;
-		if ($this->isMultiple  ()) $meta->multiple   = true;
-		if ($this->isArray     ()) $meta->{"array"}  = true;
-		if ($this->isMeta      ()) $meta->meta       = true;
-		if ($this->isData      ()) $meta->data       = true;
-		if ($this->isRecon     ()) $meta->recon      = true;
-		if ($this->isLookup    ()) $meta->lookup     = true;
-		if ($this->isMatrix    ()) $meta->matrix     = true;
+		$properties = Expression::evaluate($expr, $state);
+		if ($this->isRequired() || $properties->required) $meta->required = true;
+		if ($this->isReadonly() || $properties->readonly) $meta->readonly = true;
+		if ($this->isDisabled() || $properties->disabled) $meta->disabled = true;
+		if ($this->isMultiple()) $meta->multiple = true;
+		if ($this->isArray()) $meta->{"array"} = true;
+		if ($this->isMeta()) $meta->meta = true;
+		if ($this->isData()) $meta->data = true;
+		if ($this->isRecon()) $meta->recon = true;
+		if ($this->isLookup()) $meta->lookup = true;
+		if ($this->isMatrix()) $meta->matrix = true;
 		if ($this->isAutoSubmit()) $meta->autosubmit = true;
-		if ($this->isHidden    ()) $meta->hidden     = true;
+		if ($this->isHidden()) $meta->hidden = true;
 	}
 
 	public function __toString(): string

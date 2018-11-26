@@ -4,6 +4,7 @@ namespace Sturdy\Activity\Meta;
 
 use Doctrine\Common\Annotations\Annotation\{Annotation,Target,Attributes,Attribute};
 use Exception;
+use Sturdy\Activity\Expression;
 
 /**
  * The field annotation.
@@ -27,6 +28,7 @@ final class Field extends Taggable
 	private $label;        // label
 	private $icon;         // icon
 	private $pool;         // shared state pool name
+	private $expr;         // expression
 
 	/**
 	 * Constructor
@@ -246,6 +248,26 @@ final class Field extends Taggable
 	}
 
 	/**
+	 * Set expr
+	 *
+	 * @param ?Expression $expr
+	 */
+	public function setExpr(?Expression $expr): void
+	{
+		$this->expr = $expr;
+	}
+
+	/**
+	 * Get expr
+	 *
+	 * @return ?Expression
+	 */
+	public function getExpr(): ?Expression
+	{
+		return $this->expr;
+	}
+
+	/**
 	 * To string
 	 *
 	 * @return string  text representation of object
@@ -267,6 +289,7 @@ final class Field extends Taggable
 		if ($this->autocomplete) $text.= "autocomplete({$this->autocomplete}) ";
 		if ($this->label) $text.= "label('" . str_replace("'", "''", $this->label) . "') ";
 		if ($this->icon) $text.= "icon({$this->icon}) ";
+		if ($this->expr) $text.= "expr({$this->expr}) ";
 		if (method_exists($this->type, "getMinimumRange") && $min = $this->type->getMinimumRange()) {
 			$text.= "min($min) ";
 		}
