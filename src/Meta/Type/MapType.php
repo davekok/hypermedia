@@ -99,4 +99,3 @@ final class MapType extends Type
 		return $this->options->hasKey($value);
 	}
 }
-
