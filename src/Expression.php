@@ -55,7 +55,7 @@ class Expression
 	/**
 	 * Set expressions
 	 *
-	 * @param string $expressions
+	 * @param array $expressions
 	 */
 	public function setExpressions(array $expressions): void
 	{
@@ -65,9 +65,9 @@ class Expression
 	/**
 	 * Get expressions
 	 *
-	 * @return string
+	 * @return array
 	 */
-	public function getExpressions(): string
+	public function getExpressions(): array
 	{
 		return $this->expressions;
 	}
@@ -103,14 +103,15 @@ class Expression
 		// Using special characters in local variables not allowed in expressions to make sure there is no conflict.
 		foreach ($this->variables as $variablȩ) {
 			if (array_key_exists($variablȩ, $statȩ)) {
-				$$variablȩ = $statȩ->$variablȩ;
+				$$variablȩ = $statȩ[$variablȩ];
 			} else {
-				throw new \LogicException("$variablȩ missing in state");
+				trigger_error("$variablȩ missing in state", E_USER_WARNING);
+				$$variablȩ = null;
 			}
 		}
 		$rȩt = new stdClass;
 		foreach ($this->expressions as $kȩy => $ȩxpression) {
-			$rȩt->$kȩy = eval("return $ȩxpression;");
+			$rȩt->$kȩy = $ȩxpression ? eval("return (bool)($ȩxpression);") : false;
 		}
 		return $rȩt;
 	}
@@ -124,8 +125,8 @@ class Expression
 	 */
 	public static function evaluate(?string $expressions, ?array $state): object
 	{
-		if ($expressions === null) return [];
+		if ($expressions === null) return new stdClass;
 		if ($state === null) $state = [];
-		return (new self($expression))->eval($state);
+		return (new self($expressions))->eval($state);
 	}
 }

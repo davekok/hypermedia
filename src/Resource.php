@@ -431,7 +431,7 @@ final class Resource
 		$state = [];
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr]) {
 			$flags = new FieldFlags($flags);
-			if ($flags->isState()) {
+			if ($flags->isState() || $flags->isHidden()) {
 				if (isset($source->$name)) {
 					$state[$name] = $preserve[$name] ?? $source->$name ?? null;
 					if ($flags->isShared() && !$flags->isReadOnly()) {
@@ -448,30 +448,30 @@ final class Resource
 		foreach ($fieldDescriptors as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr]) {
 			$flags = new FieldFlags($flags);
 			$properties = Expression::evaluate($expr, $state);
-			if ($flags->isState() || $flags->isPrivate() || !$properties->active) {
+			if ($flags->isState() || $flags->isPrivate() || !($properties->active??true)) {
 				continue;
 			} else if ($flags->isMeta()) {
 				if (!isset($content->meta)) {
 					$content->meta = new stdClass;
 				}
 				[$content->fields[], $content->meta->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr, $state);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $properties, $state);
 			} else if ($flags->isData()) {
 				[$content->fields[], $content->data] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr, $state);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $properties, $state);
 			} else {
 				if (!isset($content->data)) {
 					$content->data = new stdClass;
 				}
 				[$content->fields[], $content->data->$name] = $this->createField($preserve[$name] ?? $source->$name ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr, $state);
+					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $properties, $state);
 			}
 		}
 
 		return [$content, $state];
 	}
 
-	private function createField($value, $translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr, $state)
+	private function createField($value, $translatorParameters, $name, $type, $defaultValue, FieldFlags $flags, $autocomplete, $label, $icon, $pool, $properties, $state)
 	{
 		$field = new stdClass;
 		$field->name = $name;
@@ -487,35 +487,44 @@ final class Resource
 		if ($autocomplete !== null && $autocomplete !== "") {
 			$field->autocomplete = $autocomplete;
 		}
-		$flags->meta($field, $state, $expr);
+		$flags->meta($field, $properties);
 		$type = Type::createType($type);
 		$type->meta($field, $state);
 		if ($type instanceof ObjectType) {
 			$field->fields = [];
 			if ($flags->isArray() || $flags->isMatrix()) {
 				$value = $value ?? [];
-				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr]) {
-					$flags = new FieldFlags($flags);
-					[$field->fields[], $i] = $this->createField(null,
-						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr, $state);
+				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, /** @var int $flags */$flags, $autocomplete, $label, $icon, $pool, $expr]) {
+					$properties = Expression::evaluate($expr, $state);
+					if ($properties->active??true) {
+						$flags = new FieldFlags($flags);
+						[$field->fields[], $i] = $this->createField(null,
+							$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $properties, $state);
+					}
 				}
 			} else {
 				$value = $value ?? new stdClass;
-				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr]) {
-					$flags = new FieldFlags($flags);
-					[$field->fields[], $value->$name] = $this->createField($value->$name ?? null,
-						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr, $state);
+				foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, /** @var int $flags */$flags, $autocomplete, $label, $icon, $pool, $expr]) {
+					$properties = Expression::evaluate($expr, $state);
+					if ($properties->active??true) {
+						$flags = new FieldFlags($flags);
+						[$field->fields[], $value->$name] = $this->createField($value->$name ?? null,
+							$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $properties, $state);
+					}
 				}
 			}
 		} else if ($type instanceof TupleType) {
 			$field->fields = [];
 			$value = $value ?? [];
 			$i = 0;
-			foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr]) {
-				$flags = new FieldFlags($flags);
-				[$field->fields[], $value[$i]] = $this->createField($value[$i] ?? null,
-					$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr, $state);
-				++$i;
+			foreach ($type->getFieldDescriptors() as [$name, $type, $defaultValue, /** @var int $flags */$flags, $autocomplete, $label, $icon, $pool, $expr]) {
+				$properties = Expression::evaluate($expr, $state);
+				if ($properties->active??true) {
+					$flags = new FieldFlags($flags);
+					[$field->fields[], $value[$i]] = $this->createField($value[$i] ?? null,
+						$translatorParameters, $name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $properties, $state);
+					++$i;
+				}
 			}
 		}
 		return [$field, $value];
