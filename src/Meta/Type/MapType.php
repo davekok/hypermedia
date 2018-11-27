@@ -4,6 +4,7 @@ namespace Sturdy\Activity\Meta\Type;
 
 use Ds\Map;
 use stdClass;
+use Sturdy\Activity\Expression;
 
 final class MapType extends Type
 {
@@ -20,7 +21,8 @@ final class MapType extends Type
 		$this->options = new Map;
 		if ($state !== null) {
 			foreach (explode("\x1E", $state) as $option) {
-				$this->options->put(...explode("\x1F", $option));
+				[$value, $label, $expression] = explode("\x1F", $option);
+				$this->options->put($value, [$label, $expression]);
 			}
 		}
 	}
@@ -34,9 +36,9 @@ final class MapType extends Type
 	{
 		$descriptor = self::type;
 		$i = 0;
-		foreach ($this->options->toArray() as $value => $label) {
+		foreach ($this->options->toArray() as $value => [$label, $expression]) {
 			$descriptor .= $i++ ? "\x1E" : ":";
-			$descriptor .= "$value\x1F$label";
+			$descriptor .= "$value\x1F$label\x1F$expression";
 		}
 		return $descriptor;
 	}
@@ -44,7 +46,7 @@ final class MapType extends Type
 	/**
 	 * Get all possible options
 	 *
-	 * @return Map
+	 * @return ?Map
 	 */
 	public function getOptions(): ?Map
 	{
@@ -56,11 +58,12 @@ final class MapType extends Type
 	 *
 	 * @param string $value
 	 * @param string $label
+	 * @param Expression $expression
 	 * @return MapType
 	 */
-	public function addOption(string $value, string $label): self
+	public function addOption(string $value, string $label, Expression $expression): self
 	{
-		$this->options->put($value, $label);
+		$this->options->put($value, [$label, $expression]);
 		return $this;
 	}
 
@@ -75,7 +78,10 @@ final class MapType extends Type
 		$meta->type = self::type;
 		if ($this->options->count()) {
 			$meta->options = [];
-			foreach ($this->options->toArray() as $value => $label) {
+			foreach ($this->options->toArray() as $value => [$label, $expression]) {
+				if (!(Expression::evaluate($expression, $state)->active??true)) {
+					continue;
+				}
 				$meta->options[] = ["value" => $value, "label" => $label];
 			}
 		}

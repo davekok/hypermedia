@@ -9,8 +9,6 @@ use Exception;
  */
 class ResourceCompiler
 {
-	private $fieldDescriptors;
-
 	/**
 	 * Compile resource
 	 *
@@ -66,7 +64,7 @@ class ResourceCompiler
 		return $item;
 	}
 
-	private function compileObjectType($object, TagMatcher $matcher): void
+	private function compileObjectType($object, TagMatcher $matcher, int $depth = 0): void
 	{
 		$fieldDescriptors = [];
 		foreach ($object->getFields() as $name => $variants) {
@@ -74,8 +72,9 @@ class ResourceCompiler
 			if ($field) {
 				$type = $field->getType();
 				if ($type instanceof Type\ObjectType || $type instanceof Type\TupleType) {
-					$this->compileObjectType($type, $matcher);
+					$this->compileObjectType($type, $matcher, $depth+1);
 				}
+				$expr = $field->getExpr();
 				$fieldDescriptors[] = [
 					$name,
 					$type->getDescriptor(),
@@ -85,7 +84,7 @@ class ResourceCompiler
 					$field->getLabel(),
 					$field->getIcon(),
 					$field->getSharedStatePoolName(),
-					$field->getExpr(),
+					$expr === null ? null : (string)$expr,
 				];
 			}
 		}
