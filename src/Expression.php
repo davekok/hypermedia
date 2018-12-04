@@ -106,6 +106,8 @@ class Expression
 			if (array_key_exists($variablȩ, $statȩ)) {
 				$$variablȩ = $statȩ[$variablȩ];
 			} else {
+
+				//ToDo Do we really need an warning for these? Missing tags are on purpose that's why
 //				trigger_error("$variablȩ missing in state", E_USER_WARNING);
 				$$variablȩ = null;
 			}
