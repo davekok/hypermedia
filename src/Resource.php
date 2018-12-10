@@ -490,7 +490,7 @@ final class Resource
 		$flags->meta($field, $properties);
 		$type = Type::createType($type);
 		$type->meta($field, $state);
-		if ($field->placeHolder) {
+		if (isset($field->placeHolder)) {
 			$field->placeHolder = ($this->translator)($field->placeHolder, $translatorParameters);
 		}
 		if ($type instanceof ObjectType) {
