@@ -9,6 +9,7 @@ final class EnumType extends Type
 {
 	const type = "enum";
 	private $options = [];
+	private $placeHolder;
 
 	/**
 	 * Constructor
@@ -19,7 +20,9 @@ final class EnumType extends Type
 	{
 		$this->options = new Set;
 		if ($state !== null) {
-			$this->options->add(...explode("\xE", $state));
+			$state = explode("\x1E", $state);
+			$this->placeHolder = "" === ($placeHolder = array_shift($state)) ? null : $placeHolder;
+			$this->options->add(...$state);
 		}
 	}
 
@@ -30,7 +33,7 @@ final class EnumType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.":".$this->options->join("\xE");
+		return self::type.":".$this->placeHolder."\x1E".$this->options->join("\x1E");
 	}
 
 	/**
@@ -64,6 +67,9 @@ final class EnumType extends Type
 	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
+		if ($this->placeHolder) {
+			$meta->placeHolder = $this->placeHolder;
+		}
 		if ($this->options->count()) {
 			$meta->options = $this->options->toArray();
 		}

@@ -324,12 +324,14 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 1) && $this->match('setToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
+				$this->setbit($mask, 21);
 				$field->setType($type = new Type\SetType());
 				$this->parseArray($flags);
 				$this->parseOptions($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('enumToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
+				$this->setbit($mask, 21);
 				$field->setType($type = new Type\EnumType());
 				$this->parseArray($flags);
 				$this->parseOptions($type);
@@ -408,13 +410,14 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 1) && $this->match('listToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
+				$this->setbit($mask, 21);
 				$field->setType($type = new Type\ListType());
 				$this->parseArray($flags);
 				$this->parseList($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('mapToken')) {
 				$this->clearbit($mask, 1);
-				$this->setbit($mask, 12);
 				$this->clearbit($mask, 12);
+				$this->setbit($mask, 21);
 				$field->setType($type = new Type\MapType());
 				$this->parseArray($flags);
 				$this->parseMapOptions($type);
@@ -485,7 +488,7 @@ final class FieldParser
 				$this->clearbit($mask, 19);
 				$flags->setShared();
 				$field->setSharedStatePoolName($this->parseNameToken());
-			} elseif ($this->isbitset($mask, 21) && $this->match('palceHolderToken', $label)) {
+			} elseif ($this->isbitset($mask, 21) && $this->match('placeHolderToken', $label)) {
 				$this->clearbit($mask, 21);
 				$field->setPlaceHolder($label);
 			} elseif ($this->isbitset($mask, 5) && $this->match('minToken', $min)) {

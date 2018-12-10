@@ -490,6 +490,9 @@ final class Resource
 		$flags->meta($field, $properties);
 		$type = Type::createType($type);
 		$type->meta($field, $state);
+		if ($field->placeHolder) {
+			$field->placeHolder = ($this->translator)($field->placeHolder, $translatorParameters);
+		}
 		if ($type instanceof ObjectType) {
 			$field->fields = [];
 			if ($flags->isArray() || $flags->isMatrix()) {

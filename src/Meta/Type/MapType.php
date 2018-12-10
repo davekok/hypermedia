@@ -98,9 +98,11 @@ final class MapType extends Type
 	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
+		if ($this->placeHolder) {
+			$meta->placeHolder = $this->placeHolder;
+		}
 		if ($this->options->count()) {
 			$meta->options = [];
-			$meta->placeHolder = $this->placeHolder;
 			foreach ($this->options->toArray() as $value => [$label, $expression]) {
 				if ($expression !== null && !(Expression::evaluate($expression, $state)->active??true)) {
 					continue;
