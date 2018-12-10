@@ -38,6 +38,12 @@ class Expression
 			$this->variables = $variables;
 		} else if (is_string($expressions) && $variables === null) {
 			[$this->expressions, $this->variables] = unserialize($expressions);
+			if (empty($this->expressions)) {
+				$this->expressions = [];
+			}
+			if (empty($this->variables)) {
+				$this->variables = [];
+			}
 		} else {
 			$this->expressions = [];
 			$this->variables = [];
