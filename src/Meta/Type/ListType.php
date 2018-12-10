@@ -9,6 +9,7 @@ final class ListType extends Type
 	const type = "list";
 
 	private $link;
+	private $placeHolder;
 
 	/**
 	 * Constructor
@@ -18,7 +19,7 @@ final class ListType extends Type
 	public function __construct(string $state = null)
 	{
 		if ($state !== null) {
-			$this->link = $state;
+			[$this->placeHolder, $this->link] = explode("\x1E", $state);
 		}
 	}
 
@@ -29,7 +30,7 @@ final class ListType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type . ":" . $this->link;
+		return self::type . ":" . $this->placeHolder . "\x1E" . $this->link;
 	}
 
 	/**
@@ -41,7 +42,30 @@ final class ListType extends Type
 	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
+		if ($this->placeHolder) {
+			$meta->placeHolder = $this->placeHolder;
+		}
 		$meta->link = $this->link;
+	}
+
+	/**
+	 * Set place holder
+	 *
+	 * @param string|null $placeHolder
+	 */
+	public function setPlaceHolder(?string $placeHolder): void
+	{
+		$this->placeHolder = $placeHolder;
+	}
+
+	/**
+	 * Get place holder
+	 *
+	 * @return string|null
+	 */
+	public function getPlaceHolder(): ?string
+	{
+		return $this->placeHolder;
 	}
 
 	/**
