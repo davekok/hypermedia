@@ -416,7 +416,7 @@ final class FieldParser
 				$this->parseList($type);
 			} elseif ($this->isbitset($mask, 1) && $this->match('mapToken')) {
 				$this->clearbit($mask, 1);
-				$this->clearbit($mask, 12);
+				$this->setbit($mask, 12);
 				$this->setbit($mask, 21);
 				$field->setType($type = new Type\MapType());
 				$this->parseArray($flags);
