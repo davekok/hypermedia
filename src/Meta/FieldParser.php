@@ -47,6 +47,7 @@ final class FieldParser
 	private $disabledToken;
 	private $multipleToken;
 	private $mapToken;
+	private $placeHolderToken;
 	private $stateToken;
 	private $sharedToken;
 	private $privateToken;
@@ -134,6 +135,7 @@ final class FieldParser
 		$this->requiredToken      = "/^required/";
 		$this->readonlyToken      = "/^readonly/";
 		$this->mapToken      	  = "/^map/";
+		$this->placeHolderToken   = "/^placeholder\(('[^\v']*')\)/";
 		$this->disabledToken      = "/^disabled/";
 		$this->multipleToken      = "/^multiple/";
 		$this->stateToken         = "/^state/";
@@ -272,6 +274,7 @@ final class FieldParser
 		// bit 18: maxDate token
 		// bit 19: shared token
 		// bit 20: expression token
+		// bit 21: placeholder token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -283,6 +286,7 @@ final class FieldParser
 		$this->clearbit($mask, 17); // minDate token
 		$this->clearbit($mask, 18); // maxDate token
 		$this->clearbit($mask, 19); // shared token requires state or private token
+		$this->clearbit($mask, 21); // placeholder
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -410,6 +414,7 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 1) && $this->match('mapToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 12);
+				$this->clearbit($mask, 12);
 				$field->setType($type = new Type\MapType());
 				$this->parseArray($flags);
 				$this->parseMapOptions($type);
@@ -480,6 +485,9 @@ final class FieldParser
 				$this->clearbit($mask, 19);
 				$flags->setShared();
 				$field->setSharedStatePoolName($this->parseNameToken());
+			} elseif ($this->isbitset($mask, 21) && $this->match('palceHolderToken', $label)) {
+				$this->clearbit($mask, 21);
+				$field->setPlaceHolder($label);
 			} elseif ($this->isbitset($mask, 5) && $this->match('minToken', $min)) {
 				$this->clearbit($mask, 5);
 				if ($min[0] === '$') {
@@ -693,9 +701,9 @@ final class FieldParser
 				$sequence = 4;
 
 				// Remove the singgle qoutes from the input string
-				if (substr($val, 0, 1) == "'" ) {
+				if (substr($val, 0, 1) == "'") {
 					$length = strlen($val);
-					$val = substr($val, 1, $length );
+					$val = substr($val, 1, $length);
 					$val = substr(trim($val), 0, -1);
 				};
 
@@ -714,11 +722,9 @@ final class FieldParser
 			}
 		}
 
-		if (0 === $sequence  ) {
+		if (0 === $sequence) {
 			throw new ParserError($this->parseError("Expected options for MapType"));
-		}
-
-		else if (5 !== $sequence  ) {
+		} else if (5 !== $sequence) {
 			throw new ParserError($this->parseError("Not completed maptoken"));
 		}
 	}
