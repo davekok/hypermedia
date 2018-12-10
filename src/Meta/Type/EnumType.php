@@ -19,7 +19,7 @@ final class EnumType extends Type
 	{
 		$this->options = new Set;
 		if ($state !== null) {
-			$this->options->add(...explode(",", $state));
+			$this->options->add(...explode("\xE", $state));
 		}
 	}
 
@@ -30,7 +30,7 @@ final class EnumType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.":".$this->options->join(",");
+		return self::type.":".$this->options->join("\xE");
 	}
 
 	/**
@@ -81,4 +81,3 @@ final class EnumType extends Type
 		return $this->options->contains($value);
 	}
 }
-

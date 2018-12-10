@@ -10,6 +10,7 @@ final class MapType extends Type
 {
 	const type = "map";
 	private $options = [];
+	private $placeHolder;
 
 	/**
 	 * Constructor
@@ -20,7 +21,9 @@ final class MapType extends Type
 	{
 		$this->options = new Map;
 		if ($state !== null) {
-			foreach (explode("\x1E", $state) as $option) {
+			$state = explode("\x1E", $state);
+			$this->placeHolder = "" === ($placeHolder = array_shift($state)) ? null : $placeHolder;
+			foreach ($state as $option) {
 				[$value, $label, $expression] = explode("\x1F", $option);
 				$this->options->put($value, [$label, $expression]);
 			}
@@ -35,10 +38,9 @@ final class MapType extends Type
 	public function getDescriptor(): string
 	{
 		$descriptor = self::type;
-		$i = 0;
+		$descriptor.= ":" . $this->placeHolder;
 		foreach ($this->options->toArray() as $value => [$label, $expression]) {
-			$descriptor .= $i++ ? "\x1E" : ":";
-			$descriptor .= "$value\x1F$label\x1F$expression";
+			$descriptor .= "\x1E$value\x1F$label\x1F$expression";
 		}
 		return $descriptor;
 	}
@@ -68,6 +70,26 @@ final class MapType extends Type
 	}
 
 	/**
+	 * Set place holder
+	 *
+	 * @param string|null $placeHolder
+	 */
+	public function setPlaceHolder(?string $placeHolder): void
+	{
+		$this->placeHolder = $placeHolder;
+	}
+
+	/**
+	 * Get place holder
+	 *
+	 * @return string|null
+	 */
+	public function getPlaceHolder(): ?string
+	{
+		return $this->placeHolder;
+	}
+
+	/**
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
@@ -78,8 +100,9 @@ final class MapType extends Type
 		$meta->type = self::type;
 		if ($this->options->count()) {
 			$meta->options = [];
+			$meta->placeHolder = $this->placeHolder;
 			foreach ($this->options->toArray() as $value => [$label, $expression]) {
-				if (!(Expression::evaluate($expression, $state)->active??true)) {
+				if ($expression !== null && !(Expression::evaluate($expression, $state)->active??true)) {
 					continue;
 				}
 				$meta->options[] = ["value" => $value, "label" => $label];
