@@ -101,21 +101,22 @@ class Expression
 	/**
 	 * Evalutate expressions with state.
 	 *
-	 * @param  array $state   the object containing state
+	 * @param array $statȩ
 	 * @return object         result of expressions
 	 */
 	public function eval(array $statȩ): object
 	{
 		// Using special characters in local variables not allowed in expressions to make sure there is no conflict.
+		/** @var TYPE_NAME $variablȩ */
 		foreach ($this->variables as $variablȩ) {
 			if (array_key_exists($variablȩ, $statȩ)) {
 				$$variablȩ = $statȩ[$variablȩ];
 			} else {
-				trigger_error("$variablȩ missing in state", E_USER_WARNING);
 				$$variablȩ = null;
 			}
 		}
 		$rȩt = new stdClass;
+		/** @var TYPE_NAME $ȩxpression */
 		foreach ($this->expressions as $kȩy => $ȩxpression) {
 			$rȩt->$kȩy = $ȩxpression ? eval("return (bool)($ȩxpression);") : false;
 		}
