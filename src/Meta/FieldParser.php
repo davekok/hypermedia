@@ -36,6 +36,8 @@ final class FieldParser
 	private $linkToken;
 	private $listToken;
 	private $objectToken;
+	private $inputToken;
+	private $noInputToken;
 	private $componentToken;
 	private $tupleToken;
 	private $htmlToken;
@@ -125,6 +127,8 @@ final class FieldParser
 		$this->linkToken          = "/^link/";
 		$this->listToken          = "/^list/";
 		$this->objectToken        = "/^object(:$name)?/";
+		$this->inputToken         = "/^input/";
+		$this->noInputToken       = "/^no-input/";
 		$this->referenceToken     = "/^reference/";
 		$this->startTupleToken    = "/^\[/";
 		$this->endTupleToken      = "/^\]/";
@@ -275,6 +279,8 @@ final class FieldParser
 		// bit 19: shared token
 		// bit 20: expression token
 		// bit 21: placeholder token
+		// bit 22: input token
+		// bit 23: noInput token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -440,6 +446,14 @@ final class FieldParser
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\HTMLType());
 				$this->parseArray($flags);
+			} elseif ($this->isbitset($mask, 22) && $this->match('inputToken')) {
+				$this->clearbit($mask, 22);
+				$this->clearbit($mask, 23);
+				$flags->setInput();
+			} elseif ($this->isbitset($mask, 23) && $this->match('noInputToken')) {
+				$this->clearbit($mask, 23);
+				$this->clearbit($mask, 22);
+				$flags->setNoInput();
 			} elseif ($this->isbitset($mask, 2) && $this->isbitset($mask, 14) && $this->match('dataToken')) {
 				$this->clearbit($mask, 2);
 				$this->clearbit($mask, 14);
