@@ -267,7 +267,7 @@ final class Resource
 
 		}
 
-		if ($flags->isReadonly() && isset($value)) {
+		if ($flags->isReadonly() && $flags->isInput() && isset($value)) {
 			$messages[] = "$path is readonly";
 		}
 		if ($flags->isDisabled() && isset($value)) {
