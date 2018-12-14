@@ -290,9 +290,9 @@ final class Resource
 							if (!isset($value[$i])) {
 								$messages[] = "Expected type of $path\[$i\] is array, " . gettype($value) . " found.";
 							}
-							$object[i] = new stdClass;
+							$object[$i] = new stdClass;
 							foreach ($type->getFieldDescriptors() as $field) {
-								$object[i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}");
+								$object[$i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}");
 							}
 						}
 						return $object;
