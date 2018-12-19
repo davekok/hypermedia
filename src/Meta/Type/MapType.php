@@ -63,7 +63,7 @@ final class MapType extends Type
 	 * @param Expression|null $expression
 	 * @return MapType
 	 */
-	public function addOption(string $value, string $label, ?Expression $expression): self
+	public function addOption(string $value, string $label, ?Expression $expression = null): self
 	{
 		$this->options->put($value, [$label, $expression]);
 		return $this;
