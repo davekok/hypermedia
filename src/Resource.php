@@ -3,6 +3,7 @@
 namespace Sturdy\Activity;
 
 use Sturdy\Activity\Expression;
+use Sturdy\Activity\Type as TranslatorType;
 use stdClass;
 use Sturdy\Activity\Meta\{
 	CacheItem_Resource,
@@ -199,7 +200,9 @@ final class Resource
 
 					$translatorParameters = get_object_vars($this->object);
 					foreach ($translatorParameters as $key => $value) {
-						if (!is_scalar($value) && $value !== null) {
+						if (is_object($value) && $value instanceof TranslatorType) {
+							$translatorParameters[$key] = (string)$value;
+						} else if (!is_scalar($value) && $value !== null) {
 							unset($translatorParameters[$key]);
 						}
 					}
