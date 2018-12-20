@@ -3,6 +3,7 @@
 namespace Sturdy\Activity;
 
 use Sturdy\Activity\Expression;
+use Sturdy\Activity\Type as TranslatorType;
 use stdClass;
 use Sturdy\Activity\Meta\{
 	CacheItem_Resource,
@@ -199,7 +200,9 @@ final class Resource
 
 					$translatorParameters = get_object_vars($this->object);
 					foreach ($translatorParameters as $key => $value) {
-						if (!is_scalar($value) && $value !== null) {
+						if (is_object($value) && $value instanceof TranslatorType) {
+							$translatorParameters[$key] = (string)$value;
+						} else if (!is_scalar($value) && $value !== null) {
 							unset($translatorParameters[$key]);
 						}
 					}
@@ -267,7 +270,7 @@ final class Resource
 
 		}
 
-		if ($flags->isReadonly() && isset($value)) {
+		if (($flags->isReadonly() || $flags->isNoInput()) && isset($value)) {
 			$messages[] = "$path is readonly";
 		}
 		if ($flags->isDisabled() && isset($value)) {
@@ -290,9 +293,9 @@ final class Resource
 							if (!isset($value[$i])) {
 								$messages[] = "Expected type of $path\[$i\] is array, " . gettype($value) . " found.";
 							}
-							$object[i] = new stdClass;
+							$object[$i] = new stdClass;
 							foreach ($type->getFieldDescriptors() as $field) {
-								$object[i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}", $state);
+								$object[$i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}", $state);
 							}
 						}
 						return $object;
