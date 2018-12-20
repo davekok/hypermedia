@@ -29,6 +29,7 @@ abstract class Type
 		ReferenceType::type => ReferenceType::class,
 		SetType::type => SetType::class,
 		StringType::type => StringType::class,
+		IconType::type => IconType::class,
 		TimeType::type => TimeType::class,
 		TupleType::type => TupleType::class,
 		URLType::type => URLType::class,

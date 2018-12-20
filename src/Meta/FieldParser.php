@@ -413,6 +413,10 @@ final class FieldParser
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\LinkType());
 				$this->parseArray($flags);
+			}  elseif ($this->isbitset($mask, 1) && $this->match('iconToken')) {
+				$this->clearbit($mask, 1);
+				$field->setType($type = new Type\IconType());
+				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('listToken')) {
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 11);
