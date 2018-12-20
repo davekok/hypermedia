@@ -182,7 +182,7 @@ final class Resource
 		// check fields
 		$messages = [];
 		foreach ($this->fields as $field) {
-			$this->object->{$field[0]} = $this->checkField($messages, $field, $values[$field[0]] ?? null, $query, $field[0]);
+			$this->object->{$field[0]} = $this->checkField($messages, $field, $values[$field[0]] ?? null, $query, $field[0], $values);
 		}
 		if ($messages) {
 			throw new BadRequest($this->class, $messages);
@@ -222,7 +222,7 @@ final class Resource
 		return $this->response;
 	}
 
-	private function checkField(array &$messages, array $fieldDescriptor, $value, array $query, string $path = "")
+	private function checkField(array &$messages, array $fieldDescriptor, $value, array $query, string $path, array $state)
 	{
 		[$name, $type, $defaultValue, $flags, $autocomplete, $label, $icon, $pool, $expr] = $fieldDescriptor;
 
@@ -261,7 +261,7 @@ final class Resource
 
 		} else {
 
-			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {
+			if ($flags->isRequired() && !isset($value) && $this->verb === "POST" && Expression::evaluate($expr, $state)->required ?? true) {
 				$messages[] = "$path is required";
 			}
 
@@ -292,7 +292,7 @@ final class Resource
 							}
 							$object[i] = new stdClass;
 							foreach ($type->getFieldDescriptors() as $field) {
-								$object[i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}");
+								$object[i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}", $state);
 							}
 						}
 						return $object;
@@ -313,7 +313,7 @@ final class Resource
 									if (isset($row[$y])) {
 										$matrix[$x][$y] = new stdClass;
 										foreach ($type->getFieldDescriptors() as $field) {
-											$matrix[$x][$y]->{$field[0]} = $this->checkField($messages, $field, $row[$y][$field[0]], [], "$path\[$x\]\[$y\].{$field[0]}");
+											$matrix[$x][$y]->{$field[0]} = $this->checkField($messages, $field, $row[$y][$field[0]], [], "$path\[$x\]\[$y\].{$field[0]}", $state);
 										}
 									}
 								}
@@ -330,7 +330,7 @@ final class Resource
 				} else {
 					$object = new stdClass;
 					foreach ($type->getFieldDescriptors() as $field) {
-						$object->{$field[0]} = $this->checkField($messages, $field, $value[$field[0]] ?? null, [], "$path.{$field[0]}");
+						$object->{$field[0]} = $this->checkField($messages, $field, $value[$field[0]] ?? null, [], "$path.{$field[0]}", $state);
 					}
 					return $object;
 				}
@@ -339,7 +339,7 @@ final class Resource
 			} elseif ($type instanceof TupleType) {
 				$tuple = [];
 				foreach ($type->getFieldDescriptors() as $i => $field) {
-					$tuple[$i] = $this->checkField($messages, $field, $value[$i], [], "$path\[$i\]");
+					$tuple[$i] = $this->checkField($messages, $field, $value[$i], [], "$path\[$i\]", $state);
 				}
 				return $tuple;
 
