@@ -264,8 +264,11 @@ final class Resource
 
 		} else {
 
-			if ($flags->isRequired() && !isset($value) && $this->verb === "POST" && Expression::evaluate($expr, $state)->required ?? true) {
-				$messages[] = "$path is required";
+			if ($flags->isRequired() && !isset($value) && $this->verb === "POST") {
+				$result = Expression::evaluate($expr, $state);
+				if ($result && property_exists($result,"required") && $result->required) {
+					$messages[] = "$path is required";
+				}
 			}
 
 		}
