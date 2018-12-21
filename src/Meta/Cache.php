@@ -129,12 +129,10 @@ final class Cache implements CacheInterface
 	{
 		$cachedUnit = $this->cachePool->getItem($this->getSourceUnitHash($unit));
 		if (!$cachedUnit->isHit()) {
-			http_log("missing $unit");
 			return null;
 		}
 		$cachedItem = $this->cachePool->getItem($this->getSourceUnitItemHash($unit, $type, $class));
 		if (!$cachedItem->isHit()) {
-			http_log("missing $class for ".implode(" ", array_keys($tags)));
 			return null;
 		}
 		return (new TagMatcher($tags, unserialize($cachedUnit->get())))->findBestMatch(unserialize($cachedItem->get()));
