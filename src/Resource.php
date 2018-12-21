@@ -231,7 +231,11 @@ final class Resource
 
 		// flags check
 		$flags = new FieldFlags($flags);
-		if ($flags->isPrivate()) {
+		if ($flags->isNoInput()) {
+
+			return null;
+
+		} else if ($flags->isPrivate()) {
 
 			return $flags->isShared() ? $this->sharedStateStore->get($pool, $name) : null;
 
@@ -298,7 +302,7 @@ final class Resource
 							}
 							$object[$i] = new stdClass;
 							foreach ($type->getFieldDescriptors() as $field) {
-								$object[$i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}", $state);
+								$object[$i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]] ?? null, [], "$path\[$i\].{$field[0]}", $state);
 							}
 						}
 						return $object;
