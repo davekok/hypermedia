@@ -34,9 +34,8 @@ class Person
 	 *
 	 * @Get
 	 * @param  OK $response    the response
-	 * @param     $di          your dependency injection object
 	 */
-	public function get(\Sturdy\Activity\Response\OK $response, $di): void
+	public function get(\Sturdy\Activity\Response\OK $response): void
 	{
 		$this->name = "Patrick";
 	}
@@ -46,9 +45,8 @@ class Person
 	 *
 	 * @Post
 	 * @param  OK $response    the response
-	 * @param     $di          your dependency injection object
 	 */
-	public function post(\Sturdy\Activity\Response\OK $response, $di): void
+	public function post(\Sturdy\Activity\Response\OK $response): void
 	{
 		$name = $this->name; // $this->name is automatically filled from POST body
 	}
