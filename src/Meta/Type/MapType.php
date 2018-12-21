@@ -4,11 +4,13 @@ namespace Sturdy\Activity\Meta\Type;
 
 use Ds\Map;
 use stdClass;
+use Sturdy\Activity\Expression;
 
 final class MapType extends Type
 {
 	const type = "map";
 	private $options = [];
+	private $placeHolder;
 
 	/**
 	 * Constructor
@@ -19,8 +21,11 @@ final class MapType extends Type
 	{
 		$this->options = new Map;
 		if ($state !== null) {
-			foreach (explode("\x1E", $state) as $option) {
-				$this->options->put(...explode("\x1F", $option));
+			$state = explode("\x1E", $state);
+			$this->placeHolder = "" === ($placeHolder = array_shift($state)) ? null : $placeHolder;
+			foreach ($state as $option) {
+				[$value, $label, $expression] = explode("\x1F", $option);
+				$this->options->put($value, [$label, $expression]);
 			}
 		}
 	}
@@ -33,10 +38,9 @@ final class MapType extends Type
 	public function getDescriptor(): string
 	{
 		$descriptor = self::type;
-		$i = 0;
-		foreach ($this->options->toArray() as $value => $label) {
-			$descriptor .= $i++ ? "\x1E" : ":";
-			$descriptor .= "$value\x1F$label";
+		$descriptor.= ":" . $this->placeHolder;
+		foreach ($this->options->toArray() as $value => [$label, $expression]) {
+			$descriptor .= "\x1E$value\x1F$label\x1F$expression";
 		}
 		return $descriptor;
 	}
@@ -44,7 +48,7 @@ final class MapType extends Type
 	/**
 	 * Get all possible options
 	 *
-	 * @return Map
+	 * @return ?Map
 	 */
 	public function getOptions(): ?Map
 	{
@@ -56,12 +60,33 @@ final class MapType extends Type
 	 *
 	 * @param string $value
 	 * @param string $label
+	 * @param Expression|null $expression
 	 * @return MapType
 	 */
-	public function addOption(string $value, string $label): self
+	public function addOption(string $value, string $label, ?Expression $expression = null): self
 	{
-		$this->options->put($value, $label);
+		$this->options->put($value, [$label, $expression]);
 		return $this;
+	}
+
+	/**
+	 * Set place holder
+	 *
+	 * @param string|null $placeHolder
+	 */
+	public function setPlaceHolder(?string $placeHolder): void
+	{
+		$this->placeHolder = $placeHolder;
+	}
+
+	/**
+	 * Get place holder
+	 *
+	 * @return string|null
+	 */
+	public function getPlaceHolder(): ?string
+	{
+		return $this->placeHolder;
 	}
 
 	/**
@@ -73,9 +98,15 @@ final class MapType extends Type
 	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
+		if ($this->placeHolder) {
+			$meta->placeHolder = $this->placeHolder;
+		}
 		if ($this->options->count()) {
 			$meta->options = [];
-			foreach ($this->options->toArray() as $value => $label) {
+			foreach ($this->options->toArray() as $value => [$label, $expression]) {
+				if ($expression !== null && !(Expression::evaluate($expression, $state)->active??true)) {
+					continue;
+				}
 				$meta->options[] = ["value" => $value, "label" => $label];
 			}
 		}
@@ -93,4 +124,3 @@ final class MapType extends Type
 		return $this->options->hasKey($value);
 	}
 }
-

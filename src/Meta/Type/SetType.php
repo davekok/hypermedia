@@ -13,6 +13,7 @@ final class SetType extends Type
 {
 	const type = "set";
 	private $options;
+	private $placeHolder;
 
 	/**
 	 * Constructor
@@ -23,7 +24,9 @@ final class SetType extends Type
 	{
 		$this->options = new Set;
 		if ($state !== null) {
-			$this->options->add(...explode(",", $state));
+			$state = explode("\x1E", $state);
+			$this->placeHolder = "" === ($placeHolder = array_shift($state)) ? null : $placeHolder;
+			$this->options->add(...$state);
 		}
 	}
 
@@ -34,7 +37,7 @@ final class SetType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.":".$this->options->join(",");
+		return self::type.":".$this->placeHolder."\x1E".$this->options->join("\x1E");
 	}
 
 	/**
@@ -61,6 +64,26 @@ final class SetType extends Type
 	}
 
 	/**
+	 * Set place holder
+	 *
+	 * @param string|null $placeHolder
+	 */
+	public function setPlaceHolder(?string $placeHolder): void
+	{
+		$this->placeHolder = $placeHolder;
+	}
+
+	/**
+	 * Get place holder
+	 *
+	 * @return string|null
+	 */
+	public function getPlaceHolder(): ?string
+	{
+		return $this->placeHolder;
+	}
+
+	/**
 	 * Set meta properties on object
 	 *
 	 * @param stdClass $meta
@@ -69,8 +92,11 @@ final class SetType extends Type
 	public function meta(stdClass $meta, array $state): void
 	{
 		$meta->type = self::type;
-		if(isset($this->options)) {
-			$meta->options = $this->options;
+		if ($this->placeHolder) {
+			$meta->placeHolder = $this->placeHolder;
+		}
+		if ($this->options->count()) {
+			$meta->options = $this->options->toArray();
 		}
 	}
 

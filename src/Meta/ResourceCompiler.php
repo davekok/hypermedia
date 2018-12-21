@@ -9,8 +9,6 @@ use Exception;
  */
 class ResourceCompiler
 {
-	private $fieldDescriptors;
-
 	/**
 	 * Compile resource
 	 *
@@ -76,6 +74,7 @@ class ResourceCompiler
 				if ($type instanceof Type\ObjectType || $type instanceof Type\TupleType) {
 					$this->compileObjectType($type, $matcher);
 				}
+				$expr = $field->getExpr();
 				$fieldDescriptors[] = [
 					$name,
 					$type->getDescriptor(),
@@ -85,6 +84,7 @@ class ResourceCompiler
 					$field->getLabel(),
 					$field->getIcon(),
 					$field->getSharedStatePoolName(),
+					$expr === null ? null : (string)$expr,
 				];
 			}
 		}
