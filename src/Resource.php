@@ -161,7 +161,7 @@ final class Resource
 				break;
 
 			default:
-				throw new InternalServerError("[{$this->class}::{$method}] Unkown status code.");
+				throw new InternalServerError("[{$this->class}::{$this->method}] Unkown status code.");
 		}
 	}
 
@@ -206,6 +206,9 @@ final class Resource
 							unset($translatorParameters[$key]);
 						}
 					}
+
+					$this->response->translateNotifications($this->translator, $translatorParameters);
+
 					if (isset($this->hints[0])) {
 						$this->hints[0] = ($this->translator)($this->hints[0], $translatorParameters);
 					}

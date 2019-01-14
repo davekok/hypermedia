@@ -2,6 +2,7 @@
 
 namespace Sturdy\Activity\Response;
 
+use AppBundle\Service\MessageTranslator;
 use stdClass;
 use Sturdy\Activity\{Resource,Translator};
 
@@ -80,12 +81,12 @@ final class OK implements Response
 	/**
 	 * Set hints
 	 *
-	 * @param ?string $label
-	 * @param ?string $icon
-	 * @param ?string $section
-	 * @param ?string $component
-	 * @param ?string $layout
-	 * @param ?string $variant
+	 * @param string|null $label
+	 * @param string|null $icon
+	 * @param string|null $section
+	 * @param string|null $component
+	 * @param string|null $layout
+	 * @param string|null $variant
 	 * @param string[]|boolean|null $clear
 	 */
 	public function hints(?string $label, ?string $icon, ?string $section, ?string $component, ?string $layout, ?string $variant, $clear): void
@@ -141,9 +142,10 @@ final class OK implements Response
 	/**
 	 * Link to another resource.
 	 *
-	 * @param  string $name       the name of the link
-	 * @param  string $class      the class of the resource
-	 * @param  array  $optionals  optional arguments
+	 * @param  string $name the name of the link
+	 * @param  string $class the class of the resource
+	 * @param  array $optionals optional arguments
+	 * @param array|null $values
 	 * @return bool  link succeeded
 	 *
 	 * $optionals = [
@@ -156,6 +158,7 @@ final class OK implements Response
 	 *   $phase => integer   sometimes you wish to differentiate between links, assign a number
 	 *                       from 0 to 10 to specify the phase variance of the link
 	 * ]
+	 * @throws InternalServerError
 	 */
 	public function link(string $name, ?string $class, array $optionals = [], array &$values = null): bool
 	{
@@ -186,12 +189,15 @@ final class OK implements Response
 	/**
 	 * Attach another resource.
 	 *
-	 * @param  string $name    the name of the link
-	 * @param  string $class   the class of the resource
-	 * @param  array  $query   the values in case the resource has uri fields
+	 * @param  string $name the name of the link
+	 * @param  string $class the class of the resource
+	 * @param  array $query the values in case the resource has uri fields
 	 *
 	 * Please note that $attach is ignored if link is called from a Resource
 	 * that itself is attached by another resource.
+	 * @throws BadRequest
+	 * @throws FileNotFound
+	 * @throws InternalServerError
 	 */
 	public function attach(string $name, string $class, array $query = []): void
 	{
@@ -244,9 +250,10 @@ final class OK implements Response
 	/**
 	 * Get a link to another resource.
 	 *
-	 * @param  string $class   the class of the resource
-	 * @param  array  $values  the values in case the resource has uri fields
+	 * @param  string $class the class of the resource
+	 * @param array ...$values the values in case the resource has uri fields
 	 * @return object  the link
+	 * @throws InternalServerError
 	 */
 	public function getLink(string $class, array ...$values)/*: ?object*/
 	{
@@ -260,7 +267,6 @@ final class OK implements Response
 		return $link->expand($values, false);
 	}
 
-
 	/**
 	 * Notify the user with response text
 	 * Type can be 'error', 'warning', 'info', 'success'
@@ -269,15 +275,28 @@ final class OK implements Response
 	 * @param string $title
 	 * @param string $text
 	 * @param string|null $icon
+	 * @param bool $translate
 	 */
-	public function notifyUser(string $type, string $title, string $text, string $icon = null) {
+	public function notifyUser(string $type, string $title, string $text, string $icon = null, bool $translate = false)
+	{
 		$this->part->notifications[] = ['type' => $type, 'title' => ucfirst($title), 'text' => ucfirst($text), 'icon' => $icon];
+	}
+
+	public function translateNotifications(Translator $translator, array $translatorParameters) : void
+	{
+		foreach ($this->part->notifications?? [] as ['type' => $type, 'title' => $title, 'text' => $text, 'icon' => $icon]) {
+			$title = $translator($title, $translatorParameters);
+			$text = $translator($text, $translatorParameters);
+
+			http_log('$title: ', $title);
+			http_log('$text: ', $text);
+		}
 	}
 
 	/**
 	 * Log a message to the current part
 	 *
-	 * @param $data  data to log
+	 * @param mixed ...$data data to log
 	 */
 	public function log(...$data): void
 	{
