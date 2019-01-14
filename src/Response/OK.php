@@ -2,7 +2,6 @@
 
 namespace Sturdy\Activity\Response;
 
-use AppBundle\Service\MessageTranslator;
 use stdClass;
 use Sturdy\Activity\{Resource,Translator};
 
@@ -275,7 +274,6 @@ final class OK implements Response
 	 * @param string $title
 	 * @param string $text
 	 * @param string|null $icon
-	 * @param bool $translate
 	 */
 	public function notifyUser(string $type, string $title, string $text, string $icon = null)
 	{
@@ -284,9 +282,14 @@ final class OK implements Response
 
 	public function translateNotifications(Translator $translator, array $translatorParameters) : void
 	{
-		foreach ($this->part->notifications?? [] as ['type' => $type, 'title' => $title, 'text' => $text, 'icon' => $icon]) {
-			$title = $translator($title, $translatorParameters);
-			$text = $translator($text, $translatorParameters);
+		if (isset($this->part->notifications)){
+//			ToDo set reference [] and list() assignments cannot be by reference
+			foreach ($this->part->notifications?? [] as ['type' => $type, 'title' => $title, 'text' => $text, 'icon' => $icon]) {
+				$title = $translator($title, $translatorParameters);
+				$text = $translator($text, $translatorParameters);
+			}
+		} else {
+			return;
 		}
 	}
 
