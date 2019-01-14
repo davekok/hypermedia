@@ -277,7 +277,7 @@ final class OK implements Response
 	 * @param string|null $icon
 	 * @param bool $translate
 	 */
-	public function notifyUser(string $type, string $title, string $text, string $icon = null, bool $translate = false)
+	public function notifyUser(string $type, string $title, string $text, string $icon = null)
 	{
 		$this->part->notifications[] = ['type' => $type, 'title' => ucfirst($title), 'text' => ucfirst($text), 'icon' => $icon];
 	}
@@ -287,9 +287,6 @@ final class OK implements Response
 		foreach ($this->part->notifications?? [] as ['type' => $type, 'title' => $title, 'text' => $text, 'icon' => $icon]) {
 			$title = $translator($title, $translatorParameters);
 			$text = $translator($text, $translatorParameters);
-
-			http_log('$title: ', $title);
-			http_log('$text: ', $text);
 		}
 	}
 
