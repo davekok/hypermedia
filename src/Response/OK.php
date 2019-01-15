@@ -283,13 +283,10 @@ final class OK implements Response
 	public function translateNotifications(Translator $translator, array $translatorParameters) : void
 	{
 		if (isset($this->part->notifications)){
-//			ToDo set reference [] and list() assignments cannot be by reference
-			foreach ($this->part->notifications?? [] as ['type' => $type, 'title' => $title, 'text' => $text, 'icon' => $icon]) {
-				$title = $translator($title, $translatorParameters);
-				$text = $translator($text, $translatorParameters);
+			foreach ($this->part->nottifications as &$notification) {
+				$notification['title'] = $translator($notification['title'], $translatorParameters);
+				$notification['text'] = $translator($notification['text'], $translatorParameters);
 			}
-		} else {
-			return;
 		}
 	}
 
