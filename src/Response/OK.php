@@ -280,7 +280,7 @@ final class OK implements Response
 		$this->part->notifications[] = ['type' => $type, 'title' => ucfirst($title), 'text' => ucfirst($text), 'icon' => $icon];
 	}
 
-	public function translateNotifications(Translator $translator, array $translatorParameters) : void
+	public function translateNotifications(Translator $translator, array $translatorParameters): void
 	{
 		if (isset($this->part->notifications)){
 			foreach ($this->part->nottifications as &$notification) {
