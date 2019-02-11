@@ -190,7 +190,12 @@ final class Resource
 		}
 
 		// call
+		// prevent usage of global state
+		$server = &$_SERVER;
+		unset($GLOBALS['_SERVER']);
 		$this->object->{$this->method}($this->response);
+		$GLOBALS['_SERVER'] = &$server;
+		unset($server);
 
 		// post call
 		if ($this->verbflags->hasFields()) {
