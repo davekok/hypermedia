@@ -64,6 +64,7 @@ final class FieldParser
 	private $maxDateToken;
 	private $minlengthToken;
 	private $maxlengthToken;
+	private $noValidateToken;
 	private $patternToken;
 	private $tagToken;
 	private $equalsToken;
@@ -121,6 +122,7 @@ final class FieldParser
 		$this->weekdayToken       = "/^weekday/";
 		$this->uuidToken          = "/^uuid/";
 		$this->passwordToken      = "/^password/";
+		$this->noValidateToken    = "/^novalidate/";
 		$this->colorToken         = "/^color/";
 		$this->emailToken         = "/^email/";
 		$this->urlToken           = "/^url/";
@@ -281,6 +283,7 @@ final class FieldParser
 		// bit 21: placeholder token
 		// bit 22: input token
 		// bit 23: noInput token
+		// bit 24: noValidate token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -293,6 +296,7 @@ final class FieldParser
 		$this->clearbit($mask, 18); // maxDate token
 		$this->clearbit($mask, 19); // shared token requires state or private token
 		$this->clearbit($mask, 21); // placeholder
+		$this->clearbit($mask, 24); // noValidate token
 		while ($this->valid()) {
 			if ($this->match('spaceToken')) {
 				// do nothing
@@ -391,6 +395,7 @@ final class FieldParser
 				$this->clearbit($mask, 1);
 				$this->setbit($mask, 8);
 				$this->setbit($mask, 9);
+				$this->setbit($mask, 24);
 				$field->setType($type = new Type\PasswordType());
 				$this->parseArray($flags);
 			} elseif ($this->isbitset($mask, 1) && $this->match('colorToken')) {
@@ -542,6 +547,9 @@ final class FieldParser
 			} elseif ($this->isbitset($mask, 9) && $this->match('maxlengthToken', $max)) {
 				$this->clearbit($mask, 9);
 				$type->setMaximumLength((int)$max);
+			} elseif ($this->isbitset($mask, 20) && $this->match('noValidateToken')) {
+				$this->clearbit($mask, 20);
+				$type->setNoValidate(true);
 			} elseif ($this->isbitset($mask, 10) && $this->match('patternToken', $pattern)) {
 				$this->clearbit($mask, 10);
 				if (!defined($pattern)) {
@@ -714,22 +722,11 @@ final class FieldParser
 				// do nothing
 			} elseif (1 === $sequence && $this->match('keyToken', $key)) {
 				$sequence = 2;
-
 			} elseif (2 === $sequence && $this->match('colonToken')) {
 				$sequence = 3;
-
 			} elseif (3 === $sequence && $this->match('valToken', $val)) {
 				$sequence = 4;
-
-				// Remove the singgle qoutes from the input string
-				if (substr($val, 0, 1) == "'") {
-					$length = strlen($val);
-					$val = substr($val, 1, $length);
-					$val = substr(trim($val), 0, -1);
-				};
-
-				$type->addOption($key, $val);
-
+				$type->addOption($key, trim($val, "'"));
 			} elseif (4 === $sequence && $this->match('listDelimiterToken')) {
 				$sequence = 1;
 

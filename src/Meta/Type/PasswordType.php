@@ -9,6 +9,7 @@ final class PasswordType extends Type
 	const type = "password";
 	private $minimumLength;
 	private $maximumLength;
+	private $noValidate = false;
 
 	/**
 	 * Constructor
@@ -18,9 +19,10 @@ final class PasswordType extends Type
 	public function __construct(string $state = null)
 	{
 		if ($state !== null) {
-			[$min, $max] = explode(",", $state);
+			[$min, $max, $noValidate] = explode(",", $state);
 			if (strlen($min) > 0) $this->minimumLength = (int)$min;
 			if (strlen($max) > 0) $this->maximumLength = (int)$max;
+			$this->noValidate = (bool)$noValidate;
 		}
 	}
 
@@ -31,7 +33,7 @@ final class PasswordType extends Type
 	 */
 	public function getDescriptor(): string
 	{
-		return self::type.":".$this->minimumLength.",".$this->maximumLength;
+		return self::type.":".$this->minimumLength.",".$this->maximumLength.",".($this->noValidate ? 1 : 0) ;
 	}
 
 	/**
@@ -90,6 +92,28 @@ final class PasswordType extends Type
 	}
 
 	/**
+	 * Set no validate
+	 *
+	 * @param bool $noValidate
+	 * @return self
+	 */
+	public function setNoValidate(bool $noValidate): self
+	{
+		$this->noValidate = $noValidate;
+		return $this;
+	}
+
+	/**
+	 * Get no validate
+	 *
+	 * @return bool
+	 */
+	public function getNoValidate(): bool
+	{
+		return $this->noValidate;
+	}
+
+	/**
 	 * Filter value
 	 *
 	 * @param  &$value string the value to filter
@@ -114,6 +138,7 @@ Passwords must contain characters from three of the following five categories:
 Passwords of a length lower then 16 must have at least an upper and lower case character, a base 10 digit.
 Passwords of a length lower then 8 must have at least an upper and lower case character, a base 10 digit and nonalphanumeric character.
 */
+		if ($this->noValidate) return true;
 
 		if (!is_string($value)) return false;
 		$l = strlen($value);
@@ -123,19 +148,20 @@ Passwords of a length lower then 8 must have at least an upper and lower case ch
 			return false;
 		} elseif ($l > 128) { // hard maximum
 			return false;
-		} else {
-			$lower = "\p{Ll}"; // lower case alphabet characters
-			$upper = "\p{Lu}"; // upper case alphabet characters
-			$digit = "0-9";
-			$alpha = "\p{Lo}"; // other characters
-			$special = addcslashes("~!@#$%^&*_-+=`|\\(){}[]:;\"'<>,.?/ ", "[]-\\/");
-			if ($l > 16) { // for long password entropy is good enough to not require any type of characters
-				return 1 === preg_match("/^[$lower$upper$alpha$digit$special]*$/u", $value);
-			} elseif ($l > 8) { // require at least a lower, upper alphabet character and one digit character
-				return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])[$lower$upper$alpha$digit$special]*$/u", $value);
-			} else { // require also a special character
-				return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])(?=.*[$special])[$lower$upper$alpha$digit$special]*$/u", $value);
-			}
+		// } else {
+		// 	$lower = "\p{Ll}"; // lower case alphabet characters
+		// 	$upper = "\p{Lu}"; // upper case alphabet characters
+		// 	$digit = "0-9";
+		// 	$alpha = "\p{Lo}"; // other characters
+		// 	$special = addcslashes("~!@#$%^&*_-+=`|\\(){}[]:;\"'<>,.?/ ", "[]-\\/");
+		// 	if ($l > 16) { // for long password entropy is good enough to not require any type of characters
+		// 		return 1 === preg_match("/^[$lower$upper$alpha$digit$special]*$/u", $value);
+		// 	} elseif ($l > 8) { // require at least a lower, upper alphabet character and one digit character
+		// 		return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])[$lower$upper$alpha$digit$special]*$/u", $value);
+		// 	} else { // require also a special character
+		// 		return 1 === preg_match("/^((?=.*[$alpha])|(?=.*[$lower])(?=.*[$upper]))(?=.*[$digit])(?=.*[$special])[$lower$upper$alpha$digit$special]*$/u", $value);
+		// 	}
 		}
+		return true;
 	}
 }

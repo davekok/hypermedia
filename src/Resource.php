@@ -161,7 +161,7 @@ final class Resource
 				break;
 
 			default:
-				throw new InternalServerError("[{$this->class}::{$method}] Unkown status code.");
+				throw new InternalServerError("[{$this->class}::{$this->method}] Unkown status code.");
 		}
 	}
 
@@ -190,7 +190,12 @@ final class Resource
 		}
 
 		// call
+		// prevent usage of global state
+		$server = &$_SERVER;
+		unset($GLOBALS['_SERVER']);
 		$this->object->{$this->method}($this->response);
+		$GLOBALS['_SERVER'] = &$server;
+		unset($server);
 
 		// post call
 		if ($this->verbflags->hasFields()) {
@@ -206,6 +211,9 @@ final class Resource
 							unset($translatorParameters[$key]);
 						}
 					}
+
+					$this->response->translateNotifications($this->translator, $translatorParameters);
+
 					if (isset($this->hints[0])) {
 						$this->hints[0] = ($this->translator)($this->hints[0], $translatorParameters);
 					}
@@ -231,7 +239,11 @@ final class Resource
 
 		// flags check
 		$flags = new FieldFlags($flags);
-		if ($flags->isPrivate()) {
+		if ($flags->isNoInput()) {
+
+			return null;
+
+		} else if ($flags->isPrivate()) {
 
 			return $flags->isShared() ? $this->sharedStateStore->get($pool, $name) : null;
 
@@ -298,7 +310,7 @@ final class Resource
 							}
 							$object[$i] = new stdClass;
 							foreach ($type->getFieldDescriptors() as $field) {
-								$object[$i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]], [], "$path\[$i\].{$field[0]}", $state);
+								$object[$i]->{$field[0]} = $this->checkField($messages, $field, $value[$i][$field[0]] ?? null, [], "$path\[$i\].{$field[0]}", $state);
 							}
 						}
 						return $object;
