@@ -588,7 +588,7 @@ final class FieldParser
 			} elseif ($subfield) {
 				break;
 			} else {
-				throw new ParserError($this->parseError("Unexpected token"));
+				throw new ParserError($this->parseError("{$field->getResource()->getClass()}::\${$field->getName()}: Unexpected token"));
 			}
 		}
 		if ($this->isbitset($mask, 1)) {

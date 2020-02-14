@@ -140,6 +140,7 @@ class Resource implements SourceUnitItem
 	 */
 	public function addField(Field $field): self
 	{
+		$field->setResource($this);
 		$this->object->addField($field);
 		return $this;
 	}
