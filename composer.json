@@ -10,7 +10,7 @@
         "psr-4": { "Tests\\Sturdy\\Activity\\": "tests/" }
     },
     "require": {
-        "php": ">=7.1.0",
+        "php": ">=7.4.0",
         "psr/cache": "^1.0",
         "uri-template/uri-template": "^1.0"
     },

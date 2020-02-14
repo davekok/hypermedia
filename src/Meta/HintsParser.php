@@ -51,7 +51,7 @@ final class HintsParser
 		$this->iconToken          = "/^icon/";
 		$this->sectionToken       = "/^section/";
 		$this->layoutToken        = "/^layout/";
-		$this->variantToken         = "/^variant/";
+		$this->variantToken       = "/^variant/";
 		$this->componentToken     = "/^component/";
 		$this->clearToken         = "/^clear/";
 

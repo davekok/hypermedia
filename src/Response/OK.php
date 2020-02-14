@@ -26,10 +26,10 @@ final class OK implements Response
 	{
 		$this->resource = $resource;
 		$this->parts = new stdClass;
-		$this->parts->main = new stdClass;
-		$this->part = $this->parts->main;
-		$this->stack = ["main"];
-		$this->done = ["main" => false];
+		$this->parts->self = new stdClass;
+		$this->part = $this->parts->self;
+		$this->stack = ["self"];
+		$this->done = ["self" => false];
 	}
 
 	/**
@@ -215,7 +215,7 @@ final class OK implements Response
 			}
 
 			$this->resource
-				->createAttachedResource($class, $name === "main")
+				->createAttachedResource($class, $name === "self")
 				->call([], $query, null);
 
 			$this->part = $previous;

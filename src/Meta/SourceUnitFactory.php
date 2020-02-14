@@ -27,6 +27,7 @@ final class SourceUnitFactory
 	public function __construct(Reader $annotationReader, $di)
 	{
 		// make sure the annotation classes are loaded
+		class_exists('Sturdy\Activity\Meta\Hints');
 		class_exists('Sturdy\Activity\Meta\Action');
 		class_exists('Sturdy\Activity\Meta\Field');
 		class_exists('Sturdy\Activity\Meta\Get');

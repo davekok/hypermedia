@@ -233,7 +233,7 @@ class HyperMedia
 	{
 		return new class ($sharedStateStore, $cache, $translator, $jsonDeserializer, $sourceUnit, $basePath, $namespace)
 		extends HyperMedia {
-			public function handle(array $request = null): Response\ArrayAdaptor
+			public function handle(array $request = null): Response\EchoAdaptor
 			{
 				return new Response\EchoAdaptor(parent::realHandle(new Request\DefaultAdaptor($request ?? $_SERVER)));
 			}
