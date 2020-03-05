@@ -13,5 +13,5 @@ interface Translator
 	 *
 	 * @return string  the translation
 	 */
-	public function __invoke(string $message, array $paramaters = []): string;
+	public function __invoke(string $message, array $parameters = []): string;
 }

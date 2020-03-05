@@ -85,8 +85,12 @@ final class SourceUnitFactory
 				}
 			} catch (NoClassInSourceException $e) {
 				// skip file, assume it is a helper file
+			} catch (FieldParserError $e) {
+				echo $e->getMessage();
 			} catch (Throwable $e) {
-				echo "\n",$e->getMessage()," (",$e->getFile(),":",$e->getLine(),")\n";
+				echo get_class($e), ": {$e->getMessage()}\n";
+				echo "## {$e->getFile()}:{$e->getLine()}\n";
+				echo $e->getTraceAsString(),"\n";
 			}
 		}
 		return $unit;
@@ -117,6 +121,7 @@ final class SourceUnitFactory
 					$annotation->setDescription($this->getDescription($property->getDocComment()?:""));
 					if (!isset($resource)) $resource = new Resource($reflect->getName(), $this->getDescription($reflect->getDocComment()?:""));
 					$resource->addField($annotation);
+					$annotation->parse();
 				}
 			}
 		}

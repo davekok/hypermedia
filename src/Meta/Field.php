@@ -19,6 +19,8 @@ use Sturdy\Activity\Expression;
  */
 final class Field extends Taggable
 {
+	private $resouce;      // the resource
+	private $text;         // the resource
 	private $name;         // the name of field
 	private $description;  // the description of field
 	private $type;         // the type of field
@@ -39,9 +41,9 @@ final class Field extends Taggable
 	{
 		$this->flags = new FieldFlags();
 		if (is_string($text)) {
-			$this->parse($text);
+			$this->text = $text;
 		} elseif (isset($text["value"])) {
-			$this->parse($text["value"]);
+			$this->text = $text["value"];
 		}
 	}
 
@@ -50,9 +52,31 @@ final class Field extends Taggable
 	 *
 	 * @param  string $text  the text
 	 */
-	public function parse(string $text): void
+	public function parse(string $text = null): void
 	{
-		(new FieldParser)->parse($this, $text);
+		(new FieldParser)->parse($this, $text??$this->text);
+	}
+
+	/**
+	 * Set resource
+	 *
+	 * @param Resource $resource
+	 * @return self
+	 */
+	public function setResource(Resource $resource): self
+	{
+		$this->resource = $resource;
+		return $this;
+	}
+
+	/**
+	 * Get resource
+	 *
+	 * @return Resource
+	 */
+	public function getResource(): ?Resource
+	{
+		return $this->resource;
 	}
 
 	/**
