@@ -98,7 +98,7 @@ final class DefaultAdaptor implements Request
 	{
 		$p = strpos($this->server['REQUEST_URI'], "?");
 		if ($p !== false) {
-			return substr($this->server['REQUEST_URI'], $path, 0, $p);
+			return substr($this->server['REQUEST_URI'], 0, $p);
 		} else {
 			return $this->server['REQUEST_URI'];
 		}
@@ -113,7 +113,7 @@ final class DefaultAdaptor implements Request
 	{
 		$p = strpos($this->server['REQUEST_URI'], "?");
 		if ($p !== false) {
-			return substr($this->server['REQUEST_URI'], $path, $p+1);
+			return substr($this->server['REQUEST_URI'], $p+1);
 		} else {
 			return "";
 		}

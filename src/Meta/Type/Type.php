@@ -39,6 +39,8 @@ abstract class Type
 		YearType::type => YearType::class,
 	];
 
+	protected $slot;
+
 	public static function createType(string $state): Type
 	{
 		$p = strpos($state, ":");
@@ -75,4 +77,14 @@ abstract class Type
 	 * @return bool  whether the value is valid
 	 */
 	public abstract function filter(&$value): bool;
+
+	public function setSlot(string $slot): void
+	{
+		$this->slot = $slot;
+	}
+
+	public function getSlot(): ?string
+	{
+		return $this->slot;
+	}
 }

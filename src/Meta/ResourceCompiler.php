@@ -85,6 +85,8 @@ class ResourceCompiler
 					$field->getIcon(),
 					$field->getSharedStatePoolName(),
 					$expr === null ? null : (string)$expr,
+					$field->getSlot(),
+					$field->getBind(),
 				];
 			}
 		}

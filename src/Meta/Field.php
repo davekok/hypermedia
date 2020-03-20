@@ -19,6 +19,8 @@ use Sturdy\Activity\Expression;
  */
 final class Field extends Taggable
 {
+	private $resouce;      // the resource
+	private $text;         // the resource
 	private $name;         // the name of field
 	private $description;  // the description of field
 	private $type;         // the type of field
@@ -29,6 +31,8 @@ final class Field extends Taggable
 	private $icon;         // icon
 	private $pool;         // shared state pool name
 	private $expr;         // expression
+	private $slot;         // slot
+	private $bind;         // bind
 
 	/**
 	 * Constructor
@@ -39,9 +43,9 @@ final class Field extends Taggable
 	{
 		$this->flags = new FieldFlags();
 		if (is_string($text)) {
-			$this->parse($text);
+			$this->text = $text;
 		} elseif (isset($text["value"])) {
-			$this->parse($text["value"]);
+			$this->text = $text["value"];
 		}
 	}
 
@@ -50,9 +54,31 @@ final class Field extends Taggable
 	 *
 	 * @param  string $text  the text
 	 */
-	public function parse(string $text): void
+	public function parse(string $text = null): void
 	{
-		(new FieldParser)->parse($this, $text);
+		(new FieldParser)->parse($this, $text??$this->text);
+	}
+
+	/**
+	 * Set resource
+	 *
+	 * @param Resource $resource
+	 * @return self
+	 */
+	public function setResource(Resource $resource): self
+	{
+		$this->resource = $resource;
+		return $this;
+	}
+
+	/**
+	 * Get resource
+	 *
+	 * @return Resource
+	 */
+	public function getResource(): ?Resource
+	{
+		return $this->resource;
 	}
 
 	/**
@@ -268,6 +294,45 @@ final class Field extends Taggable
 	}
 
 	/**
+	 * Set slot
+	 *
+	 * @param ?string slot
+	 */
+	public function setSlot(?string $slot): void
+	{
+		$this->slot = $slot;
+	}
+
+	/**
+	 * Get slot
+	 *
+	 * @return ?string
+	 */
+	public function getSlot(): ?string
+	{
+		return $this->slot;
+	}
+
+	/**
+	 * Set bind
+	 *
+	 * @param ?string bind
+	 */
+	public function setBind(?string $bind): void
+	{
+		$this->bind = $bind;
+	}
+
+	/**
+	 * Get bind
+	 *
+	 * @return ?string
+	 */
+	public function getBind(): ?string
+	{
+		return $this->bind;
+	}
+	/**
 	 * To string
 	 *
 	 * @return string  text representation of object
@@ -290,6 +355,8 @@ final class Field extends Taggable
 		if ($this->label) $text.= "label('" . str_replace("'", "''", $this->label) . "') ";
 		if ($this->icon) $text.= "icon({$this->icon}) ";
 		if ($this->expr) $text.= "expr({$this->expr}) ";
+		if ($this->slot) $text.= "slot({$this->slot}) ";
+		if ($this->bind) $text.= "bind({$this->bind}) ";
 		if (method_exists($this->type, "getMinimumRange") && $min = $this->type->getMinimumRange()) {
 			$text.= "min($min) ";
 		}

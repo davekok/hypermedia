@@ -9,9 +9,6 @@ use stdClass;
  */
 class Expression
 {
-	private const SEPARATOR1 = "#";
-	private const SEPARATOR2 = ",";
-
 	/**
 	 * @var array
 	 */
