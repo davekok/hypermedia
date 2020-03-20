@@ -74,6 +74,8 @@ final class FieldParser
 	private $autocompleteOption;
 	private $iconToken;
 	private $labelToken;
+	private $slotToken;
+	private $bindToken;
 	private $listStartToken;
 	private $listDelimiterToken;
 	private $listEndToken;
@@ -140,8 +142,10 @@ final class FieldParser
 		$this->hiddenToken        = "/^hidden/";
 		$this->requiredToken      = "/^required/";
 		$this->readonlyToken      = "/^readonly/";
-		$this->mapToken      	  = "/^map/";
+		$this->mapToken           = "/^map/";
 		$this->placeHolderToken   = "/^placeholder\(('[^\v']*')\)/";
+		$this->slotToken          = "/^slot\(($name)\)/";
+		$this->bindToken          = "/^bind\(($name)\)/";
 		$this->disabledToken      = "/^disabled/";
 		$this->multipleToken      = "/^multiple/";
 		$this->stateToken         = "/^state/";
@@ -284,6 +288,8 @@ final class FieldParser
 		// bit 22: input token
 		// bit 23: noInput token
 		// bit 24: noValidate token
+		// bit 25: slot token
+		// bit 26: bind token
 		$this->clearbit($mask, 4); // multiple
 		$this->clearbit($mask, 5); // min token
 		$this->clearbit($mask, 6); // max token
@@ -444,6 +450,12 @@ final class FieldParser
 				$field->setType($type);
 				$this->parseArray($flags);
 				$this->parseFields($type);
+			} elseif ($this->isbitset($mask, 25) && $this->match('slotToken', $name)) {
+				$this->clearbit($mask, 25);
+				$field->setSlot($name);
+			} elseif ($this->isbitset($mask, 26) && $this->match('bindToken', $name)) {
+				$this->clearbit($mask, 26);
+				$field->setBind($name);
 			} elseif ($this->isbitset($mask, 1) && $this->match('referenceToken')) {
 				$this->clearbit($mask, 1);
 				$field->setType($type = new Type\ReferenceType());

@@ -15,7 +15,6 @@ final class ColorType extends Type
 	 */
 	public function __construct(string $state = null)
 	{
-
 	}
 
 	/**

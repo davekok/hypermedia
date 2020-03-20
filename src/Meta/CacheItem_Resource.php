@@ -57,16 +57,16 @@ class CacheItem_Resource extends CacheItem_UnitItem
 	 *
 	 * @return $this
 	 */
-	public function addField(string $name, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $label = null, ?string $icon = null, ?string $pool = null, ?string $expr = null): self
+	public function addField(string $name, string $type, $default, int $flags = 0, ?string $autocomplete = null, ?string $label = null, ?string $icon = null, ?string $pool = null, ?string $expr = null, ?string $slot = null, ?string $bind = null): self
 	{
-		$this->fields[] = [$name, $type, $default, $flags, $autocomplete, $label, $icon, $pool, $expr];
+		$this->fields[] = [$name, $type, $default, $flags, $autocomplete, $label, $icon, $pool, $expr, $slot, $bind];
 		return $this;
 	}
 
 	/**
 	 * Get fields
 	 *
-	 * @return [string $name, string $type, $default, int $flags, ?string $autocomplete, ?string $label, ?string $icon, ?string $pool, ?string $expr]
+	 * @return [string $name, string $type, $default, int $flags, ?string $autocomplete, ?string $label, ?string $icon, ?string $pool, ?string $expr, ?string $slot, $bind]
 	 */
 	public function getFields()
 	{
